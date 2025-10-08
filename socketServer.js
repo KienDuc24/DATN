@@ -5,14 +5,14 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors({
-  origin: '*', // hoặc domain FE của bạn
+  origin: 'https://datn-smoky.vercel.app', // hoặc domain FE của bạn
   methods: ['GET', 'POST']
 }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // hoặc domain FE của bạn
+    origin: 'https://datn-smoky.vercel.app', // hoặc domain FE của bạn
     methods: ['GET', 'POST']
   }
 });

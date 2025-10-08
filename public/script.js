@@ -981,3 +981,24 @@ async function handleGameClick(game) {
   // Điều hướng sang room.html với mã phòng và tên game
   window.location.href = `/room.html?code=${data.code}&game=${encodeURIComponent(game.name)}`;
 }
+
+// Thay YOUR_SOCKET_DOMAIN bằng domain Railway của bạn, ví dụ: https://datn-socket.up.railway.app
+const socket = io('https://YOUR_SOCKET_DOMAIN', {
+  transports: ['websocket']
+});
+
+// Tham gia room
+socket.emit('join-room', roomCode);
+
+// Nhận thông báo user khác vào room
+socket.on('user-joined', (userId) => {
+  console.log('User joined:', userId);
+});
+
+// Gửi message
+socket.emit('send-message', { roomCode, message: 'Hello!' });
+
+// Nhận message
+socket.on('receive-message', (data) => {
+  console.log('Message from', data.sender, ':', data.message);
+});
