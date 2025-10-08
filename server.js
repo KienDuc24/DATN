@@ -7,6 +7,8 @@ const User = require('./models/User');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const path = require('path');
+const MongoStore = require('connect-mongo');
+const { v4: uuidv4 } = require('uuid'); // Thêm ở đầu file
 require('dotenv').config();
 
 const app = express();
@@ -17,7 +19,10 @@ app.use(cors({
 }));
 
 // Kết nối MongoDB
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
   .then(() => console.log('MongoDB connected!'))
   .catch(err => console.error('MongoDB error:', err));
 
@@ -25,7 +30,11 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
 app.use(session({
   secret: process.env.SESSION_SECRET || 'secret',
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    ttl: 14 * 24 * 60 * 60 // = 14 days. Default
+  })
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -61,7 +70,7 @@ app.get('/auth/google/callback',
     // Đăng nhập thành công, trả về user qua query (bạn nên trả về JWT thực tế)
     const user = req.user;
     // Chuyển về FE kèm thông tin user
-    res.redirect(`http://localhost:5500/DATN/public/index.html?user=${encodeURIComponent(JSON.stringify(user))}`);
+    res.redirect(`https://datn-smoky.vercel.app?user=${encodeURIComponent(JSON.stringify(user))}`);
   }
 );
 
@@ -85,7 +94,13 @@ app.post('/api/auth/register', async (req, res) => {
     return res.json({ message: 'Tên đăng nhập đã tồn tại.' });
 
   const hash = await bcrypt.hash(password, 10);
-  const user = new User({ username, password: hash });
+  const user = new User({
+    id: uuidv4(), // Tự tạo id
+    username,
+    password: hash,
+    email: `${username}@example.com`, // Tạo email giả nếu không có
+    provider: 'local'
+  });
   await user.save();
   res.json({ message: 'Đăng ký thành công!', user: { username: user.username } });
 });
@@ -107,9 +122,16 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
-const authRouter = require('./routes/authRoutrs');
+const authRouter = require('./routes/authRoutes');
 app.use('/api/auth', authRouter);
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Export app cho Vercel
 module.exports = app;
+if (require.main === module) {
+  app.listen(3001, () => console.log('Server running on http://localhost:3001'));
+}
 

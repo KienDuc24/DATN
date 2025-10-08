@@ -6,6 +6,7 @@ let featuredGames = [];
 let newGames = [];
 let gamesByCategory = {};
 
+const BASE_API_URL = 'https://datn-smoky.vercel.app'; // hoặc domain backend thật của bạn
 const MAX_SHOW = 5;
 
 // Lưu vị trí trang hiện tại cho từng slider
@@ -506,16 +507,18 @@ document.getElementById('loginForm').onsubmit = async function(e) {
   e.preventDefault();
   const username = document.getElementById('login-username').value;
   const password = document.getElementById('login-password').value;
-  const res = await fetch('http://localhost:3000/api/auth/login', {
+  const res = await fetch(`${BASE_API_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password })
   });
   const data = await res.json();
   document.getElementById('login-message').innerText = data.message || '';
-  if (data.token) {
+  if (data.token && data.user) {
     localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user)); // Lưu user vào localStorage
     closeAuthModal();
+    showUserInfo(data.user); // Hiện avatar và info như Google
     alert('Đăng nhập thành công!');
   }
 };
@@ -549,7 +552,7 @@ document.getElementById('registerForm').onsubmit = async function(e) {
     document.getElementById('register-message').innerText = msg;
     return;
   }
-  const res = await fetch('http://localhost:3000/api/auth/register', {
+  const res = await fetch(`${BASE_API_URL}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password })
@@ -575,7 +578,7 @@ document.getElementById('anonymousLoginBtn').onclick = function() {
 
 // Đăng nhập Google (giả lập)
 document.getElementById('googleLoginBtn').onclick = function() {
-  window.location.href = 'http://localhost:3001/auth/google';
+  window.location.href = `${BASE_API_URL}/auth/google`;
 };
 
 // Đăng nhập Facebook (giả lập)
@@ -652,13 +655,7 @@ function showUserInfo(user) {
     userInfo.style.display = 'flex';
     // Avatar: ưu tiên Google, Facebook, mặc định là guest
     let avatar = user.avatar || user.picture || '';
-    if (!avatar && user.email && user.email.endsWith('@gmail.com')) {
-      avatar = 'img/gglogo.webp';
-    } else if (!avatar && user.username && user.username.startsWith('guest_')) {
-      avatar = 'img/guestlogo.png';
-    } else if (!avatar) {
-      avatar = 'img/fav.svg';
-    }
+    avatar = 'img/avt.png';
     userAvatar.src = avatar;
 
     // Cập nhật dropbox
@@ -696,14 +693,26 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Đăng xuất
-  const logoutBtn = document.getElementById('logoutBtn');
-  if (logoutBtn) {
-    logoutBtn.onclick = function() {
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      localStorage.removeItem('username');
-    };
-  }
+const logoutBtn = document.getElementById('logoutBtn');
+if (logoutBtn) {
+  logoutBtn.onclick = function() {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    // Ẩn user info, hiện lại nút đăng nhập/đăng ký
+    const headerAuthBtns = document.getElementById('headerAuthBtns');
+    if (headerAuthBtns) headerAuthBtns.style.display = '';
+    const sidebarAuthBtns = document.getElementById('sidebarAuthBtns');
+    if (sidebarAuthBtns) sidebarAuthBtns.style.display = '';
+    const userInfo = document.getElementById('userInfo');
+    if (userInfo) userInfo.style.display = 'none';
+    // Ẩn dropbox nếu đang mở
+    const userDropdown = document.getElementById('userDropdown');
+    if (userDropdown) userDropdown.style.display = 'none';
+    // Reload lại trang nếu muốn reset toàn bộ state
+    // location.reload();
+  };
+}
 
   // Hồ sơ, lịch sử, cài đặt (demo)
   const profileBtn = document.getElementById('profileBtn');
@@ -883,7 +892,7 @@ document.getElementById('registerForm').onsubmit = async function(e) {
     document.getElementById('register-message').innerText = msg;
     return;
   }
-  const res = await fetch('http://localhost:3000/api/auth/register', {
+  const res = await fetch(`${BASE_API_URL}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password })
@@ -900,16 +909,18 @@ document.getElementById('loginForm').onsubmit = async function(e) {
   e.preventDefault();
   const username = document.getElementById('login-username').value;
   const password = document.getElementById('login-password').value;
-  const res = await fetch('http://localhost:3000/api/auth/login', {
+  const res = await fetch(`${BASE_API_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password })
   });
   const data = await res.json();
   document.getElementById('login-message').innerText = data.message || '';
-  if (data.token) {
+  if (data.token && data.user) {
     localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user)); // Lưu user vào localStorage
     closeAuthModal();
+    showUserInfo(data.user); // Hiện avatar và info như Google
     alert('Đăng nhập thành công!');
   }
 };
@@ -948,3 +959,25 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
 });
+
+// Đóng modal
+function closeAuthModal() {
+  // Ẩn modal đăng nhập/đăng ký
+  const modal = document.querySelector('.auth-form-modal, .auth-modal, .modal');
+  if (modal) modal.style.display = 'none';
+  // Hoặc nếu bạn dùng class để ẩn:
+  // if (modal) modal.classList.remove('show');
+}
+
+// Gọi API tạo room và điều hướng sang trang room.html
+async function handleGameClick(game) {
+  // Gọi API tạo room
+  const res = await fetch('/api/room/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ game: game.name, gameId: game.id })
+  });
+  const data = await res.json();
+  // Điều hướng sang room.html với mã phòng và tên game
+  window.location.href = `/room.html?code=${data.code}&game=${encodeURIComponent(game.name)}`;
+}

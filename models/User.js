@@ -1,15 +1,15 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  id: { type: String, unique: true, required: true }, // ID duy nhất cho mỗi user
-  username: { type: String, unique: false }, // Google user có thể không có username
-  password: { type: String }, // Google user không cần password
+  id: { type: String, unique: true, required: true },
+  username: { type: String, unique: false },
+  password: { type: String },
   email: { type: String, unique: true, required: true },
-  displayName: { type: String, default: '' }, // Tên hiển thị
-  avatar: { type: String, default: '' },      // Link ảnh đại diện
-  role: { type: String, default: 'user' },    // 'user' hoặc 'admin'
-  provider: { type: String, enum: ['local', 'google'], default: 'local' }, // Phân biệt loại tài khoản
-  googleId: { type: String, default: null },  // Lưu ID Google nếu đăng nhập Google
+  displayName: { type: String, default: '' },
+  avatar: { type: String, default: '' },
+  role: { type: String, default: 'user' },
+  provider: { type: String, enum: ['local', 'google'], default: 'local' },
+  googleId: { type: String, default: null },
   gameHistory: [
     {
       gameId: String,
