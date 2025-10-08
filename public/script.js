@@ -18,9 +18,9 @@ let sliderPage = {
 
 // Hàm render 1 game card
 function renderGameCard(game) {
-  const name = getGameName(game);
-  const desc = getGameDesc(game);
-  const category = getGameCategory(game);
+  const name = getGameName(game, currentLang);
+  const desc = getGameDesc(game, currentLang);
+  const category = getGameCategory(game, currentLang);
   return `
     <div class="game-card" onclick="window.location.href='game/${game.id}/index.html'">
       ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
@@ -199,16 +199,21 @@ function searchGames() {
       <div class="section-title">Kết quả tìm kiếm cho "<span style="color:#ff9800">${keyword}</span>"</div>
     </div>
     <div class="games-slider" style="flex-wrap:wrap;gap:32px 24px;">
-      ${filtered.map(game => `
-        <div class="game-card" onclick="window.location.href='game/${game.id}/index.html'">
-          ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
-          <img src="game/${game.id}/Img/logo.png" alt="${game.name || game.id}" />
-          <div class="game-title">${highlight(game.name || game.id)}</div>
-          <div class="game-category">${highlight(game.category ? game.category : 'Khác')}</div>
-          <div class="game-desc">${highlight(game.desc || '')}</div>
-          ${game.players ? `<div class="game-players">👥 ${highlight(game.players)} người chơi</div>` : ""}
-        </div>
-      `).join('')}
+      ${filtered.map(game => {
+        const name = getGameName(game, currentLang);
+        const desc = getGameDesc(game, currentLang);
+        const category = getGameCategory(game, currentLang);
+        return `
+          <div class="game-card" onclick="window.location.href='game/${game.id}/index.html'">
+            ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
+            <img src="game/${game.id}/Img/logo.png" alt="${name}" />
+            <div class="game-title">${highlight(name)}</div>
+            <div class="game-category">${highlight(category)}</div>
+            <div class="game-desc">${highlight(desc)}</div>
+            ${game.players ? `<div class="game-players">👥 ${highlight(game.players)} ${LANGS[currentLang]?.players || 'người chơi'}</div>` : ""}
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 }
@@ -584,14 +589,17 @@ function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function getGameName(game) {
-  return typeof game.name === 'string' ? game.name : (game.name?.vi || game.name?.en || '');
+function getGameName(game, lang = currentLang) {
+  if (typeof game.name === 'string') return game.name;
+  return game.name?.[lang] || game.name?.vi || game.name?.en || '';
 }
-function getGameDesc(game) {
-  return typeof game.desc === 'string' ? game.desc : (game.desc?.vi || game.desc?.en || '');
+function getGameDesc(game, lang = currentLang) {
+  if (typeof game.desc === 'string') return game.desc;
+  return game.desc?.[lang] || game.desc?.vi || game.desc?.en || '';
 }
-function getGameCategory(game) {
-  return typeof game.category === 'string' ? game.category : (game.category?.vi || game.category?.en || '');
+function getGameCategory(game, lang = currentLang) {
+  if (typeof game.category === 'string') return game.category;
+  return game.category?.[lang] || game.category?.vi || game.category?.en || '';
 }
 
 // Đăng nhập
@@ -774,6 +782,20 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     };
   }
+
+  // Ẩn/hiện mật khẩu đăng ký cho cả 2 ô
+  const toggleRegisterBtn = document.getElementById('toggleRegisterPassword');
+  const pw1 = document.getElementById('register-password');
+  const pw2 = document.getElementById('register-password2');
+  if (toggleRegisterBtn && pw1 && pw2) {
+    toggleRegisterBtn.onclick = function(e) {
+      e.preventDefault();
+      const isHidden = pw1.type === 'password';
+      pw1.type = isHidden ? 'text' : 'password';
+      pw2.type = isHidden ? 'text' : 'password';
+      this.querySelector('.eye-icon').textContent = isHidden ? '🙈' : '👁️';
+    };
+  }
 });
 
 // Quên mật khẩu
@@ -809,40 +831,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// Ẩn/hiện mật khẩu đăng nhập
-document.getElementById('togglePassword').onclick = function() {
-  const pw = document.getElementById('login-password');
-  if (pw.type === 'password') {
-    pw.type = 'text';
-    this.textContent = '👁 Ẩn mật khẩu';
-  } else {
-    pw.type = 'password';
-    this.textContent = '👁 Hiện mật khẩu';
-  }
-};
-
-// Ẩn/hiện mật khẩu đăng ký
-document.getElementById('toggleRegisterPassword').onclick = function() {
-  const pw = document.getElementById('register-password');
-  if (pw.type === 'password') {
-    pw.type = 'text';
-    this.textContent = '👁 Ẩn mật khẩu';
-  } else {
-    pw.type = 'password';
-    this.textContent = '👁 Hiện mật khẩu';
-  }
-};
-document.getElementById('toggleRegisterPassword2').onclick = function() {
-  const pw = document.getElementById('register-password2');
-  if (pw.type === 'password') {
-    pw.type = 'text';
-    this.textContent = '👁 Ẩn mật khẩu';
-  } else {
-    pw.type = 'password';
-    this.textContent = '👁 Hiện mật khẩu';
-  }
-};
-
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.toggle-password-btn-below').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
@@ -863,23 +851,100 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Thiết lập sự kiện ẩn/hiện mật khẩu cho các nút và input tương ứng
-function setupTogglePassword(btnId, inputId) {
-  const btn = document.getElementById(btnId);
-  const input = document.getElementById(inputId);
-  btn.addEventListener('click', function(e) {
-    e.preventDefault();
-    if (input.type === 'password') {
-      input.type = 'text';
-      btn.querySelector('.eye-icon').textContent = '🙈';
-    } else {
-      input.type = 'password';
-      btn.querySelector('.eye-icon').textContent = '👁️';
-    }
+
+
+document.addEventListener('DOMContentLoaded', function() {
+  const toggleBtn = document.getElementById('toggleRegisterPassword');
+  if (toggleBtn) {
+    toggleBtn.onclick = function(e) {
+      e.preventDefault();
+      const pwInputs = [
+        document.getElementById('register-password'),
+        document.getElementById('register-password2')
+      ];
+      const isHidden = pwInputs[0].type === 'password';
+      pwInputs.forEach(input => {
+        if (input) input.type = isHidden ? 'text' : 'password';
+      });
+      const eye = this.querySelector('.eye-icon');
+      if (eye) eye.textContent = isHidden ? '🙈' : '👁';
+      this.innerHTML = `${eye ? eye.outerHTML : ''} ${isHidden ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}`;
+    };
+  }
+});
+// Đăng ký
+document.getElementById('registerForm').onsubmit = async function(e) {
+  e.preventDefault();
+  const username = document.getElementById('register-username').value.trim();
+  const password = document.getElementById('register-password').value;
+  const password2 = document.getElementById('register-password2').value;
+  const msg = validateRegister(username, password, password2);
+  if (msg) {
+    document.getElementById('register-message').innerText = msg;
+    return;
+  }
+  const res = await fetch('http://localhost:3000/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
   });
-}
-setupTogglePassword('togglePassword', 'login-password');
-setupTogglePassword('toggleRegisterPassword', 'register-password');
-setupTogglePassword('toggleRegisterPassword2', 'register-password2');
+  const data = await res.json();
+  document.getElementById('register-message').innerText = data.message || '';
+  if (data.user) {
+    showAuthTab('login');
+  }
+};
+
+// Đăng nhập
+document.getElementById('loginForm').onsubmit = async function(e) {
+  e.preventDefault();
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  const res = await fetch('http://localhost:3000/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  const data = await res.json();
+  document.getElementById('login-message').innerText = data.message || '';
+  if (data.token) {
+    localStorage.setItem('token', data.token);
+    closeAuthModal();
+    alert('Đăng nhập thành công!');
+  }
+};
 
 
+document.addEventListener('DOMContentLoaded', function() {
+  // Ẩn/hiện mật khẩu đăng nhập
+  const loginPwdInput = document.getElementById('login-password');
+  const loginToggleBtn = document.getElementById('togglePassword');
+  if (loginPwdInput && loginToggleBtn) {
+    loginToggleBtn.onclick = function(e) {
+      e.preventDefault();
+      if (loginPwdInput.type === 'password') {
+        loginPwdInput.type = 'text';
+        this.innerHTML = '🙈 Ẩn mật khẩu';
+      } else {
+        loginPwdInput.type = 'password';
+        this.innerHTML = '👁 Hiện mật khẩu';
+      }
+    };
+  }
 
+  // Ẩn/hiện mật khẩu đăng ký cho cả 2 ô
+  const regToggleBtn = document.getElementById('toggleRegisterPassword');
+  const regPw1 = document.getElementById('register-password');
+  const regPw2 = document.getElementById('register-password2');
+  if (regToggleBtn && regPw1 && regPw2) {
+    regToggleBtn.onclick = function(e) {
+      e.preventDefault();
+      const isHidden = regPw1.type === 'password';
+      regPw1.type = isHidden ? 'text' : 'password';
+      regPw2.type = isHidden ? 'text' : 'password';
+      const icon = isHidden ? '🙈' : '👁';
+      const text = isHidden ? 'Ẩn mật khẩu' : 'Hiện mật khẩu';
+      this.innerHTML = `<span class="eye-icon">${icon}</span> ${text}`;
+    };
+  }
+});

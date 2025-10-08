@@ -107,4 +107,9 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
-app.listen(3001, () => console.log('Server running on http://localhost:3001'));
+const authRouter = require('./routes/authRoutrs');
+app.use('/api/auth', authRouter);
+
+// Export app cho Vercel
+module.exports = app;
+

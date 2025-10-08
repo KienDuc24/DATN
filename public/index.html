@@ -146,9 +146,11 @@
       <!-- Đăng ký -->
       <form id="registerForm" class="auth-form" style="display:none;">
         <input id="register-username" type="text" placeholder="Username" required />
-        <input id="register-password" type="password" placeholder="Password" required />
-        <input id="register-password2" type="password" placeholder="Confirm password" required />
-        <button id="toggleRegisterPassword2" type="button" class="toggle-password-btn-below">👁 Hiện mật khẩu</button>
+        <input class="hide" id="register-password" type="password" placeholder="Password" required />
+        <input class="hide" id="register-password2" type="password" placeholder="Confirm password" required />
+        <button id="toggleRegisterPassword" type="button" class="register-btn" style="margin-bottom: 8px;">
+          <span class="eye-icon">👁</span> Hiện mật khẩu
+        </button>
         <button type="submit" class="register-btn">Register</button>
         <div id="register-message" class="auth-message"></div>
       </form>

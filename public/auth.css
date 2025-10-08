@@ -33,10 +33,46 @@
 .auth-form input {
   padding: 10px; border-radius: 8px; border: 1px solid #fff3; background: #181c23; color: #fff; font-size: 1rem;
 }
-.auth-form button {
-  background: #ff9800; color: #fff; border: none; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 1rem; cursor: pointer;
+/* Chỉ áp dụng style nút cam cho nút submit, không áp dụng cho nút hiện mật khẩu */
+.auth-form button:not(.toggle-password-btn):not(.toggle-password-btn-below) {
+  background: #ff9800;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
 }
-.auth-form button:hover { background: #43cea2; color: #23272f; }
+.auth-form button:not(.toggle-password-btn):not(.toggle-password-btn-below):hover {
+  background: #43cea2;
+  color: #23272f;
+}
+/* Nút hiện mật khẩu dạng icon nhỏ, nằm trong input */
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  top: 18px; /* hoặc điều chỉnh top cho phù hợp */
+  background: none !important;
+  border: none !important;
+  color: #888;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0 5px;
+  z-index: 2;
+  outline: none;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  box-shadow: none !important;
+  transition: color 0.18s;
+}
+.toggle-password-btn:hover .eye-icon {
+  color: #ff9800;
+}
+.eye-icon {
+  pointer-events: none;
+}
 .auth-message { color: #ff9800; font-size: 0.98rem; min-height: 20px; }
 .auth-alt {
   display: flex;
@@ -287,8 +323,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  gap: 8px;
 }
-.password-field input[type="password"], 
+.password-field input[type="password"],
 .password-field input[type="text"] {
   width: 100%;
   padding-right: 40px;
@@ -297,8 +334,7 @@
 .toggle-password-btn {
   position: absolute;
   right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 18px; /* căn giữa giữa 2 input, tuỳ chỉnh nếu cần */
   background: none;
   border: none;
   color: #888;
@@ -310,6 +346,7 @@
   display: flex;
   align-items: center;
   height: 32px;
+  transition: color 0.18s;
 }
 .toggle-password-btn:hover .eye-icon {
   color: #ff9800;
