@@ -6,6 +6,7 @@ const cors = require('cors');
 const User = require('./models/User');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -103,5 +104,7 @@ app.post('/api/auth/login', async (req, res) => {
   // Có thể trả về token ở đây nếu muốn
   res.json({ message: 'Đăng nhập thành công!', token: 'dummy-token', user: { username: user.username } });
 });
+
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 app.listen(3001, () => console.log('Server running on http://localhost:3001'));
