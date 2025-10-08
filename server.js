@@ -12,12 +12,12 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 app.use(cors({
-  origin: 'http://localhost:5500', // Đổi thành domain FE của bạn nếu khác
+  origin: process.env.FRONTEND_URL || 'http://localhost:5500',
   credentials: true
 }));
 
 // Kết nối MongoDB
-mongoose.connect('mongodb://localhost:27017/datn', { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected!'))
   .catch(err => console.error('MongoDB error:', err));
 
