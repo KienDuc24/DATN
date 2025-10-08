@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Camping Game - Trò chơi nhóm trực tuyến</title>
+  <link rel="icon" type="image/svg+xml" href="img/fav.svg" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="nav.css" />
+  <link rel="stylesheet" href="auth.css" />
+  <link rel="stylesheet" href="responsive.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <img src="img/fav.svg" alt="Logo" />
+      <span>Camping Game</span>
+    </div>
+    <nav>
+      <a href="#recent" data-i18n="recent"><span class="icon">&#128340;</span> Gần đây</a>
+      <a href="#top" data-i18n="top"><span class="icon">&#11088;</span> Hàng đầu</a>
+      <a href="#featured" data-i18n="featured"><span class="icon">&#128293;</span> Nổi bật</a>
+      <a href="#new" data-i18n="new"><span class="icon">&#128640;</span> Mới</a>
+    </nav>
+    <div class="sidebar-auth" id="sidebarAuthBtns">
+      <button class="auth-btn" data-i18n="login" onclick="openAuthModal('login')"></button>
+      <button class="auth-btn" data-i18n="register" onclick="openAuthModal('register')"></button>
+    </div>
+    <div class="sidebar-lang">
+      <select id="langSelect" onchange="setLang(this.value)">
+        <option value="vi">Tiếng Việt</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <header>
+    <div class="header-main">
+      <!-- Nút mở sidebar/nav ngoài cùng bên trái -->
+      <button class="sidebar-toggle" onclick="toggleSidebar()">
+        <span class="icon">&#9776;</span>
+      </button>
+      <!-- Logo và tiêu đề -->
+      <img src="img/fav.svg" class="logo-animate" alt="Logo" />
+      <h1 class="header-title">Camping Game</h1>
+      <!-- Thanh tìm kiếm căn giữa -->
+      <div class="search-bar search-bar-center">
+        <input type="text" id="searchInput" placeholder="Tìm kiếm trò chơi..." oninput="searchGames()" />
+        <button onclick="searchGames()">
+          <span class="icon-search">&#128269;</span>
+        </button>
+      </div>
+      <!-- Nút tìm kiếm chỉ hiện trên mobile -->
+      <button class="search-toggle" id="searchToggleBtn" type="button" onclick="showMobileSearch()">
+        <span class="icon-search">&#128269;</span>
+      </button>
+      <!-- Nút đăng nhập/đăng ký sát phải -->
+      <div class="header-auth-btns" id="headerAuthBtns">
+        <button class="auth-btn" id="loginBtn" data-i18n="login" onclick="openAuthModal('login')"></button>
+        <button class="auth-btn" id="registerBtn" data-i18n="register" onclick="openAuthModal('register')"></button>
+      </div>
+      <div class="user-info" id="userInfo" style="display:none; position: relative;">
+        <img id="userAvatar" class="user-avatar" src="img/guestlogo.png" alt="avatar" />
+        <div class="user-dropdown" id="userDropdown" style="display:none;">
+          <div class="user-dropdown-header">
+            <img id="dropdownAvatar" class="user-avatar-large" src="img/guestlogo.png" alt="avatar" />
+            <div class="user-dropdown-username" id="dropdownUsername"></div>
+            <div class="user-dropdown-email" id="dropdownEmail"></div>
+          </div>
+          <button type="button" id="profileBtn">👤 Hồ sơ</button>
+          <button type="button" id="historyBtn">🕹️ Lịch sử chơi</button>
+          <button type="button" id="settingsBtn">⚙️ Cài đặt tài khoản</button>
+          <button type="button" id="logoutBtn">🚪 Đăng xuất</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main class="main-content">
+    <div class="section-title-row" id="recent">
+      <div class="section-title" data-i18n="recent">Gần đây</div>
+      <div class="sort-dropdown">
+        <select id="sortSelect-recent" onchange="sortGames('recent')">
+          <option value="newest">Mới nhất</option>
+          <option value="oldest">Cũ nhất</option>
+          <option value="players-asc">Số người tăng</option>
+          <option value="players-desc">Số người giảm</option>
+          <option value="name-asc">A-Z</option>
+          <option value="name-desc">Z-A</option>
+        </select>
+      </div>
+    </div>
+    <div class="games-slider-container" id="recent-container">
+      <button class="show-more-btn prev-btn" id="recentShowMore-prev" style="display:none;">&#8249;</button>
+      <div class="games-slider" id="recentSlider"></div>
+      <button class="show-more-btn next-btn" id="recentShowMore" style="display:none;">&#8250;</button>
+    </div>
+    <div class="section-title-row" id="top">
+      <div class="section-title" data-i18n="top">Lựa chọn hàng đầu</div>
+    </div>
+    <div class="games-slider-container" id="top-container">
+      <button class="show-more-btn prev-btn" id="topShowMore-prev" style="display:none;">&#8249;</button>
+      <div class="games-slider" id="topSlider"></div>
+      <button class="show-more-btn next-btn" id="topShowMore" style="display:none;">&#8250;</button>
+    </div>
+    <div class="section-title-row" id="featured">
+      <div class="section-title" data-i18n="featured">Trò chơi nổi bật</div>
+    </div>
+    <div class="games-slider-container">
+      <div class="games-slider" id="featuredSlider"></div>
+    </div>
+    <div class="section-title-row" id="new">
+      <div class="section-title" data-i18n="new">Trò chơi mới</div>
+    </div>
+    <div class="games-slider-container">
+      <div class="games-slider" id="newSlider"></div>
+    </div>
+    <div class="section-title-row" id="category">
+      <div class="section-title" data-i18n="by_category">Game theo thể loại</div>
+    </div>
+    <div id="category-list"></div>
+  </main>
+
+  <!-- Modal Đăng nhập/Đăng ký -->
+  <div id="auth-modal" class="auth-modal" style="display:none;">
+    <div class="auth-modal-content">
+      <button class="auth-modal-close" type="button" onclick="document.getElementById('auth-modal').style.display='none'">&times;</button>
+      <div class="auth-tabs">
+        <button id="loginTab" class="auth-tab active" type="button">Đăng nhập</button>
+        <button id="registerTab" class="auth-tab" type="button">Đăng ký</button>
+      </div>
+      <div class="auth-social">
+        <button id="googleLoginBtn" class="social-btn social-google" type="button">Continue with Google</button>
+        <button id="facebookLoginBtn" class="social-btn social-facebook" type="button">Continue with Facebook</button>
+        <button id="anonymousLoginBtn" class="social-btn social-guest" type="button">Login as Guest</button>
+      </div>
+      <div class="auth-or"><span>OR</span></div>
+      <!-- Đăng nhập -->
+      <form id="loginForm" class="auth-form">
+        <input id="login-username" type="text" placeholder="Username" required />
+        <input id="login-password" type="password" placeholder="Password" required />
+        <button id="togglePassword" type="button" class="toggle-password-btn-below">👁 Hiện mật khẩu</button>
+        <button type="submit" class="login-btn">Login</button>
+        <div id="login-message" class="auth-message"></div>
+      </form>
+      <!-- Đăng ký -->
+      <form id="registerForm" class="auth-form" style="display:none;">
+        <input id="register-username" type="text" placeholder="Username" required />
+        <input id="register-password" type="password" placeholder="Password" required />
+        <input id="register-password2" type="password" placeholder="Confirm password" required />
+        <button id="toggleRegisterPassword2" type="button" class="toggle-password-btn-below">👁 Hiện mật khẩu</button>
+        <button type="submit" class="register-btn">Register</button>
+        <div id="register-message" class="auth-message"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Popup đổi hồ sơ -->
+  <div id="profile-modal" class="profile-modal" style="display:none;">
+    <div class="profile-modal-content">
+      <span class="profile-modal-close" id="closeProfileModal">&times;</span>
+      <h2>Thay đổi hồ sơ</h2>
+      <div class="profile-modal-actions">
+        <button type="button" id="modalChangeAvatarBtn">🖼️ Đổi avatar</button>
+        <button type="button" id="modalChangeNameBtn">✏️ Đổi tên tài khoản</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nút kéo lên trên cùng -->
+  <button id="backToTopBtn" title="Lên đầu trang" onclick="scrollToTop()">&#8679;</button>
+  <script src="script.js"></script>
+</body>
+</html>

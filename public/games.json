@@ -1,0 +1,98 @@
+[
+  {
+    "name": {
+      "vi": "🎨 Vẽ",
+      "en": "🎨 Draw"
+    },
+    "desc": {
+      "vi": "Họa sĩ tài ba trở lại! Vẽ vui và sáng tạo! 😆",
+      "en": "The artist is back! Draw and have fun! 😆"
+    },
+    "players": "3+",
+    "id": "Draw",
+    "category": {
+      "vi": "Vẽ, Đoán chữ",
+      "en": "Draw, Word Guess"
+    }
+  },
+  {
+    "name": {
+      "vi": "🎨 Vẽ",
+      "en": "🎨 Draw"
+    },
+    "desc": {
+      "vi": "Họa sĩ tài ba trở lại! Vẽ vui và sáng tạo! 😆",
+      "en": "The artist is back! Draw and have fun! 😆"
+    },
+    "players": "3+",
+    "id": "Draw",
+    "category": {
+      "vi": "Vẽ, Đoán chữ",
+      "en": "Draw, Word Guess"
+    }
+  },
+  {
+    "name": {
+      "vi": "🎨 Vẽ",
+      "en": "🎨 Draw"
+    },
+    "desc": {
+      "vi": "Họa sĩ tài ba trở lại! Vẽ vui và sáng tạo! 😆",
+      "en": "The artist is back! Draw and have fun! 😆"
+    },
+    "players": "3+",
+    "id": "Draw",
+    "category": {
+      "vi": "Vẽ, Đoán chữ",
+      "en": "Draw, Word Guess"
+    }
+  },
+  {
+    "name": {
+      "vi": "❓ Sự thật hay Thách thức",
+      "en": "❓ Truth or Dare"
+    },
+    "desc": {
+      "vi": "Hé lộ bí mật, dám chơi dám chịu! Thử thách bất ngờ! 😈",
+      "en": "Reveal secrets, dare to play, dare to accept! Unexpected challenges! 😈"
+    },
+    "players": "4+",
+    "id": "ToD",
+    "category": {
+      "vi": "Đoán chữ",
+      "en": "Word Guess"
+    }
+  },
+  {
+    "name": {
+      "vi": "❓ Sự thật hay Thách thức",
+      "en": "❓ Truth or Dare"
+    },
+    "desc": {
+      "vi": "Hé lộ bí mật, dám chơi dám chịu! Thử thách bất ngờ! 😈",
+      "en": "Reveal secrets, dare to play, dare to accept! Unexpected challenges! 😈"
+    },
+    "players": "4+",
+    "id": "ToD",
+    "category": {
+      "vi": "Đoán chữ",
+      "en": "Word Guess"
+    }
+  },
+  {
+    "name": {
+      "vi": "❓ Sự thật hay Thách thức",
+      "en": "❓ Truth or Dare"
+    },
+    "desc": {
+      "vi": "Hé lộ bí mật, dám chơi dám chịu! Thử thách bất ngờ! 😈",
+      "en": "Reveal secrets, dare to play, dare to accept! Unexpected challenges! 😈"
+    },
+    "players": "4+",
+    "id": "ToD",
+    "category": {
+      "vi": "Đoán chữ",
+      "en": "Word Guess"
+    }
+  }
+]

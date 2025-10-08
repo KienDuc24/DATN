@@ -1,0 +1,192 @@
+/* --- Responsive Header & Auth --- */
+@media (max-width: 700px) {
+  .header-main {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 2vw 8px 2vw;
+  }
+  .sidebar-toggle {
+    font-size: 1.5rem;
+    margin-right: 4px;
+    padding: 0 2px;
+  }
+  .logo-animate {
+    width: 28px;
+    height: 28px;
+    margin-right: 5px;
+  }
+  .header-title {
+    font-size: 1rem;
+    margin: 0 8px 0 0;
+  }
+  .search-bar.search-bar-center {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100vw;
+    margin: 0 8px;
+    height: 32px;
+  }
+  .search-bar input {
+    font-size: 0.95rem;
+    padding: 0 6px;
+    height: 30px;
+  }
+  .search-bar button {
+    font-size: 1rem;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 0 16px 16px 0;
+  }
+  .header-auth-btns {
+    gap: 4px;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+  .auth-btn {
+    padding: 6px 10px;
+    font-size: 0.95rem;
+    border-radius: 6px;
+  }
+  .header-main.mobile-searching .logo-animate,
+  .header-main.mobile-searching .header-title {
+    display: none !important;
+  }
+}
+@media (max-width: 700px) {
+  .sidebar {
+    width: 80vw;
+    min-width: 180px;
+    max-width: 96vw;
+    padding-top: 10px;
+  }
+  .sidebar-logo {
+    font-size: 1rem;
+    gap: 6px;
+    padding: 0 10px 10px 10px;
+  }
+  .sidebar-logo img {
+    width: 28px; height: 28px;
+  }
+  .sidebar nav a {
+    font-size: 14px;
+    padding: 10px 16px;
+  }
+  .sidebar-auth button {
+    font-size: 14px;
+    padding: 7px 0;
+    border-radius: 5px;
+  }
+}
+
+/* --- Responsive Main Content & Game Card --- */
+@media (max-width: 700px) {
+  .main-content {
+    padding: 8px 2vw 24px 2vw;
+    max-width: 100vw;
+  }
+  .section-title-row {
+    margin: 18px 0 8px 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .section-title {
+    font-size: 1.05rem;
+  }
+  .games-slider-container {
+    max-width: 100vw;
+    margin: 0 0 18px 0;
+  }
+  .games-slider {
+    gap: 10px;
+    min-height: 140px;
+  }
+  .game-card {
+    width: 130px;
+    min-width: 130px;
+    max-width: 130px;
+    padding: 10px 4px 8px 4px;
+    border-radius: 10px;
+  }
+  .game-card img {
+    width: 60px;
+    height: 44px;
+    border-radius: 7px;
+    margin-bottom: 6px;
+  }
+  .game-title {
+    font-size: 0.98rem;
+    margin-bottom: 2px;
+  }
+  .game-category, .game-desc, .game-players, .game-author, .game-updated {
+    font-size: 0.89rem;
+  }
+  .game-badge {
+    font-size: 0.7rem;
+    border-radius: 6px;
+    padding: 1px 6px;
+    top: 5px; left: 5px;
+  }
+  .show-more-btn, .show-more-btn.next-btn, .show-more-btn.prev-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    font-size: 1.3rem;
+    border-radius: 50%;
+  }
+}
+
+/* --- Responsive Auth Modal --- */
+@media (max-width: 500px) {
+  .auth-modal-content {
+    min-width: 90vw;
+    padding: 18px 6vw 12px 6vw;
+    border-radius: 10px;
+  }
+  .auth-form {
+    min-width: 0;
+    padding: 12px 0 10px 0;
+    border-radius: 10px;
+  }
+}
+
+/* Responsive: Hiện nút tìm kiếm, ẩn thanh tìm kiếm khi nhỏ */
+@media (max-width: 700px) {
+  .search-bar.search-bar-center {
+    display: none;
+  }
+  .search-toggle {
+    display: flex;
+  }
+  .header-auth-btns {
+    transition: opacity 0.2s;
+  }
+  .header-main.mobile-searching .search-bar.search-bar-center {
+    display: flex !important;
+    flex: 1 1 100vw;
+    max-width: 100vw;
+    margin: 0 0 0 8px;
+    background: #23272f;
+    border-radius: 18px;
+    height: 38px;
+    z-index: 100;
+  }
+  .header-main.mobile-searching .search-toggle,
+  .header-main.mobile-searching .header-auth-btns {
+    display: none !important;
+  }
+  .header-main.mobile-searching .search-bar input {
+    font-size: 1rem;
+    padding: 0 10px;
+    height: 36px;
+  }
+  .header-main.mobile-searching .search-bar button {
+    font-size: 1rem;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 0 16px 16px 0;
+  }
+}

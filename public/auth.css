@@ -1,0 +1,319 @@
+/* --- Popup Auth --- */
+.auth-modal {
+  position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+}
+.auth-modal-content {
+  background: #23272f; padding: 32px 28px 18px 28px; border-radius: 16px; min-width: 320px; box-shadow: 0 8px 32px #0008; position: relative;
+}
+.auth-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-size: 2.2rem;
+  color: #ff9800;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 10;
+  transition: color 0.18s, transform 0.18s;
+  line-height: 1;
+  padding: 0 8px;
+}
+.auth-modal-close:hover {
+  color: #fff;
+  transform: rotate(90deg) scale(1.1);
+}
+.auth-tabs { display: flex; margin-bottom: 18px; }
+.auth-tab {
+  flex: 1; background: none; border: none; font-size: 1.1rem; font-weight: bold; color: #bbb; padding: 8px 0; cursor: pointer; border-bottom: 2px solid transparent;
+}
+.auth-tab.active { color: #ff9800; border-bottom: 2px solid #ff9800; }
+.auth-form { display: flex; flex-direction: column; gap: 12px; }
+.auth-form input {
+  padding: 10px; border-radius: 8px; border: 1px solid #fff3; background: #181c23; color: #fff; font-size: 1rem;
+}
+.auth-form button {
+  background: #ff9800; color: #fff; border: none; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 1rem; cursor: pointer;
+}
+.auth-form button:hover { background: #43cea2; color: #23272f; }
+.auth-message { color: #ff9800; font-size: 0.98rem; min-height: 20px; }
+.auth-alt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 18px 0 0 0;
+  align-items: stretch;
+}
+.auth-social {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0 0 18px 0;
+}
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 1.08rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 32px;
+  padding: 12px 0;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  box-shadow: 0 2px 12px #0001;
+  outline: none;
+  width: 100%;
+  background: #fff;
+  color: #23272f;
+  position: relative;
+}
+.social-btn .social-icon {
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+}
+.social-google {
+  border: 1.5px solid #ea4335;
+}
+.social-google:hover {
+  background: #ea4335;
+  color: #fff;
+}
+.social-facebook {
+  background: #1877f2;
+  color: #fff;
+  border: 1.5px solid #1877f2;
+}
+.social-facebook:hover {
+  background: #145db2;
+  color: #fff;
+}
+.social-apple {
+  background: #23272f;
+  color: #fff;
+  border: 1.5px solid #23272f;
+}
+.social-apple:hover {
+  background: #111;
+  color: #fff;
+}
+.social-guest {
+  background: #bbb;
+  color: #23272f;
+  border: 1.5px solid #bbb;
+}
+.social-guest:hover {
+  background: #43cea2;
+  color: #23272f;
+  border-color: #43cea2;
+}
+.auth-or {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 18px 0 10px 0;
+  color: #888;
+  font-weight: bold;
+  font-size: 1.05rem;
+  letter-spacing: 1px;
+}
+.auth-or span {
+  background: #23272f;
+  padding: 0 18px;
+  z-index: 1;
+  position: relative;
+}
+.auth-or:before,
+.auth-or:after {
+  content: "";
+  flex: 1;
+  height: 1.5px;
+  background: #444;
+  margin: 0 4px;
+  border-radius: 2px;
+}
+.user-info {
+  position: relative;
+  cursor: pointer;
+}
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+  border: 2px solid #ff9800;
+  transition: box-shadow 0.15s;
+}
+.user-avatar:hover {
+  box-shadow: 0 0 0 3px #ff9800;
+}
+.user-dropdown {
+  position: absolute;
+  top: 120%;
+  right: 0;
+  background: #23272f;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px #0006;
+  min-width: 260px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 0 10px 0;
+  animation: fadeIn 0.18s;
+}
+.user-dropdown-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.user-avatar-large {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  margin-bottom: 8px;
+  border: 2.5px solid #ff9800;
+  background: #fff;
+}
+.user-dropdown-username {
+  font-weight: bold;
+  color: #ff9800;
+  font-size: 1.1rem;
+  margin-bottom: 2px;
+}
+.user-dropdown-email {
+  color: #bbb;
+  font-size: 0.98rem;
+  margin-bottom: 10px;
+}
+.user-dropdown button {
+  background: none;
+  border: none;
+  color: #fff;
+  text-align: left;
+  padding: 12px 24px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  width: 100%;
+}
+.user-dropdown button:hover {
+  background: #ff9800;
+  color: #23272f;
+}
+
+/* Nút ẩn/hiện mật khẩu nằm dưới ô nhập */
+.toggle-password-btn-below {
+  margin-top: -4px;
+  margin-bottom: 8px;
+  background: none;
+  border: none;
+  color: #ff9800;
+  font-size: 1rem;
+  cursor: pointer;
+  display: block;
+  margin-left: auto;
+  margin-right: 2px;
+  transition: color 0.18s;
+  outline: none;
+}
+.toggle-password-btn-below:hover {
+  color: #43cea2;
+  text-decoration: underline;
+}
+/* Nếu muốn input không bị sát nút */
+.auth-form input[type="password"] {
+  margin-bottom: 0;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px);}
+  to { opacity: 1; transform: translateY(0);}
+}
+
+/* --- Profile Modal --- */
+.profile-modal {
+  position: fixed;
+  z-index: 9999;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.profile-modal-content {
+  background: #23272f;
+  border-radius: 16px;
+  padding: 32px 28px 24px 28px;
+  min-width: 320px;
+  box-shadow: 0 6px 32px #0007;
+  position: relative;
+  text-align: center;
+}
+.profile-modal-close {
+  position: absolute;
+  top: 12px; right: 18px;
+  font-size: 2rem;
+  color: #ff9800;
+  cursor: pointer;
+}
+.profile-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 24px;
+}
+.profile-modal-actions button {
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 12px 0;
+  border-radius: 8px;
+  border: none;
+  background: #ff9800;
+  color: #23272f;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+.profile-modal-actions button:hover {
+  background: #43cea2;
+  color: #23272f;
+}
+.password-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.password-field input[type="password"], 
+.password-field input[type="text"] {
+  width: 100%;
+  padding-right: 40px;
+  box-sizing: border-box;
+}
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0 5px;
+  z-index: 2;
+  outline: none;
+  display: flex;
+  align-items: center;
+  height: 32px;
+}
+.toggle-password-btn:hover .eye-icon {
+  color: #ff9800;
+}
+.eye-icon {
+  pointer-events: none;
+}
