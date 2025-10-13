@@ -565,3 +565,13 @@ footer {
   background: #282d36;
   border-radius: 8px;
 }
+
+/* Thêm vào styles.css hoặc index.html */
+.modal {
+  position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+}
+.modal-content {
+  background: #222; color: #fff; padding: 32px 24px; border-radius: 8px; min-width: 300px;
+  box-shadow: 0 2px 16px #0008;
+}

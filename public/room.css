@@ -1,0 +1,266 @@
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Cherry+Bomb+One&family=Poppins:wght@400;600&display=swap');
+
+:root {
+  --primary-color: #ff6b81;
+  --secondary-color: #ffb86b;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: 'Poppins', sans-serif;
+  background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1400&q=80') no-repeat center center fixed;
+  background-size: cover;
+  margin: 0;
+}
+.navbar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 24px;
+  background-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.navbar-title {
+  font-family: 'Cherry Bomb One', cursive;
+  font-size: 2.1rem;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.navbar-title i {
+  color: var(--primary-color);
+}
+.main {
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  font-family: 'Cherry Bomb One', cursive;
+  color: #ffffff;
+  font-size: 2rem;
+  text-shadow: 2px 2px 1px rgba(0,0,0,0.5);
+  margin-bottom: 10px;
+  text-align: center;
+  margin-bottom: 3rem;
+}
+.subtitle {
+  color: #ffffffcc;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  text-align: center;
+  font-style: italic;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 14px;
+  border-radius: 8px;
+  max-width: 90%;
+}
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  width: 100%;
+  max-width: 900px;
+}
+.game-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 14px;
+  padding: 20px 16px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s;
+  border: 2px solid #d8ecff;
+}
+.game-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+.game-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  animation: float 2s ease-in-out infinite;
+}
+@keyframes float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
+}
+.game-card:hover .game-icon {
+  animation: none;
+  transform: scale(1.15);
+  transition: transform 0.3s;
+}
+.game-name {
+  font-family: 'Cherry Bomb One', cursive;
+  font-size: 1.3rem;
+  color: #2f3e6f;
+  margin-bottom: 5px;
+}
+.game-desc {
+  font-size: 0.9rem;
+  color: #444;
+  margin-bottom: 8px;
+}
+.game-tips {
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 14px;
+  background: #f4f9ff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  text-align: left;
+}
+.play-button {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(255, 107, 129, 0.4);
+  transition: transform 0.2s;
+}
+.play-button:hover {
+  transform: scale(1.05);
+}
+@media (max-width: 600px) {
+  h1 { font-size: 1.8rem; }
+  .navbar-title { font-size: 1.3rem; }
+  .game-grid { gap: 12px; }
+  .game-card { padding: 14px 12px; }
+}
+.icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+.name {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #2f3542;
+}
+.desc {
+  font-size: 0.95rem;
+  color: #555;
+  margin: 6px 0;
+}
+.players {
+  font-size: 0.85rem;
+  color: #666;
+}
+.game-card button {
+  margin-top: 14px;
+  background: #ff6b81;
+  border: none;
+  padding: 10px 16px;
+  color: white;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.game-card img {
+  width: 100%;
+  max-width: 180px;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.5);
+  z-index: 999;
+  display: none;
+}
+
+.popup {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  z-index: 1000;
+  text-align: center;
+  width: 360px;
+  max-width: 95vw;
+  display: none;
+}
+
+.popup p {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+}
+
+.popup input {
+  padding: 10px;
+  width: 80%;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.popup button {
+  margin: 8px 0;
+  padding: 10px;
+  width: 80%;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.btn-green { background: #28a745; color: white; }
+.btn-green:hover { background: #218838; }
+
+.btn-blue { background: #007bff; color: white; }
+.btn-blue:hover { background: #0069d9; }
+
+.btn-gray { background: #dee2e6; color: #333; }
+.btn-gray:hover { background: #ced4da; }
+
+.hidden { display: none !important; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translate(-50%, -60%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+/* Hiệu ứng nổi lên khi hover card */
+.game-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.game-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Hiệu ứng fade-in cho popup */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

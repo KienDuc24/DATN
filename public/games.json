@@ -1,6 +1,22 @@
 [
   {
     "name": {
+      "vi": "🎨 Kiểm tra",
+      "en": "🎨 Test"
+    },
+    "desc": {
+      "vi": "Họa sĩ tài ba trở lại! Vẽ vui và sáng tạo! 😆",
+      "en": "The artist is back! Draw and have fun! 😆"
+    },
+    "players": "3+",
+    "id": "Draw",
+    "category": {
+      "vi": "Vẽ, Đoán chữ",
+      "en": "Draw, Word Guess"
+    }
+  },
+  {
+    "name": {
       "vi": "🎨 Vẽ",
       "en": "🎨 Draw"
     },

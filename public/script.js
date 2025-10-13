@@ -17,13 +17,18 @@ let sliderPage = {
   new: 0
 };
 
+// Khởi tạo socket kết nối tới Railway (thay domain đúng của bạn)
+const socket = io('https://datn-socket.up.railway.app', {
+  transports: ['websocket']
+});
+
 // Hàm render 1 game card
 function renderGameCard(game) {
   const name = getGameName(game, currentLang);
   const desc = getGameDesc(game, currentLang);
   const category = getGameCategory(game, currentLang);
   return `
-    <div class="game-card" onclick="window.location.href='game/${game.id}/index.html'">
+    <div class="game-card" onclick="handleGameClick('${game.id}', '${name.replace(/'/g, "\\'")}')">
       ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
       <img src="game/${game.id}/Img/logo.png" alt="${name}" />
       <div class="game-title">${name}</div>
@@ -205,7 +210,7 @@ function searchGames() {
         const desc = getGameDesc(game, currentLang);
         const category = getGameCategory(game, currentLang);
         return `
-          <div class="game-card" onclick="window.location.href='game/${game.id}/index.html'">
+          <div class="game-card" onclick="handleGameClick('${game.id}', '${game.name}')">
             ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
             <img src="game/${game.id}/Img/logo.png" alt="${name}" />
             <div class="game-title">${highlight(name)}</div>
@@ -969,23 +974,72 @@ function closeAuthModal() {
   // if (modal) modal.classList.remove('show');
 }
 
-// Gọi API tạo room và điều hướng sang trang room.html
-async function handleGameClick(game) {
-  // Gọi API tạo room
-  const res = await fetch('/api/room/create', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ game: game.name, gameId: game.id })
-  });
-  const data = await res.json();
-  // Điều hướng sang room.html với mã phòng và tên game
-  window.location.href = `/room.html?code=${data.code}&game=${encodeURIComponent(game.name)}`;
+// Hàm sinh mã phòng kiểu A111
+function generateRoomCode() {
+  const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26)); // A-Z
+  const number = Math.floor(100 + Math.random() * 900); // 100-999
+  return letter + number;
 }
 
-// Thay YOUR_SOCKET_DOMAIN bằng domain Railway của bạn, ví dụ: https://datn-socket.up.railway.app
-const socket = io('https://YOUR_SOCKET_DOMAIN', {
-  transports: ['websocket']
-});
+// Hiện modal khi click vào game
+function handleGameClick(gameId, gameName) {
+  window.selectedGameId = gameId;
+  window.selectedGameName = gameName;
+  document.getElementById('roomModal').style.display = 'flex';
+  document.getElementById('roomCodeBox').style.display = 'none';
+  document.getElementById('joinRoomBox').style.display = 'none';
+}
+
+// Đóng modal
+document.getElementById('closeRoomModal').onclick = function() {
+  document.getElementById('roomModal').style.display = 'none';
+};
+
+// Tạo phòng
+document.getElementById('createRoomBtn').onclick = function() {
+  const code = generateRoomCode(); // Hàm sinh mã kiểu A111
+  document.getElementById('generatedRoomCode').innerText = code;
+  document.getElementById('roomCodeBox').style.display = 'block';
+  document.getElementById('joinRoomBox').style.display = 'none';
+  window.generatedRoomCode = code;
+};
+
+// Vào phòng vừa tạo
+document.getElementById('goToRoomBtn').onclick = function() {
+  const code = window.generatedRoomCode;
+  const gameId = window.selectedGameId || '';
+  const gameName = window.selectedGameName || '';
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const username = user.username || user.displayName || 'Khách';
+  window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
+};
+
+// Tham gia phòng
+  document.getElementById('joinRoomBtn').onclick = function() {
+  document.getElementById('joinRoomBox').style.display = 'block';
+  document.getElementById('roomCodeBox').style.display = 'none';
+};
+
+// Xác nhận tham gia phòng
+document.getElementById('confirmJoinRoomBtn').onclick = async function() {
+  const code = document.getElementById('inputJoinRoomCode').value.trim().toUpperCase();
+  if (!/^[A-Z]\d{3}$/.test(code)) {
+    alert('Mã phòng không hợp lệ! (Ví dụ: A123)');
+    return;
+  }
+  // Kiểm tra mã phòng tồn tại qua API
+  const res = await fetch(`/api/room/check?code=${code}`);
+  const data = await res.json();
+  if (!data.exists) {
+    alert('Mã phòng không tồn tại!');
+    return;
+  }
+  const gameId = window.selectedGameId || '';
+  const gameName = window.selectedGameName || '';
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const username = user.username || user.displayName || 'Khách';
+  window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
+};
 
 // Tham gia room
 socket.emit('join-room', roomCode);
@@ -995,10 +1049,13 @@ socket.on('user-joined', (userId) => {
   console.log('User joined:', userId);
 });
 
-// Gửi message
-socket.emit('send-message', { roomCode, message: 'Hello!' });
 
-// Nhận message
-socket.on('receive-message', (data) => {
-  console.log('Message from', data.sender, ':', data.message);
-});
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+const username = user.username || user.displayName || 'Khách';
+
+const payload = {
+  code: roomCode,
+  game: gameName,
+  username: username // lấy từ localStorage như trên
+};
+// Gửi payload này lên server hoặc socket

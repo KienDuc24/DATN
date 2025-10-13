@@ -1,44 +1,67 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const cors = require('cors');
+const { Server } = require("socket.io");
 
-const app = express();
-app.use(cors({
-  origin: 'https://datn-smoky.vercel.app', // hoặc domain FE của bạn
-  methods: ['GET', 'POST']
-}));
+// Nếu deploy, nên dùng process.env.PORT hoặc fallback 3000
+const PORT = process.env.PORT || 3000;
 
-const server = http.createServer(app);
-const io = new Server(server, {
+const io = new Server(PORT, {
   cors: {
-    origin: 'https://datn-smoky.vercel.app', // hoặc domain FE của bạn
-    methods: ['GET', 'POST']
+    origin: "https://https://datn-smoky.vercel.app", // 👈 frontend domain Vercel của bạn
+    methods: ["GET", "POST"]
   }
 });
 
-// Lắng nghe kết nối socket
-io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+let rooms = {}; // { [roomCode]: [ { name, socketId } ] }
 
-  // Ví dụ: lắng nghe sự kiện join room
-  socket.on('join-room', (roomCode) => {
+io.on("connection", (socket) => {
+  console.log("🔌 Client connected:", socket.id);
+
+  socket.on("join-room", ({ roomCode, player }) => {
     socket.join(roomCode);
-    socket.to(roomCode).emit('user-joined', socket.id);
+    console.log(`👤 ${player} joined room ${roomCode}`);
+
+    if (!rooms[roomCode]) rooms[roomCode] = [];
+    rooms[roomCode].push({ name: player, socketId: socket.id });
+
+    io.to(roomCode).emit("update-players", rooms[roomCode].map(p => p.name));
   });
 
-  // Ví dụ: gửi message trong room
-  socket.on('send-message', ({ roomCode, message }) => {
-    socket.to(roomCode).emit('receive-message', { sender: socket.id, message });
+  socket.on("leave-room", ({ roomCode, player }) => {
+    if (rooms[roomCode]) {
+      rooms[roomCode] = rooms[roomCode].filter(p => p.name !== player);
+      if (rooms[roomCode].length === 0) {
+        delete rooms[roomCode];
+        console.log(`🧹 Room ${roomCode} deleted (empty)`);
+      } else {
+        io.to(roomCode).emit("update-players", rooms[roomCode].map(p => p.name));
+      }
+    }
+    socket.leave(roomCode);
   });
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+  socket.on("start-game", ({ roomCode }) => {
+    console.log(`🚀 Game started in room ${roomCode}`);
+    io.to(roomCode).emit("game-started");
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`❌ Disconnected: ${socket.id}`);
+    for (const roomCode in rooms) {
+      const index = rooms[roomCode].findIndex(p => p.socketId === socket.id);
+      if (index !== -1) {
+        const player = rooms[roomCode][index].name;
+        rooms[roomCode].splice(index, 1);
+        console.log(`👋 ${player} left room ${roomCode} via disconnect`);
+
+        if (rooms[roomCode].length === 0) {
+          delete rooms[roomCode];
+          console.log(`🧹 Room ${roomCode} deleted (empty)`);
+        } else {
+          io.to(roomCode).emit("update-players", rooms[roomCode].map(p => p.name));
+        }
+        break;
+      }
+    }
   });
 });
 
-// Railway sẽ tự lấy PORT từ biến môi trường
-const PORT = process.env.PORT || 3002;
-server.listen(PORT, () => {
-  console.log(`Socket server running on port ${PORT}`);
-});
+console.log(`🚀 Socket.io server running on port ${PORT}`);
