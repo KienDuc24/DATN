@@ -332,9 +332,15 @@ function renderGamesByCategory() {
 }
 
 // Khởi tạo
+function showLoading(show = true) {
+  document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+}
+// Sử dụng khi fetch dữ liệu:
+showLoading(true);
 fetch('games.json')
   .then(res => res.json())
   .then(data => {
+    showLoading(false);
     allGames = data;
     groupGames(allGames);
     sliderPage.recent = 0; sliderPage.top = 0; sliderPage.featured = 0; sliderPage.new = 0;

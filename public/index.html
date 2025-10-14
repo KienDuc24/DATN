@@ -18,10 +18,10 @@
       <span>Camping Game</span>
     </div>
     <nav>
-      <a href="#recent" data-i18n="recent"><span class="icon">&#128340;</span> Gần đây</a>
-      <a href="#top" data-i18n="top"><span class="icon">&#11088;</span> Hàng đầu</a>
-      <a href="#featured" data-i18n="featured"><span class="icon">&#128293;</span> Nổi bật</a>
-      <a href="#new" data-i18n="new"><span class="icon">&#128640;</span> Mới</a>
+      <a href="#recent" data-i18n="recent"><span class="icon">&#128340;</span> </a>
+      <a href="#top" data-i18n="top"><span class="icon">&#11088;</span> </a>
+      <a href="#featured" data-i18n="featured"><span class="icon">&#128293;</span> </a>
+      <a href="#new" data-i18n="new"><span class="icon">&#128640;</span> </a>
     </nav>
     <div class="sidebar-auth" id="sidebarAuthBtns">
       <button class="auth-btn" data-i18n="login" onclick="openAuthModal('login')"></button>
@@ -190,6 +190,26 @@
 
   <!-- Nút kéo lên trên cùng -->
   <button id="backToTopBtn" title="Lên đầu trang" onclick="scrollToTop()">&#8679;</button>
+  <div id="loadingSpinner" style="display:none;justify-content:center;align-items:center;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2000;background:rgba(255,255,255,0.7)">
+    <div class="spinner"></div>
+  </div>
+  <footer class="main-footer">
+    <div class="footer-content">
+      <div class="footer-logo">
+        <img src="img/fav.svg" alt="Camping Game" />
+        <span>Camping Game</span>
+      </div>
+      <div class="footer-links">
+        <a href="mailto:support@campinggame.com">Liên hệ</a>
+        <a href="#">Chính sách</a>
+        <a href="#">Facebook</a>
+        <a href="#">Discord</a>
+      </div>
+      <div class="footer-copyright">
+        &copy; 2025 Camping Game. All rights reserved.
+      </div>
+    </div>
+  </footer>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="script.js"></script>
 </body>
