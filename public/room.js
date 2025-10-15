@@ -28,7 +28,7 @@ if (document.getElementById("gameName")) document.getElementById("gameName").inn
 if (document.getElementById("room-username")) document.getElementById("room-username").innerText = playerName;
 
 // Tham gia phòng qua socket
-socket.emit("join-room", { roomCode, player: playerName });
+socket.emit("join-room", { gameName, roomCode, player: playerName });
 
 let currentHost = null;
 
@@ -50,7 +50,7 @@ socket.on("update-players", ({ list = [], host }) => {
 });
 
 window.leaveRoom = function leaveRoom() {
-  socket.emit("leave-room", { roomCode, player: playerName });
+  socket.emit("leave-room", { gameName, roomCode, player: playerName });
   window.location.href = "index.html";
 };
 
