@@ -12,21 +12,20 @@ const io = new Server(PORT, {
 let rooms = {}; // { [roomCode]: { gameId, players: [ { name, socketId } ] } }
 
 io.on("connection", (socket) => {
-  socket.on("join-room", ({ gameId, roomCode, player }, callback) => {
+  socket.on("join-room", ({ gameId, roomCode, player }) => {
     // Nếu phòng chưa tồn tại, tạo mới với gameId
     if (!rooms[roomCode]) {
       rooms[roomCode] = { gameId, players: [] };
     }
     // Nếu phòng đã tồn tại nhưng khác gameId, báo lỗi
     if (rooms[roomCode].gameId !== gameId) {
-      if (callback) callback({ success: false, message: "Mã phòng không tồn tại hoặc không phải của game này!" });
+      socket.emit("room-error", { message: "Mã phòng không tồn tại hoặc không phải của game này!" });
       return;
     }
     socket.join(roomCode);
     if (!rooms[roomCode].players.some(p => p.socketId === socket.id)) {
       rooms[roomCode].players.push({ name: player, socketId: socket.id });
     }
-    if (callback) callback({ success: true });
     io.to(roomCode).emit("update-players", {
       list: rooms[roomCode].players.map(p => p.name),
       host: rooms[roomCode].players[0]?.name

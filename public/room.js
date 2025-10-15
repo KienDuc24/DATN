@@ -27,8 +27,8 @@ if (document.getElementById("roomCodeDisplay")) document.getElementById("roomCod
 if (document.getElementById("gameName")) document.getElementById("gameName").innerText = gameId;
 if (document.getElementById("room-username")) document.getElementById("room-username").innerText = playerName;
 
-
-
+// Tham gia phòng qua socket
+socket.emit("join-room", { gameId, roomCode, player: playerName });
 
 // Xử lý khi bị từ chối vào phòng do sai game
 socket.on("room-error", ({ message }) => {
@@ -56,13 +56,12 @@ socket.on("update-players", ({ list = [], host }) => {
 });
 
 window.leaveRoom = function leaveRoom() {
-  // Đảm bảo dùng đúng biến roomCode và playerName
-  socket.emit("leave-room", { roomCode, player: playerName });
+  socket.emit("leave-room", { gameCode, player: playerName });
   window.location.href = "index.html";
 };
 
 window.addEventListener("beforeunload", () => {
-  socket.emit("leave-room", { roomCode, player: playerName });
+  socket.emit("leave-room", { gameCode, player: playerName });
 });
 
 window.copyCode = function copyCode() {
