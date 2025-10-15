@@ -1,15 +1,15 @@
 [
   {
     "name": {
-      "vi": "❓ Sự thật hay Thách thức",
-      "en": "❓ Truth or Dare"
+      "vi": "❓ ToD2",
+      "en": "❓ ToD2"
     },
     "desc": {
       "vi": "Hé lộ bí mật, dám chơi dám chịu! Thử thách bất ngờ! 😈",
       "en": "Reveal secrets, dare to play, dare to accept! Unexpected challenges! 😈"
     },
     "players": "4+",
-    "id": "ToD",
+    "id": "ToD2",
     "category": {
       "vi": "Đoán chữ",
       "en": "Word Guess"

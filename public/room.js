@@ -56,15 +56,52 @@ socket.on("update-players", ({ list = [], host }) => {
 });
 
 window.leaveRoom = function leaveRoom() {
-  socket.emit("leave-room", { gameCode, player: playerName });
+  socket.emit("leave-room", { roomCode, player: playerName });
   window.location.href = "index.html";
 };
 
 window.addEventListener("beforeunload", () => {
-  socket.emit("leave-room", { gameCode, player: playerName });
+  socket.emit("leave-room", { roomCode, player: playerName });
 });
 
 window.copyCode = function copyCode() {
   navigator.clipboard.writeText(roomCode);
   alert("📋 Mã phòng đã được sao chép!");
+};
+
+window.startGame = async function startGame() {
+  let gameFolders = [];
+  try {
+    const res = await fetch('games.json');
+    if (res.ok) {
+      const games = await res.json();
+      // Lấy tất cả id duy nhất từ games.json
+      gameFolders = [...new Set(games.map(g => g.id))];
+    }
+  } catch (e) {
+    alert("Không thể tải danh sách game!");
+    return;
+  }
+
+  let foundFolder = null;
+
+  for (const folder of gameFolders) {
+    try {
+      const res = await fetch(`game/${folder}/infor.json`);
+      if (!res.ok) continue;
+      const info = await res.json();
+      if (Array.isArray(info)) {
+        if (info.some(g => g.id === gameId)) {
+          foundFolder = folder;
+          break;
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (foundFolder) {
+    window.location.href = `game/${foundFolder}/index.html?code=${encodeURIComponent(roomCode)}&user=${encodeURIComponent(playerName)}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameId)}`;
+  } else {
+    alert("Không tìm thấy game phù hợp!");
+  }
 };
