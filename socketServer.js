@@ -8,25 +8,24 @@ const io = new Server(PORT, {
   }
 });
 
-// Quản lý phòng theo roomCode duy nhất
-let rooms = {}; // { [roomCode]: { gameName, players: [ { name, socketId } ] } }
+// Quản lý phòng theo roomCode duy nhất, lưu cả gameId
+let rooms = {}; // { [roomCode]: { gameId, players: [ { name, socketId } ] } }
 
 io.on("connection", (socket) => {
-  socket.on("join-room", ({ gameName, roomCode, player }) => {
-    // Nếu phòng chưa tồn tại, tạo mới với gameName
+  socket.on("join-room", ({ gameId, roomCode, player }) => {
+    // Nếu phòng chưa tồn tại, tạo mới với gameId
     if (!rooms[roomCode]) {
-      rooms[roomCode] = { gameName, players: [] };
+      rooms[roomCode] = { gameId, players: [] };
     }
-    // Nếu phòng đã tồn tại nhưng khác game, không cho join
-    if (rooms[roomCode].gameName !== gameName) {
-      socket.emit("room-error", { message: "Mã phòng này đã được sử dụng cho game khác!" });
+    // Nếu phòng đã tồn tại nhưng khác gameId, báo lỗi
+    if (rooms[roomCode].gameId !== gameId) {
+      socket.emit("room-error", { message: "Mã phòng không tồn tại hoặc không phải của game này!" });
       return;
     }
     socket.join(roomCode);
     if (!rooms[roomCode].players.some(p => p.socketId === socket.id)) {
       rooms[roomCode].players.push({ name: player, socketId: socket.id });
     }
-    console.log(`[${new Date().toISOString()}] [${gameName}] Room ${roomCode} now has:`, rooms[roomCode].players.map(p => p.name));
     io.to(roomCode).emit("update-players", {
       list: rooms[roomCode].players.map(p => p.name),
       host: rooms[roomCode].players[0]?.name
