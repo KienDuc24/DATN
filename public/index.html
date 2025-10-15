@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Camping Game - Trò chơi nhóm trực tuyến</title>
+  <title>Camping Game </title>
   <link rel="icon" type="image/svg+xml" href="img/fav.svg" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="nav.css" />
@@ -79,29 +79,28 @@
   <main class="main-content">
     <div class="section-title-row" id="recent">
       <div class="section-title" data-i18n="recent">Gần đây</div>
+    </div>
+    <div class="sort-dropdown-row">
+      <label class="sort-label" data-i18n="sort_by"></label>
       <div class="sort-dropdown">
-        <select id="sortSelect-recent" onchange="sortGames('recent')">
-          <option value="newest">Mới nhất</option>
-          <option value="oldest">Cũ nhất</option>
-          <option value="players-asc">Số người tăng</option>
-          <option value="players-desc">Số người giảm</option>
-          <option value="name-asc">A-Z</option>
-          <option value="name-desc">Z-A</option>
+        <select class="sort-select" onchange="sortGames('recent', this)">
+          <option value="newest" data-i18n="sort_newest"></option>
+          <option value="oldest" data-i18n="sort_oldest"></option>
+          <option value="players_asc" data-i18n="sort_players_asc"></option>
+          <option value="players_desc" data-i18n="sort_players_desc"></option>
+          <option value="az" data-i18n="sort_az"></option>
+          <option value="za" data-i18n="sort_za"></option>
         </select>
       </div>
     </div>
     <div class="games-slider-container" id="recent-container">
-      <button class="show-more-btn prev-btn" id="recentShowMore-prev" style="display:none;">&#8249;</button>
       <div class="games-slider" id="recentSlider"></div>
-      <button class="show-more-btn next-btn" id="recentShowMore" style="display:none;">&#8250;</button>
     </div>
     <div class="section-title-row" id="top">
       <div class="section-title" data-i18n="top">Lựa chọn hàng đầu</div>
     </div>
     <div class="games-slider-container" id="top-container">
-      <button class="show-more-btn prev-btn" id="topShowMore-prev" style="display:none;">&#8249;</button>
       <div class="games-slider" id="topSlider"></div>
-      <button class="show-more-btn next-btn" id="topShowMore" style="display:none;">&#8250;</button>
     </div>
     <div class="section-title-row" id="featured">
       <div class="section-title" data-i18n="featured">Trò chơi nổi bật</div>

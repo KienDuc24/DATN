@@ -138,6 +138,12 @@
     border-radius: 50%;
   }
 }
+@media (max-width: 700px) {
+  .game-card {
+    min-height: 180px;
+    padding: 10px 4px 8px 4px;
+  }
+}
 
 /* --- Responsive Auth Modal --- */
 @media (max-width: 500px) {
@@ -189,4 +195,84 @@
     padding: 0 10px;
     border-radius: 0 16px 16px 0;
   }
+}
+
+@media (max-width: 600px) {
+  h1 { font-size: 1.8rem; }
+  .navbar-title { font-size: 1.3rem; }
+  .game-grid { gap: 12px; }
+  .game-card { padding: 14px 12px; }
+}
+
+@media (max-width: 600px) {
+  h2 { font-size: 1.5rem; }
+  ul#playerList li { font-size: 0.95rem; }
+  button { width: 100%; }
+}
+
+/* --- Responsive --- */
+@media (max-width: 1200px) {
+  .games-slider {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .main-content {
+    max-width: 98vw;
+    padding: 10px 2vw 10px 2vw;
+    border-radius: 0;
+  }
+  .games-slider {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .game-card {
+    padding: 10px 4px 10px 4px;
+    border-radius: 10px;
+  }
+  .game-card img {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+  }
+}
+@media (max-width: 600px) {
+  .main-content {
+    padding: 8px 2vw;
+    border-radius: 0;
+    min-height: unset;
+  }
+  .footer-content {
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 2vw 6px 2vw;
+  }
+  .header-title {
+    font-size: 1.1rem;
+  }
+}
+@media (max-width: 600px) {
+  .card-actions {
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .card-actions button {
+    font-size: 0.98rem;
+    padding: 8px 10px;
+    min-width: 90px;
+  }
+}
+@media (max-width: 600px) {
+  h1 { font-size: 1.1rem; }
+  #status { font-size: 0.98rem; padding: 6px 8px; }
+  ul#playerList li { font-size: 0.92rem; padding: 5px 8px; }
+  button, .choice-btn { font-size: 1rem; padding: 10px 12px; }
+  #controls { gap: 6px; }
+  #table-area { width: 98vw; height: 180px; }
+  #campfire { width: 48px; height: 48px; }
+  .player-avatar { width: 32px; height: 32px; font-size: 1.1rem; }
+  .question-floating { font-size: 1.02rem; padding: 10px 8px; }
+  .question-floating.shrink { font-size: 1.1rem; min-width: 38px; max-width: 38px; height: 38px; }
+  #question-bar { top: 60px; }
 }

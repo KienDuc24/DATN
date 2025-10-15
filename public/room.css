@@ -133,12 +133,7 @@ h1 {
 .play-button:hover {
   transform: scale(1.05);
 }
-@media (max-width: 600px) {
-  h1 { font-size: 1.8rem; }
-  .navbar-title { font-size: 1.3rem; }
-  .game-grid { gap: 12px; }
-  .game-card { padding: 14px 12px; }
-}
+
 .icon {
   font-size: 2.5rem;
   margin-bottom: 12px;

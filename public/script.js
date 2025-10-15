@@ -7,7 +7,6 @@ let newGames = [];
 let gamesByCategory = {};
 
 const BASE_API_URL = 'https://datn-smoky.vercel.app'; // hoặc domain backend thật của bạn
-const MAX_SHOW = 5;
 
 // Lưu vị trí trang hiện tại cho từng slider
 let sliderPage = {
@@ -16,6 +15,8 @@ let sliderPage = {
   featured: 0,
   new: 0
 };
+
+let MAX_SHOW = getMaxShow();
 
 // Khởi tạo socket kết nối tới Railway (thay domain đúng của bạn)
 const socket = io('https://datn-socket.up.railway.app', {
@@ -41,9 +42,12 @@ function renderGameCard(game) {
 
 // Render slider cho 1 nhóm game với nút < >
 function renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey) {
-  const slider = document.getElementById(sliderId);
-  const nextBtn = document.getElementById(nextBtnId);
-  const prevBtn = document.getElementById(prevBtnId);
+  const sliderContainer = document.getElementById(sliderId)?.parentElement;
+  if (!sliderContainer) return;
+
+  // Xóa nút cũ nếu có
+  sliderContainer.querySelectorAll('.slider-btn').forEach(btn => btn.remove());
+
   let page = sliderPage[pageKey] || 0;
   const totalPage = Math.ceil(games.length / MAX_SHOW);
 
@@ -51,35 +55,33 @@ function renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey) {
   const end = Math.min(start + MAX_SHOW, games.length);
   const showGames = games.slice(start, end);
 
+  // Render game card
+  const slider = document.getElementById(sliderId);
   slider.innerHTML = showGames.map(renderGameCard).join('');
 
-  // Nút >
-  if (nextBtn) {
-    if (end < games.length) {
-      nextBtn.style.display = 'flex';
-      nextBtn.disabled = false;
-      nextBtn.onclick = () => {
-        sliderPage[pageKey]++;
-        renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey);
-      };
-    } else {
-      nextBtn.style.display = 'none';
-      nextBtn.disabled = true;
-    }
-  }
-  // Nút <
-  if (prevBtn) {
-    if (page > 0) {
-      prevBtn.style.display = 'flex';
-      prevBtn.disabled = false;
-      prevBtn.onclick = () => {
-        sliderPage[pageKey]--;
-        renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey);
-      };
-    } else {
-      prevBtn.style.display = 'none';
-      prevBtn.disabled = true;
-    }
+  // Nếu số lượng game > MAX_SHOW thì thêm nút chuyển
+  if (games.length > MAX_SHOW) {
+    // Nút prev
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'slider-btn left';
+    prevBtn.innerHTML = '&#8249;';
+    prevBtn.style.display = page > 0 ? 'flex' : 'none';
+    prevBtn.onclick = () => {
+      sliderPage[pageKey]--;
+      renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey);
+    };
+    sliderContainer.insertBefore(prevBtn, slider);
+
+    // Nút next
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'slider-btn right';
+    nextBtn.innerHTML = '&#8250;';
+    nextBtn.style.display = end < games.length ? 'flex' : 'none';
+    nextBtn.onclick = () => {
+      sliderPage[pageKey]++;
+      renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey);
+    };
+    sliderContainer.appendChild(nextBtn);
   }
 }
 
@@ -116,21 +118,10 @@ function renderCategorySliders() {
     section.innerHTML = `
       <div class="section-title-row" id="cat-${catKey}">
         <div class="section-title">${cat}</div>
-        <div class="sort-dropdown">
-          <select id="sortSelect-cat-${catKey}" onchange="sortGames('cat-${catKey}')">
-            <option value="newest">Mới nhất</option>
-            <option value="oldest">Cũ nhất</option>
-            <option value="players-asc">Số người tăng</option>
-            <option value="players-desc">Số người giảm</option>
-            <option value="name-asc">A-Z</option>
-            <option value="name-desc">Z-A</option>
-          </select>
-        </div>
       </div>
+      ${renderSortDropdown('newest', `cat-${catKey}`)}
       <div class="games-slider-container" id="cat-container-${catKey}">
-        <button class="show-more-btn prev-btn" id="catShowMore-${catKey}-prev" style="display:none;">&#8249;</button>
         <div class="games-slider" id="catSlider-${catKey}"></div>
-        <button class="show-more-btn next-btn" id="catShowMore-${catKey}" style="display:none;">&#8250;</button>
       </div>
     `;
     main.appendChild(section);
@@ -225,58 +216,56 @@ function searchGames() {
 }
 
 // Sắp xếp game
-function sortGames(sectionKey) {
-  let gamesArr;
-  let sliderId, nextBtnId, prevBtnId, pageKey;
-  let sortBy;
-
-  if (sectionKey.startsWith('cat-')) {
-    const catKey = sectionKey.replace('cat-', '');
-    sortBy = document.getElementById(`sortSelect-cat-${catKey}`).value;
-    gamesArr = gamesByCategory[catKey.replace(/-/g, ' ')];
-    sliderId = `catSlider-${catKey}`;
-    nextBtnId = `catShowMore-${catKey}`;
-    prevBtnId = `catShowMore-${catKey}-prev`;
-    pageKey = `cat-${catKey}`;
-  } else {
-    sortBy = document.getElementById(`sortSelect-${sectionKey}`).value;
-    if (sectionKey === 'recent') gamesArr = recentGames;
-    if (sectionKey === 'top') gamesArr = topGames;
-    if (sectionKey === 'featured') gamesArr = featuredGames;
-    if (sectionKey === 'new') gamesArr = newGames;
-    sliderId = `${sectionKey}Slider`;
-    nextBtnId = `${sectionKey}ShowMore`;
-    prevBtnId = `${sectionKey}ShowMore-prev`;
-    pageKey = sectionKey;
+function sortGames(sectionKey, selectEl) {
+  // Nếu không truyền selectEl, tự tìm select theo sectionKey
+  if (!selectEl) {
+    selectEl = document.querySelector(
+      `[onchange*="sortGames('${sectionKey}'"]`
+    );
   }
+  if (!selectEl) return;
+  const sortBy = selectEl.value;
 
-  if (!gamesArr) return;
+  // Lấy mảng game đúng theo sectionKey
+  let gamesArr;
+  if (sectionKey.startsWith('cat-')) {
+    const catName = sectionKey.replace(/^cat-/, '').replace(/-/g, ' ');
+    gamesArr = allGames.filter(g => (getGameCategory(g) || '').toLowerCase().includes(catName.toLowerCase()));
+  } else if (sectionKey === 'recent') {
+    gamesArr = recentGames.slice();
+  } else if (sectionKey === 'top') {
+    gamesArr = topGames.slice();
+  } else if (sectionKey === 'featured') {
+    gamesArr = featuredGames.slice();
+  } else if (sectionKey === 'new') {
+    gamesArr = newGames.slice();
+  } else {
+    return;
+  }
 
   // Sắp xếp
   if (sortBy === 'newest') {
-    gamesArr.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+    gamesArr.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   } else if (sortBy === 'oldest') {
-    gamesArr.sort((a, b) => (a.updatedAt || a.createdAt || 0) - (b.updatedAt || b.createdAt || 0));
-  } else if (sortBy === 'players-asc') {
-    gamesArr.sort((a, b) => {
-      const pa = parseInt((a.players || '').replace(/\D/g, '')) || 0;
-      const pb = parseInt((b.players || '').replace(/\D/g, '')) || 0;
-      return pa - pb;
-    });
-  } else if (sortBy === 'players-desc') {
-    gamesArr.sort((a, b) => {
-      const pa = parseInt((a.players || '').replace(/\D/g, '')) || 0;
-      const pb = parseInt((b.players || '').replace(/\D/g, '')) || 0;
-      return pb - pa;
-    });
-  } else if (sortBy === 'name-asc') {
+    gamesArr.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  } else if (sortBy === 'players_asc') {
+    gamesArr.sort((a, b) => (a.players || 0) - (b.players || 0));
+  } else if (sortBy === 'players_desc') {
+    gamesArr.sort((a, b) => (b.players || 0) - (a.players || 0));
+  } else if (sortBy === 'az') {
     gamesArr.sort((a, b) => getGameName(a).localeCompare(getGameName(b)));
-  } else if (sortBy === 'name-desc') {
-    gamesArr.sort((a, b) => (b.name || b.id).localeCompare(a.name || a.id));
+  } else if (sortBy === 'za') {
+    gamesArr.sort((a, b) => getGameName(b).localeCompare(getGameName(a)));
   }
 
-  sliderPage[pageKey] = 0;
-  renderSlider(gamesArr, sliderId, nextBtnId, prevBtnId, pageKey);
+  // Render lại slider
+  renderSlider(
+    gamesArr,
+    sectionKey.startsWith('cat-') ? `catSlider-${sectionKey.replace(/^cat-/, '')}` : `${sectionKey}Slider`,
+    '',
+    '',
+    sectionKey
+  );
 }
 
 // Hiển thị game theo thể loại
@@ -300,21 +289,22 @@ function renderGamesByCategory() {
     section.innerHTML = `
       <div class="section-title-row" id="cat-${catKey}">
         <div class="section-title">${cat}</div>
+      </div>
+      <div class="sort-dropdown-row">
+        <label class="sort-label" data-i18n="sort_by"></label>
         <div class="sort-dropdown">
-          <select id="sortSelect-cat-${catKey}" onchange="sortGames('cat-${catKey}')">
-            <option value="newest">Mới nhất</option>
-            <option value="oldest">Cũ nhất</option>
-            <option value="players-asc">Số người tăng</option>
-            <option value="players-desc">Số người giảm</option>
-            <option value="name-asc">A-Z</option>
-            <option value="name-desc">Z-A</option>
+          <select class="sort-select" onchange="sortGames('cat-${catKey}', this)">
+            <option value="newest" data-i18n="sort_newest"></option>
+            <option value="oldest" data-i18n="sort_oldest"></option>
+            <option value="players_asc" data-i18n="sort_players_asc"></option>
+            <option value="players_desc" data-i18n="sort_players_desc"></option>
+            <option value="az" data-i18n="sort_az"></option>
+            <option value="za" data-i18n="sort_za"></option>
           </select>
         </div>
       </div>
       <div class="games-slider-container" id="cat-container-${catKey}">
-        <button class="show-more-btn prev-btn" id="catShowMore-${catKey}-prev" style="display:none;">&#8249;</button>
         <div class="games-slider" id="catSlider-${catKey}"></div>
-        <button class="show-more-btn next-btn" id="catShowMore-${catKey}" style="display:none;">&#8250;</button>
       </div>
     `;
     categoryList.appendChild(section);
@@ -438,7 +428,7 @@ function setLang(lang, firstLoad = false) {
   renderSlider(featuredGames, 'featuredSlider', 'featuredShowMore', 'featuredShowMore-prev', 'featured');
   renderSlider(newGames, 'newSlider', 'newShowMore', 'newShowMore-prev', 'new');
   renderGamesByCategory();
-  if (!firstLoad) document.getElementById('langSelect').value = lang;
+  updateLangUI(); // <-- Thêm dòng này
 }
 
 function updateLangUI() {
@@ -481,6 +471,18 @@ function updateLangUI() {
 
   const authOr = document.querySelector('.auth-or span');
   if (authOr && LANGS[currentLang].or) authOr.innerText = LANGS[currentLang].or;
+
+  document.querySelectorAll('.sort-label').forEach(el => {
+    el.textContent = LANGS[currentLang]?.sort_by || 'Sắp xếp theo';
+  });
+  document.querySelectorAll('.sort-select').forEach(select => {
+    select.querySelectorAll('option').forEach(opt => {
+      const key = opt.getAttribute('data-i18n');
+      if (key && LANGS[currentLang][key]) {
+        opt.textContent = LANGS[currentLang][key];
+      }
+    });
+  });
 }
 
 // Hiển thị modal
@@ -1065,3 +1067,45 @@ const payload = {
   username: username // lấy từ localStorage như trên
 };
 // Gửi payload này lên server hoặc socket
+
+function getMaxShow() {
+  if (window.innerWidth <= 600) return 2;
+  if (window.innerWidth <= 900) return 3;
+  if (window.innerWidth <= 1200) return 4;
+  return 5;
+}
+function rerenderAllSliders() {
+  MAX_SHOW = getMaxShow();
+  renderSlider(recentGames, 'recentSlider', 'recentShowMore', 'recentShowMore-prev', 'recent');
+  renderSlider(topGames, 'topSlider', 'topShowMore', 'topShowMore-prev', 'top');
+  renderSlider(featuredGames, 'featuredSlider', 'featuredShowMore', 'featuredShowMore-prev', 'featured');
+  renderSlider(newGames, 'newSlider', 'newShowMore', 'newShowMore-prev', 'new');
+  renderGamesByCategory();
+  updateLangUI(); // <-- Thêm dòng này để cập nhật lại select động
+}
+
+window.addEventListener('resize', function() {
+  const newMax = getMaxShow();
+  if (newMax !== MAX_SHOW) {
+    rerenderAllSliders();
+  }
+});
+
+// Hàm render dropdown sắp xếp
+function renderSortDropdown(currentSort, key = '') {
+  return `
+    <div class="sort-dropdown-row">
+      <label class="sort-label" data-i18n="sort_by"></label>
+      <div class="sort-dropdown">
+        <select class="sort-select" onchange="sortGames('${key}')">
+          <option value="newest" data-i18n="sort_newest"></option>
+          <option value="oldest" data-i18n="sort_oldest"></option>
+          <option value="players_asc" data-i18n="sort_players_asc"></option>
+          <option value="players_desc" data-i18n="sort_players_desc"></option>
+          <option value="az" data-i18n="sort_az"></option>
+          <option value="za" data-i18n="sort_za"></option>
+        </select>
+      </div>
+    </div>
+  `;
+}
