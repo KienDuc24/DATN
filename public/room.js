@@ -2,7 +2,7 @@ const socket = io('https://datn-socket.up.railway.app', { transports: ['websocke
 
 const urlParams = new URLSearchParams(window.location.search);
 const roomCode = urlParams.get("code");
-const gameId = urlParams.get("game"); // Lấy id game (ví dụ: "Draw", "ToD")
+const gameId = urlParams.get("game"); 
 
 // Lấy tên người chơi
 let playerName = urlParams.get("user");
@@ -19,7 +19,7 @@ if (!playerName) {
 }
 if (!playerName) playerName = "Guest";
 
-console.log("👤 Tên người dùng hiện tại:", playerName); // Thêm dòng này
+console.log("👤 Tên người dùng hiện tại:", playerName); 
 
 // Hiển thị thông tin phòng
 if (document.getElementById("roomCode")) document.getElementById("roomCode").innerText = roomCode;
@@ -27,8 +27,8 @@ if (document.getElementById("roomCodeDisplay")) document.getElementById("roomCod
 if (document.getElementById("gameName")) document.getElementById("gameName").innerText = gameId;
 if (document.getElementById("room-username")) document.getElementById("room-username").innerText = playerName;
 
-// Tham gia phòng qua socket
-socket.emit("join-room", { gameId, roomCode, player: playerName });
+
+
 
 // Xử lý khi bị từ chối vào phòng do sai game
 socket.on("room-error", ({ message }) => {
@@ -56,7 +56,8 @@ socket.on("update-players", ({ list = [], host }) => {
 });
 
 window.leaveRoom = function leaveRoom() {
-  socket.emit("leave-room", { gameCode, player: playerName });
+  // Đảm bảo dùng đúng biến roomCode và playerName
+  socket.emit("leave-room", { roomCode, player: playerName });
   window.location.href = "index.html";
 };
 

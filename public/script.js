@@ -1075,18 +1075,22 @@ function handleGameClick(gameId, gameName) {
       alert(LANGS[currentLang]?.room_invalid_code || 'Invalid room code! (e.g. A123)');
       return;
     }
-    // Kiểm tra mã phòng tồn tại qua API
-    const res = await fetch(`/api/room?code=${code}`);
-    const data = await res.json();
-    if (!data.found) {
-      alert(LANGS[currentLang]?.room_not_found || 'Room code not found!');
-      return;
-    }
     const gameId = window.selectedGameId || '';
     const gameName = window.selectedGameName || '';
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const username = user.username || user.displayName || 'Guest';
-    window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
+
+    // Kiểm tra join phòng qua socket trước khi chuyển trang
+    const socket = io('https://datn-socket.up.railway.app', { transports: ['websocket'] });
+    socket.emit("join-room", { gameId, roomCode: code, player: username }, (result) => {
+      if (!result || !result.success) {
+        alert(result?.message || 'Không thể vào phòng này!');
+        socket.disconnect();
+        return;
+      }
+      // Thành công mới chuyển sang room.html
+      window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
+    });
   };
 }
 
