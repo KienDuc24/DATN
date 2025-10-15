@@ -366,7 +366,11 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const roomCode = urlParams.get("code");
-    let playerName = sessionStorage.getItem("playerName");
+    let playerName = urlParams.get("user"); // ƯU TIÊN LẤY TỪ URL
+
+    if (!playerName) {
+      playerName = sessionStorage.getItem("playerName");
+    }
     if (!playerName) {
       playerName = prompt("Vui lòng nhập tên của bạn:");
       if (playerName) {

@@ -64,6 +64,11 @@ io.on("connection", (socket) => {
       }
     }
   });
+
+  // Ví dụ trong socketServer.js
+  socket.on("start-room", ({ gameId, roomCode, player }) => {
+    io.to(roomCode).emit("room-start", { gameId, roomCode, player });
+  });
 });
 
 console.log(`🚀 Socket.io server running on port ${PORT}`);

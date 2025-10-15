@@ -2,7 +2,7 @@ const socket = io('https://datn-socket.up.railway.app', { transports: ['websocke
 
 const urlParams = new URLSearchParams(window.location.search);
 const roomCode = urlParams.get("code");
-const gameId = urlParams.get("game"); 
+const gameId = urlParams.get("gameId"); 
 
 // Lấy tên người chơi
 let playerName = urlParams.get("user");
@@ -100,8 +100,18 @@ window.startGame = async function startGame() {
   }
 
   if (foundFolder) {
-    window.location.href = `game/${foundFolder}/index.html?code=${encodeURIComponent(roomCode)}&user=${encodeURIComponent(playerName)}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameId)}`;
+    // Gửi sự kiện cho server để thông báo tất cả thành viên
+    socket.emit("start-room", { gameId: foundFolder, roomCode, player: playerName });
+    // Host cũng tự chuyển hướng (nếu muốn)
+    // window.location.href = ...
   } else {
     alert("Không tìm thấy game phù hợp!");
   }
 };
+
+socket.on("room-start", ({ gameId, roomCode, player }) => {
+  // Lấy tên người chơi hiện tại
+  let playerName = player || sessionStorage.getItem("playerName") || "Guest";
+  const url = `game/${gameId}/index.html?code=${encodeURIComponent(roomCode)}&user=${encodeURIComponent(playerName)}&gameId=${encodeURIComponent(gameId)}`;
+  window.location.href = url;
+});
