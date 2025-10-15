@@ -171,17 +171,18 @@
   <!-- Modal tạo/tham gia phòng -->
   <div id="roomModal" class="modal" style="display:none;">
     <div class="modal-content">
-      <span id="closeRoomModal" style="float:right;cursor:pointer;">&times;</span>
-      <h2>Chọn chế độ</h2>
-      <button id="createRoomBtn">Tạo phòng</button>
-      <button id="joinRoomBtn">Tham gia phòng</button>
-      <div id="roomCodeBox" style="margin-top:16px;display:none;">
-        <p>Mã phòng của bạn:</p>
-        <span id="generatedRoomCode" style="font-size:1.5em;font-weight:bold;"></span>
+      <button class="close-btn" onclick="document.getElementById('roomModal').style.display='none'">&times;</button>
+      <div class="modal-title">Tạo hoặc tham gia phòng</div>
+      <div class="modal-actions">
+        <button id="createRoomBtn">Tạo phòng</button>
+        <button id="joinRoomBtn">Tham gia phòng</button>
+      </div>
+      <div id="roomCodeBox" style="display:none;">
+        Mã phòng: <span id="generatedRoomCode"></span>
         <button id="goToRoomBtn">Vào phòng</button>
       </div>
-      <div id="joinRoomBox" style="margin-top:16px;display:none;">
-        <input id="inputJoinRoomCode" placeholder="Nhập mã phòng (A111)" maxlength="4" style="text-transform:uppercase"/>
+      <div id="joinRoomBox" style="display:none;">
+        <input id="inputJoinRoomCode" placeholder="Nhập mã phòng">
         <button id="confirmJoinRoomBtn">Vào phòng</button>
       </div>
     </div>

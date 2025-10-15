@@ -7,73 +7,6 @@
   <link rel="stylesheet" href="room.css" />
   <link rel="icon" type="image/x-icon" href="fav.svg">
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      margin: 0;
-      padding: 20px;
-      min-height: 100vh;
-      background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1400&q=80') no-repeat center center fixed;
-      background-size: cover;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .container {
-      width: 100%;
-      max-width: 700px;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 24px;
-      border-radius: 16px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    h2 { font-size: 1.8rem; color: #2c3e50; margin-bottom: 6px; }
-    p { color: #555; margin: 4px 0; }
-    .code-box {
-      background: #f1f3f5;
-      padding: 8px 12px;
-      border-radius: 10px;
-      margin: 10px 0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 600;
-    }
-    ul#playerList {
-      list-style: none;
-      padding: 0;
-      margin: 10px 0 0 0;
-      width: 100%;
-    }
-    ul#playerList li {
-      padding: 10px;
-      border-top: 1px solid #eee;
-      text-align: center;
-      font-size: 1rem;
-    }
-    .buttons {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    button {
-      padding: 10px 16px;
-      border: none;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 0.95rem;
-      cursor: pointer;
-    }
-    .copy-btn { background: #6c757d; color: white; }
-    .start-btn { background: #28a745; color: white; }
-    .leave-btn { background: #dc3545; color: white; }
-
-  </style>
 </head>
 <body>
   <div class="container">
@@ -83,7 +16,9 @@
       Mã phòng: <span id="roomCodeDisplay"></span>
       <button class="copy-btn" onclick="copyCode()">📋 Sao chép</button>
     </div>
-    <ul id="playerList"><li>Đang tải...</li></ul>
+    <ul id="playerList">
+      <li id="loadingPlayers">Đang tải...</li>
+    </ul>
     <div class="buttons">
       <button class="start-btn" onclick="startGame()">🚀 Bắt đầu</button>
       <button class="leave-btn" onclick="leaveRoom()">❌ Thoát phòng</button>
@@ -91,76 +26,5 @@
   </div>
 
   <script src="./room.js"></script>
-  <script>
-    const socket = io("https://datn-socket.up.railway.app");
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get("code");
-    const gameName = urlParams.get("game") || "Không xác định";
-    let playerName = sessionStorage.getItem("playerName");
-
-    if (!playerName) {
-      playerName = prompt("Tên của bạn là?");
-      if (playerName) sessionStorage.setItem("playerName", playerName);
-    }
-
-    document.getElementById("roomCode").innerText = roomCode;
-    document.getElementById("roomCodeDisplay").innerText = roomCode;
-    document.getElementById("gameName").innerText = gameName;
-
-    socket.emit("join-room", { roomCode, player: playerName });
-
-    let currentHost = null;
-
-    socket.on("update-players", ({ list, host }) => {
-      currentHost = host;
-      const listEl = document.getElementById("playerList");
-      listEl.innerHTML = list.map(name =>
-        `<li>${name} ${name === host ? "(👑 Chủ phòng)" : ""}</li>`
-      ).join("");
-
-      const startBtn = document.querySelector(".start-btn");
-      startBtn.style.display = playerName === host ? "inline-block" : "none";
-    });
-
-    function leaveRoom() {
-      socket.emit("leave-room", { roomCode, player: playerName });
-      window.location.href = "index.html";
-    }
-
-    function startGame() {
-      console.log("📤 Gửi yêu cầu bắt đầu trò chơi");
-      socket.emit("start-game", { roomCode, player: playerName });
-    }
-
-    socket.on("game-started", async ({ host }) => {
-      const gameName = urlParams.get("game");
-
-      try {
-        const res = await fetch("/games.json");
-        const games = await res.json();
-        const selected = games.find(g => g.name === gameName);
-
-        if (selected) {
-          const folderId = selected.id;
-          window.location.href = `/game/${folderId}/index.html?code=${roomCode}&host=${host}`;
-        } else {
-          alert("⚠️ Không tìm thấy game tương ứng.");
-        }
-      } catch (err) {
-        console.error("Lỗi khi load game.json:", err);
-        alert("Không thể bắt đầu trò chơi.");
-      }
-    });
-
-    window.addEventListener("beforeunload", () => {
-      socket.emit("leave-room", { roomCode, player: playerName });
-    });
-
-    function copyCode() {
-      navigator.clipboard.writeText(roomCode);
-      alert("📋 Mã phòng đã được sao chép!");
-    }
-  </script>
 </body>
 </html>

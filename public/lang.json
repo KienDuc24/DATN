@@ -27,7 +27,16 @@
     "sort_za": "Z-A",
     "other_category": "Khác",
     "or": "HOẶC",
-    "sort_by": "Sắp xếp theo"
+    "sort_by": "Sắp xếp theo",
+    "room_create_or_join": "Tạo hoặc tham gia phòng",
+    "room_create": "Tạo phòng",
+    "room_join": "Tham gia phòng",
+    "room_code": "Mã phòng",
+    "room_enter": "Vào phòng",
+    "room_input_placeholder": "Nhập mã phòng",
+    "room_invalid_code": "Mã phòng không hợp lệ! (Ví dụ: A123)",
+    "room_not_found": "Mã phòng không tồn tại!",
+    "room_players": "người chơi"
   },
   "en": {
     "login": "Login",
@@ -57,6 +66,15 @@
     "sort_za": "Z-A",
     "other_category": "Other",
     "or": "OR",
-    "sort_by": "Sort by"
+    "sort_by": "Sort by",
+    "room_create_or_join": "Create or join a room",
+    "room_create": "Create Room",
+    "room_join": "Join Room",
+    "room_code": "Room code",
+    "room_enter": "Enter Room",
+    "room_input_placeholder": "Enter room code",
+    "room_invalid_code": "Invalid room code! (e.g. A123)",
+    "room_not_found": "Room code not found!",
+    "room_players": "players"
   }
 }

@@ -125,6 +125,9 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 const authRouter = require('./routes/authRoutes');
 app.use('/api/auth', authRouter);
 
+const roomRoutes = require('./routes/roomRoutes');
+app.use('/api/room', roomRoutes);
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

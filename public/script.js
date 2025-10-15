@@ -18,11 +18,6 @@ let sliderPage = {
 
 let MAX_SHOW = getMaxShow();
 
-// Khởi tạo socket kết nối tới Railway (thay domain đúng của bạn)
-const socket = io('https://datn-socket.up.railway.app', {
-  transports: ['websocket']
-});
-
 // Hàm render 1 game card
 function renderGameCard(game) {
   const name = getGameName(game, currentLang);
@@ -528,8 +523,7 @@ document.getElementById('loginForm').onsubmit = async function(e) {
   const data = await res.json();
   document.getElementById('login-message').innerText = data.message || '';
   if (data.token && data.user) {
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user)); // Lưu user vào localStorage
+    saveUserToLocal(data.user);
     closeAuthModal();
     showUserInfo(data.user); // Hiện avatar và info như Google
     alert('Đăng nhập thành công!');
@@ -581,9 +575,7 @@ document.getElementById('registerForm').onsubmit = async function(e) {
 document.getElementById('anonymousLoginBtn').onclick = function() {
   const username = 'guest_' + Math.random().toString(36).substring(2, 10);
   const user = { username };
-  localStorage.setItem('token', 'anonymous');
-  localStorage.setItem('username', username);
-  localStorage.setItem('user', JSON.stringify(user));
+  saveUserToLocal(user);
   closeAuthModal();
   showUserInfo(user);
   alert('Bạn đã đăng nhập ẩn danh với tên: ' + username);
@@ -633,10 +625,11 @@ document.addEventListener('DOMContentLoaded', function() {
 const params = new URLSearchParams(window.location.search);
 if (params.has('user')) {
   const user = JSON.parse(decodeURIComponent(params.get('user')));
-  localStorage.setItem('user', JSON.stringify(user));
-  window.history.replaceState({}, document.title, window.location.pathname);
-  showUserInfo(user);
-  alert('Đăng nhập Google thành công! Xin chào ' + (user.name || user.email));
+  saveUserToLocal(user);
+  // localStorage.setItem('user', JSON.stringify(user));
+  // window.history.replaceState({}, document.title, window.location.pathname);
+  // showUserInfo(user);
+  // alert('Đăng nhập Google thành công! Xin chào ' + (user.name || user.email));
 }
 
 // Khi đăng nhập ẩn danh
@@ -645,9 +638,7 @@ if (anonymousBtn) {
   anonymousBtn.onclick = function() {
     const username = 'guest_' + Math.random().toString(36).substring(2, 10);
     const user = { username };
-    localStorage.setItem('token', 'anonymous');
-    localStorage.setItem('username', username);
-    localStorage.setItem('user', JSON.stringify(user));
+    saveUserToLocal(user);
     closeAuthModal();
     showUserInfo(user);
     alert('Bạn đã đăng nhập ẩn danh với tên: ' + username);
@@ -676,7 +667,7 @@ function showUserInfo(user) {
     const dropdownUsername = document.getElementById('dropdownUsername');
     const dropdownEmail = document.getElementById('dropdownEmail');
     if (dropdownAvatar) dropdownAvatar.src = avatar;
-    if (dropdownUsername) dropdownUsername.innerText = user.name || user.username || 'User';
+    if (dropdownUsername) dropdownUsername.innerText = user.username || user.name || user.displayName || 'User';
     if (dropdownEmail) dropdownEmail.innerText = user.email || '';
   }
 }
@@ -773,7 +764,9 @@ document.addEventListener('DOMContentLoaded', function() {
       const newName = prompt('Nhập tên tài khoản mới:', user.name || user.username || '');
       if (newName && newName.trim()) {
         user.name = newName.trim();
-        localStorage.setItem('user', JSON.stringify(user));
+        user.displayName = newName.trim();
+        user.username = newName.trim(); // <-- Đảm bảo đồng bộ username
+        saveUserToLocal(user);
         showUserInfo(user);
         alert('Đổi tên thành công!');
       }
@@ -930,8 +923,7 @@ document.getElementById('loginForm').onsubmit = async function(e) {
   const data = await res.json();
   document.getElementById('login-message').innerText = data.message || '';
   if (data.token && data.user) {
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user)); // Lưu user vào localStorage
+    saveUserToLocal(data.user);
     closeAuthModal();
     showUserInfo(data.user); // Hiện avatar và info như Google
     alert('Đăng nhập thành công!');
@@ -983,89 +975,125 @@ function closeAuthModal() {
 }
 
 // Hàm sinh mã phòng kiểu A111
-function generateRoomCode() {
-  const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26)); // A-Z
-  const number = Math.floor(100 + Math.random() * 900); // 100-999
-  return letter + number;
-}
+// function generateRoomCode() {
+//   const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26)); // A-Z
+//   const number = Math.floor(100 + Math.random() * 900); // 100-999
+//   return letter + number;
+// }
 
 // Hiện modal khi click vào game
 function handleGameClick(gameId, gameName) {
   window.selectedGameId = gameId;
   window.selectedGameName = gameName;
-  document.getElementById('roomModal').style.display = 'flex';
-  document.getElementById('roomCodeBox').style.display = 'none';
-  document.getElementById('joinRoomBox').style.display = 'none';
+  const modal = document.getElementById('roomModal');
+  modal.style.display = 'flex';
+
+  // Lấy thông tin game từ allGames
+  const game = allGames.find(g => g.id === gameId);
+  let infoHtml = '';
+  if (game) {
+    const name = getGameName(game, currentLang);
+    const desc = getGameDesc(game, currentLang);
+    const players = game.players || '';
+    infoHtml = `
+      <div class="modal-game-info" style="display:flex;flex-direction:column;align-items:center;margin-bottom:12px;">
+        <img src="game/${game.id}/Img/logo.png" alt="${name}" style="width:64px;height:64px;border-radius:14px;margin-bottom:8px;box-shadow:0 2px 8px #ff980033;">
+        <div class="modal-game-title" style="font-size:1.15rem;font-weight:700;color:#ff9800;margin-bottom:4px;text-align:center;">${name}</div>
+        <div class="modal-game-desc" style="font-size:1rem;color:#444;text-align:center;margin-bottom:4px;">${desc}</div>
+        <div class="modal-game-players" style="font-size:0.98rem;color:#43cea2;">👥 ${players} ${LANGS[currentLang]?.room_players || 'players'}</div>
+      </div>
+    `;
+  }
+
+  // Render lại nội dung modal
+  modal.innerHTML = `
+    <div class="modal-content">
+      <button class="close-btn" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:1.7rem;color:#ff9800;cursor:pointer;z-index:2;">&times;</button>
+      ${infoHtml}
+      <div class="modal-title" style="font-size:1.13rem;font-weight:bold;color:#ff9800;margin-bottom:18px;text-align:center;">${LANGS[currentLang]?.room_create_or_join || 'Create or join a room'}</div>
+      <div class="modal-actions" style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;">
+        <button id="createRoomBtn" style="padding:10px 28px;border-radius:10px;background:linear-gradient(90deg,#ff9800 60%,#ffc107 100%);color:#fff;font-weight:700;font-size:1.05rem;box-shadow:0 2px 8px #ff980033;transition:background 0.18s,transform 0.12s;">${LANGS[currentLang]?.room_create || 'Create Room'}</button>
+        <button id="joinRoomBtn" style="padding:10px 28px;border-radius:10px;background:linear-gradient(90deg,#ff9800 60%,#ffc107 100%);color:#fff;font-weight:700;font-size:1.05rem;box-shadow:0 2px 8px #ff980033;transition:background 0.18s,transform 0.12s;">${LANGS[currentLang]?.room_join || 'Join Room'}</button>
+      </div>
+      <div id="roomCodeBox" style="display:none;margin-top:18px;text-align:center;">
+        ${LANGS[currentLang]?.room_code || 'Room code'}: <span id="generatedRoomCode" style="font-size:1.1rem;font-weight:bold;color:#43cea2;margin:0 8px;letter-spacing:2px;"></span>
+        <button id="goToRoomBtn" style="margin-left:10px;padding:8px 18px;border-radius:8px;background:#ff9800;color:#fff;font-weight:600;">${LANGS[currentLang]?.room_enter || 'Enter Room'}</button>
+      </div>
+      <div id="joinRoomBox" style="display:none;margin-top:18px;text-align:center;">
+        <input id="inputJoinRoomCode" placeholder="${LANGS[currentLang]?.room_input_placeholder || 'Enter room code'}" style="padding:8px 12px;border-radius:8px;border:1.5px solid #ffd54f;margin-right:8px;font-size:1rem;">
+        <button id="confirmJoinRoomBtn" style="padding:8px 18px;border-radius:8px;background:#ff9800;color:#fff;font-weight:600;">${LANGS[currentLang]?.room_enter || 'Enter Room'}</button>
+      </div>
+    </div>
+  `;
+
+  // Gán lại sự kiện cho các nút (sau khi render)
+  modal.querySelector('.close-btn').onclick = function() {
+    modal.style.display = 'none';
+  };
+
+  modal.querySelector('#createRoomBtn').onclick = async function() {
+    const gameId = window.selectedGameId || '';
+    const gameName = window.selectedGameName || '';
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const username = user.username || user.displayName || 'Guest';
+
+    // Gửi request tạo phòng lên backend
+    const res = await fetch('/api/room', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        player: username,
+        game: gameId
+      })
+    });
+    const data = await res.json();
+    if (data.roomCode) {
+      // Hiển thị mã phòng cho người dùng hoặc chuyển sang phòng luôn
+      window.location.href = `/room.html?code=${data.roomCode}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
+    } else {
+      alert('Không thể tạo phòng. Vui lòng thử lại!');
+    }
+  };
+
+  modal.querySelector('#joinRoomBtn').onclick = function() {
+    modal.querySelector('#joinRoomBox').style.display = 'block';
+    modal.querySelector('#roomCodeBox').style.display = 'none';
+  };
+
+  modal.querySelector('#goToRoomBtn').onclick = function() {
+    const code = window.generatedRoomCode;
+    const gameId = window.selectedGameId || '';
+    const gameName = window.selectedGameName || '';
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const username = user.username || user.displayName || 'Guest';
+    window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
+  };
+
+  modal.querySelector('#confirmJoinRoomBtn').onclick = async function() {
+    const code = modal.querySelector('#inputJoinRoomCode').value.trim().toUpperCase();
+    if (!/^[A-Z]\d{3}$/.test(code)) {
+      alert(LANGS[currentLang]?.room_invalid_code || 'Invalid room code! (e.g. A123)');
+      return;
+    }
+    // Kiểm tra mã phòng tồn tại qua API
+    const res = await fetch(`/api/room?code=${code}`);
+    const data = await res.json();
+    if (!data.found) {
+      alert(LANGS[currentLang]?.room_not_found || 'Room code not found!');
+      return;
+    }
+    const gameId = window.selectedGameId || '';
+    const gameName = window.selectedGameName || '';
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const username = user.username || user.displayName || 'Guest';
+    window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
+  };
 }
 
-// Đóng modal
-document.getElementById('closeRoomModal').onclick = function() {
-  document.getElementById('roomModal').style.display = 'none';
-};
-
-// Tạo phòng
-document.getElementById('createRoomBtn').onclick = function() {
-  const code = generateRoomCode(); // Hàm sinh mã kiểu A111
-  document.getElementById('generatedRoomCode').innerText = code;
-  document.getElementById('roomCodeBox').style.display = 'block';
-  document.getElementById('joinRoomBox').style.display = 'none';
-  window.generatedRoomCode = code;
-};
-
-// Vào phòng vừa tạo
-document.getElementById('goToRoomBtn').onclick = function() {
-  const code = window.generatedRoomCode;
-  const gameId = window.selectedGameId || '';
-  const gameName = window.selectedGameName || '';
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const username = user.username || user.displayName || 'Khách';
-  window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
-};
-
-// Tham gia phòng
-  document.getElementById('joinRoomBtn').onclick = function() {
-  document.getElementById('joinRoomBox').style.display = 'block';
-  document.getElementById('roomCodeBox').style.display = 'none';
-};
-
-// Xác nhận tham gia phòng
-document.getElementById('confirmJoinRoomBtn').onclick = async function() {
-  const code = document.getElementById('inputJoinRoomCode').value.trim().toUpperCase();
-  if (!/^[A-Z]\d{3}$/.test(code)) {
-    alert('Mã phòng không hợp lệ! (Ví dụ: A123)');
-    return;
-  }
-  // Kiểm tra mã phòng tồn tại qua API
-  const res = await fetch(`/api/room/check?code=${code}`);
-  const data = await res.json();
-  if (!data.exists) {
-    alert('Mã phòng không tồn tại!');
-    return;
-  }
-  const gameId = window.selectedGameId || '';
-  const gameName = window.selectedGameName || '';
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const username = user.username || user.displayName || 'Khách';
-  window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
-};
-
-// Tham gia room
-socket.emit('join-room', roomCode);
-
-// Nhận thông báo user khác vào room
-socket.on('user-joined', (userId) => {
-  console.log('User joined:', userId);
+const socket = io('https://datn-socket.up.railway.app', {
+  transports: ['websocket']
 });
 
-
-const user = JSON.parse(localStorage.getItem('user') || '{}');
-const username = user.username || user.displayName || 'Khách';
-
-const payload = {
-  code: roomCode,
-  game: gameName,
-  username: username // lấy từ localStorage như trên
-};
 // Gửi payload này lên server hoặc socket
 
 function getMaxShow() {
@@ -1108,4 +1136,50 @@ function renderSortDropdown(currentSort, key = '') {
       </div>
     </div>
   `;
+}
+
+// Sau khi đăng nhập thành công với Google hoặc Facebook
+function onLoginSuccess(userInfo) {
+  // userInfo.displayName là tên hiển thị Google/Facebook
+  // userInfo.username là tên đăng nhập thường (nếu có)
+  // userInfo.email, ...
+  const username = userInfo.displayName || userInfo.username || userInfo.name || 'Guest';
+  localStorage.setItem('user', JSON.stringify({
+    username: username,
+    displayName: userInfo.displayName || '',
+    name: userInfo.name || '',
+    email: userInfo.email || ''
+  }));
+  // Hiển thị tên lên FE
+  document.getElementById('user-name').innerText = username;
+}
+
+function onGoogleLoginSuccess(googleUser) {
+  const profile = googleUser.getBasicProfile();
+  const username = profile.getName();
+  saveUserToLocal({
+    username: username,
+    displayName: username,
+    email: profile.getEmail()
+  });
+  document.getElementById('user-name').innerText = username;
+}
+
+// Sau khi đăng nhập ẩn danh
+document.getElementById('anonymousLoginBtn').onclick = function() {
+  const username = 'guest_' + Math.random().toString(36).substring(2, 10);
+  const user = { username };
+  saveUserToLocal(user);
+  closeAuthModal();
+  showUserInfo(user);
+  alert('Bạn đã đăng nhập ẩn danh với tên: ' + username);
+}
+
+function saveUserToLocal(user) {
+  const username = user.username || user.displayName || user.name || 'Guest';
+  const userObj = {
+    ...user,
+    username: username
+  };
+  localStorage.setItem('user', JSON.stringify(userObj));
 }
