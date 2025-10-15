@@ -62,7 +62,7 @@ window.leaveRoom = function leaveRoom() {
 };
 
 window.addEventListener("beforeunload", () => {
-  socket.emit("leave-room", { gameCode, player: playerName });
+  socket.emit("leave-room", { roomCode, player: playerName });
 });
 
 window.copyCode = function copyCode() {
