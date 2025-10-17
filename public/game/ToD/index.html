@@ -357,30 +357,33 @@
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script>
-    let voteAccept = 0, voteTotal = 0;
-    let askedResult = ""; // "", "accepted", "retry"
-    const socket = io("https://datn-socket.up.railway.app", {
-      transports: ["websocket"],
-      secure: true
-    });
++    // Debug: log môi trường kết nối
++    console.log("🔎 ToD client init. URL params:", window.location.search);
+     let voteAccept = 0, voteTotal = 0;
+     let askedResult = ""; // "", "accepted", "retry"
+     const socket = io("https://datn-socket.up.railway.app", {
+       transports: ["websocket"],
+       secure: true
+     });
++    console.log("🔌 Socket client created:", socket.io.uri || "unknown");
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get("code");
-    let playerName = urlParams.get("user"); // ƯU TIÊN LẤY TỪ URL
+     const urlParams = new URLSearchParams(window.location.search);
+     const roomCode = urlParams.get("code");
+     let playerName = urlParams.get("user"); // ƯU TIÊN LẤY TỪ URL
 
-    if (!playerName) {
-      playerName = sessionStorage.getItem("playerName");
-    }
-    if (!playerName) {
-      playerName = prompt("Vui lòng nhập tên của bạn:");
-      if (playerName) {
-        sessionStorage.setItem("playerName", playerName);
-      } else {
-        alert("Bạn phải nhập tên để tham gia trò chơi!");
-        window.location.href = "/";
-        throw new Error("Player name is required.");
-      }
-    }
+     if (!playerName) {
+       playerName = sessionStorage.getItem("playerName");
+     }
+     if (!playerName) {
+       playerName = prompt("Vui lòng nhập tên của bạn:");
+       if (playerName) {
+         sessionStorage.setItem("playerName", playerName);
+       } else {
+         alert("Bạn phải nhập tên để tham gia trò chơi!");
+         window.location.href = "/";
+         throw new Error("Player name is required.");
+       }
+     }
 
     document.getElementById("roomCode").textContent = roomCode;
     let currentHost = null;
@@ -391,26 +394,39 @@
     let questionShrink = false;
 
     socket.on("connect", () => {
-      socket.emit("tod-join", { roomCode, player: playerName });
-    });
++      console.log("✅ socket.connect - id:", socket.id);
++      console.log("➡ Emitting tod-join", { roomCode, player: playerName });
++      socket.emit("tod-join", { roomCode, player: playerName });
+     });
 
-    socket.on("tod-joined", ({ players, host }) => {
-      currentHost = host;
-      document.getElementById("playerList").innerHTML = players
-        .map((p, i) => `<li>${i === 0 ? "🎲 " : "👤 "}${p.name}</li>`)
-        .join("");
-      document.getElementById("status-text").textContent = `Người chơi: ${players.length}`;
-      document.getElementById("vote-info").style.display = "none";
-      renderTable(players, currentAsked);
++    socket.on("disconnect", (reason) => {
++      console.warn("🔌 socket.disconnect:", reason);
++    });
++    socket.on("connect_error", (err) => {
++      console.error("❗ socket.connect_error:", err);
++    });
++    socket.on("reconnect_attempt", (n) => {
++      console.log("↻ reconnect attempt:", n);
++    });
+ 
+     socket.on("tod-joined", ({ players, host }) => {
++      console.log("⬅ tod-joined", { players, host });
+       currentHost = host;
+       document.getElementById("playerList").innerHTML = players
+         .map((p, i) => `<li>${i === 0 ? "🎲 " : "👤 "}${p.name}</li>`)
+         .join("");
+       document.getElementById("status-text").textContent = `Người chơi: ${players.length}`;
+       document.getElementById("vote-info").style.display = "none";
+       renderTable(players, currentAsked);
 
-      // Chỉ host mới được hiện nút bắt đầu
-      if (playerName === host) {
-        document.getElementById("controls").innerHTML =
-          `<button class="btn-green" onclick="socket.emit('tod-start-round', { roomCode })">Bắt đầu vòng chơi</button>`;
-      } else {
-        document.getElementById("controls").innerHTML = "";
-      }
-    });
+       // Chỉ host mới được hiện nút bắt đầu
+       if (playerName === host) {
+         document.getElementById("controls").innerHTML =
+           `<button class="btn-green" onclick="socket.emit('tod-start-round', { roomCode })">Bắt đầu vòng chơi</button>`;
+       } else {
+         document.getElementById("controls").innerHTML = "";
+       }
+     });
 
     function renderTable(players, askedName) {
       const table = document.getElementById("table-area");
@@ -471,45 +487,46 @@
     }
 
     socket.on("tod-your-turn", ({ player }) => {
-      const isYou = player === playerName;
-      document.getElementById("status-text").textContent =
-        isYou
-          ? "👉 Đến lượt bạn! Chọn Sự thật hoặc Thử thách"
-          : `⏳ ${player} đang chọn Sự thật hay Thử thách...`;
-      document.getElementById("vote-info").style.display = "none";
-      document.getElementById("controls").innerHTML = "";
++      console.log("⬅ tod-your-turn", player);
+       const isYou = player === playerName;
+       document.getElementById("status-text").textContent =
+         isYou
+           ? "👉 Đến lượt bạn! Chọn Sự thật hoặc Thử thách"
+           : `⏳ ${player} đang chọn Sự thật hay Thử thách...`;
+       document.getElementById("vote-info").style.display = "none";
+       document.getElementById("controls").innerHTML = "";
 
-      // Ẩn câu hỏi cũ khi sang lượt mới
-      lastQuestion = "";
-      lastType = "";
-      questionShrink = false;
-      voteAccept = 0;    // <-- reset số vote đồng thuận
-      voteTotal = 0;     // <-- reset tổng số vote
-      renderQuestionBar();
-      document.querySelector(".card-actions").style.display = "none";
+       // Ẩn câu hỏi cũ khi sang lượt mới
+       lastQuestion = "";
+       lastType = "";
+       questionShrink = false;
+       voteAccept = 0;    // <-- reset số vote đồng thuận
+       voteTotal = 0;     // <-- reset tổng số vote
+       renderQuestionBar();
+       document.querySelector(".card-actions").style.display = "none";
 
-      // Không hiện spinner nữa
-      // Hiện nút chọn khi là bạn
-      if (isYou) {
-        const btnTruth = document.createElement("button");
-        btnTruth.innerHTML = `<span style="font-size:1.4em;">😇</span> Sự thật`;
-        btnTruth.className = "choice-btn truth";
-        btnTruth.onclick = () => socket.emit("tod-choice", {
-          roomCode,
-          player: playerName,
-          choice: "truth"
-        });
-        const btnDare = document.createElement("button");
-        btnDare.innerHTML = `<span style="font-size:1.4em;">😈</span> Thử thách`;
-        btnDare.className = "choice-btn dare";
-        btnDare.onclick = () => socket.emit("tod-choice", {
-          roomCode,
-          player: playerName,
-          choice: "dare"
-        });
-        document.getElementById("controls").appendChild(btnTruth);
-        document.getElementById("controls").appendChild(btnDare);
-      }
+       // Không hiện spinner nữa
+       // Hiện nút chọn khi là bạn
+       if (isYou) {
+         const btnTruth = document.createElement("button");
+         btnTruth.innerHTML = `<span style="font-size:1.4em;">😇</span> Sự thật`;
+         btnTruth.className = "choice-btn truth";
+         btnTruth.onclick = () => socket.emit("tod-choice", {
+           roomCode,
+           player: playerName,
+           choice: "truth"
+         });
+         const btnDare = document.createElement("button");
+         btnDare.innerHTML = `<span style="font-size:1.4em;">😈</span> Thử thách`;
+         btnDare.className = "choice-btn dare";
+         btnDare.onclick = () => socket.emit("tod-choice", {
+           roomCode,
+           player: playerName,
+           choice: "dare"
+         });
+         document.getElementById("controls").appendChild(btnTruth);
+         document.getElementById("controls").appendChild(btnDare);
+       }
     });
 
     const card = document.getElementById("challenge-card");
@@ -561,64 +578,69 @@
 
     // Khi nhận thử thách mới
     socket.on("tod-question", ({ player, choice, question }) => {
-      currentAsked = player;
-      lastAsked = player;
-      lastType = choice;
-      lastQuestion = `${player} chọn ${choice === "truth" ? "Sự thật" : "Thử thách"}: ${question}`;
-      askedResult = ""; // reset trạng thái khi có câu hỏi mới
-      renderTable(
-        Array.from(document.querySelectorAll("#playerList li")).map(li => ({ name: li.textContent.replace(/^(\W+\s)?/, "") })),
-        currentAsked
-      );
-      showCard(lastQuestion);
-      questionShrink = false;
-      renderQuestionBar();
-      // Hiện nút vote khi có câu hỏi, ẩn nếu là người bị hỏi
-      if (playerName === player) {
-        document.getElementById("acceptBtn").style.display = "none";
-        document.getElementById("rejectBtn").style.display = "none";
-        document.querySelector(".card-actions").style.display = "none";
-      } else {
-        document.getElementById("acceptBtn").style.display = "";
-        document.getElementById("rejectBtn").style.display = "";
-        document.querySelector(".card-actions").style.display = "";
-      }
++      console.log("⬅ tod-question", { player, choice, question });
+       currentAsked = player;
+       lastAsked = player;
+       lastType = choice;
+       lastQuestion = `${player} chọn ${choice === "truth" ? "Sự thật" : "Thử thách"}: ${question}`;
+       askedResult = ""; // reset trạng thái khi có câu hỏi mới
+       renderTable(
+         Array.from(document.querySelectorAll("#playerList li")).map(li => ({ name: li.textContent.replace(/^(\W+\s)?/, "") })),
+         currentAsked
+       );
+       showCard(lastQuestion);
+       questionShrink = false;
+       renderQuestionBar();
+       // Hiện nút vote khi có câu hỏi, ẩn nếu là người bị hỏi
+       if (playerName === player) {
+         document.getElementById("acceptBtn").style.display = "none";
+         document.getElementById("rejectBtn").style.display = "none";
+         document.querySelector(".card-actions").style.display = "none";
+       } else {
+         document.getElementById("acceptBtn").style.display = "";
+         document.getElementById("rejectBtn").style.display = "";
+         document.querySelector(".card-actions").style.display = "";
+       }
     });
 
     // Hiện số vote chấp thuận/trên tổng vote
     socket.on("tod-voted", ({ acceptCount, voted, total }) => {
-      const voteInfo = document.getElementById("vote-info");
-      voteInfo.textContent = `Chấp thuận: ${acceptCount}/${total} | Đã vote: ${voted}/${total}`;
-      voteInfo.style.display = "";
-      voteAccept = acceptCount;
-      voteTotal = total;
-      renderQuestionBar(); // cập nhật số vote trên popup
++      console.log("⬅ tod-voted", { acceptCount, voted, total });
+       const voteInfo = document.getElementById("vote-info");
+       voteInfo.textContent = `Chấp thuận: ${acceptCount}/${total} | Đã vote: ${voted}/${total}`;
+       voteInfo.style.display = "";
+       voteAccept = acceptCount;
+       voteTotal = total;
+       renderQuestionBar(); // cập nhật số vote trên popup
     });
 
     socket.on("tod-result", ({ result }) => {
-      document.getElementById("vote-info").style.display = "none";
-      if (result === "accepted") {
-        document.getElementById("status-text").textContent = "✅ Đa số chấp nhận! Đến lượt tiếp theo...";
-        askedResult = "accepted";
-      } else {
-        document.getElementById("status-text").textContent = "❌ Không đủ chấp nhận, phải trả lời lại!";
-        askedResult = "retry";
-      }
-      renderTable(
-        Array.from(document.querySelectorAll("#playerList li")).map(li => ({ name: li.textContent.replace(/^(\W+\s)?/, "") })),
-        currentAsked
-      );
-      renderQuestionBar();
++      console.log("⬅ tod-result", { result });
+       document.getElementById("vote-info").style.display = "none";
+       if (result === "accepted") {
+         document.getElementById("status-text").textContent = "✅ Đa số chấp nhận! Đến lượt tiếp theo...";
+         askedResult = "accepted";
+       } else {
+         document.getElementById("status-text").textContent = "❌ Không đủ chấp nhận, phải trả lời lại!";
+         askedResult = "retry";
+       }
+       renderTable(
+         Array.from(document.querySelectorAll("#playerList li")).map(li => ({ name: li.textContent.replace(/^(\W+\s)?/, "") })),
+         currentAsked
+       );
+       renderQuestionBar();
     });
 
     socket.on("tod-error", (msg) => {
-      alert("❌ " + msg);
-    });
-
-    socket.on("tod-join-failed", ({ reason }) => {
-      alert(reason || "Không thể vào phòng này!");
-      window.location.href = "/";
-    });
++      console.error("⬅ tod-error", msg);
+       alert("❌ " + msg);
+     });
+ 
+     socket.on("tod-join-failed", ({ reason }) => {
++      console.warn("⬅ tod-join-failed", reason);
+       alert(reason || "Không thể vào phòng này!");
+       window.location.href = "/";
+     });
 
     // Đảm bảo responsive khi xoay màn hình
     window.addEventListener("resize", () => {
