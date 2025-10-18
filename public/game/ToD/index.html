@@ -393,40 +393,40 @@
     let lastType = ""; // truth/dare
     let questionShrink = false;
 
-    socket.on("connect", () => {
-+      console.log("✅ socket.connect - id:", socket.id);
-+      console.log("➡ Emitting tod-join", { roomCode, player: playerName });
-+      socket.emit("tod-join", { roomCode, player: playerName });
-     });
+socket.on("connect", () => {
+  console.log("✅ socket.connect - id:", socket.id);
+  console.log("➡ Emitting tod-join", { roomCode, player: playerName });
+  socket.emit("tod-join", { roomCode, player: playerName });
+});
 
-+    socket.on("disconnect", (reason) => {
-+      console.warn("🔌 socket.disconnect:", reason);
-+    });
-+    socket.on("connect_error", (err) => {
-+      console.error("❗ socket.connect_error:", err);
-+    });
-+    socket.on("reconnect_attempt", (n) => {
-+      console.log("↻ reconnect attempt:", n);
-+    });
+socket.on("disconnect", (reason) => {
+  console.warn("🔌 socket.disconnect:", reason);
+});
+socket.on("connect_error", (err) => {
+  console.error("❗ socket.connect_error:", err);
+});
+socket.on("reconnect_attempt", (n) => {
+  console.log("↻ reconnect attempt:", n);
+});
  
-     socket.on("tod-joined", ({ players, host }) => {
-+      console.log("⬅ tod-joined", { players, host });
-       currentHost = host;
-       document.getElementById("playerList").innerHTML = players
-         .map((p, i) => `<li>${i === 0 ? "🎲 " : "👤 "}${p.name}</li>`)
-         .join("");
-       document.getElementById("status-text").textContent = `Người chơi: ${players.length}`;
-       document.getElementById("vote-info").style.display = "none";
-       renderTable(players, currentAsked);
+socket.on("tod-joined", ({ players, host }) => {
+  console.log("⬅ tod-joined", { players, host });
+  currentHost = host;
+  document.getElementById("playerList").innerHTML = players
+    .map((p, i) => `<li>${i === 0 ? "🎲 " : "👤 "}${p.name}</li>`)
+    .join("");
+  document.getElementById("status-text").textContent = `Người chơi: ${players.length}`;
+  document.getElementById("vote-info").style.display = "none";
+  renderTable(players, currentAsked);
 
-       // Chỉ host mới được hiện nút bắt đầu
-       if (playerName === host) {
-         document.getElementById("controls").innerHTML =
-           `<button class="btn-green" onclick="socket.emit('tod-start-round', { roomCode })">Bắt đầu vòng chơi</button>`;
-       } else {
-         document.getElementById("controls").innerHTML = "";
-       }
-     });
+// Chỉ host mới được hiện nút bắt đầu
+  if (playerName === host) {
+    document.getElementById("controls").innerHTML =
+    `<button class="btn-green" onclick="socket.emit('tod-start-round', { roomCode })">Bắt đầu vòng chơi</button>`;
+  } else {
+    document.getElementById("controls").innerHTML = "";
+  }
+});
 
     function renderTable(players, askedName) {
       const table = document.getElementById("table-area");
