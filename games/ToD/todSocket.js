@@ -2,6 +2,7 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env'
 
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const doc = new GoogleSpreadsheet('1V9DHRD02AZTVp-jzHcJRFsY0-sxsPg_o3IW-uSYCx3o');
+const Room = require('../../models/Room');
 
 const creds = {
   type: "service_account",
@@ -45,55 +46,61 @@ async function getRandomQuestion(type) {
   return random;
 }
 
-module.exports = (socket, io, rooms) => {
+module.exports = (socket, io) => {
   console.log(`[ToD] handler attached for socket ${socket.id}`);
 
-  socket.on("tod-join", ({ roomCode, player }) => {
-    console.log(`[ToD] tod-join from ${socket.id}`, { roomCode, player });
-    if (!rooms[roomCode]) {
-      rooms[roomCode] = {
-        players: [],
-        currentIndex: 0,
-        locked: false
-      };
+  socket.on("tod-join", async ({ roomCode, player }) => {
+    try {
+      console.log(`[ToD] tod-join from ${socket.id}`, { roomCode, player });
+      let room = await Room.findOne({ code: roomCode });
+      if (!room) {
+        room = await Room.create({ code: roomCode, players: [{ name: player, order: 1 }] });
+      } else {
+        if (room.locked) {
+          socket.emit("tod-join-failed", { reason: "Phòng đã bắt đầu, không thể vào thêm!" });
+          return;
+        }
+        if (!room.players.some(p => p.name === player)) {
+          room.players.push({ name: player, order: room.players.length + 1 });
+          await room.save();
+        }
+      }
+      socket.join(roomCode);
+      io.to(roomCode).emit("tod-joined", {
+        host: room.players[0]?.name || null,
+        players: room.players
+      });
+    } catch (e) {
+      console.error('tod-join error', e);
+      socket.emit('tod-join-failed', { reason: 'Lỗi server' });
     }
-    // Nếu phòng đã khóa thì không cho join
-    if (rooms[roomCode].locked) {
-      socket.emit("tod-join-failed", { reason: "Phòng đã bắt đầu, không thể vào thêm!" });
-      return;
-    }
-    // Thêm player nếu chưa có
-    if (!rooms[roomCode].players.some(p => p.name === player)) {
-      rooms[roomCode].players.push({ name: player, order: rooms[roomCode].players.length + 1 });
-    }
-    socket.join(roomCode);
-
-    io.to(roomCode).emit("tod-joined", {
-      host: rooms[roomCode].players[0]?.name || null,
-      players: rooms[roomCode].players
-    });
   });
 
   // Khi chủ phòng bắt đầu, khóa phòng
-  socket.on("tod-start-round", ({ roomCode }) => {
-    console.log(`[ToD] tod-start-round from ${socket.id}`, { roomCode });
-    const room = rooms[roomCode];
-    if (!room || room.players.length < 2) return;
-    room.locked = true; // Khóa phòng
-    if (room.currentIndex === undefined) room.currentIndex = 0;
-    const currentPlayer = room.players[room.currentIndex % room.players.length].name;
-    io.to(roomCode).emit("tod-your-turn", { player: currentPlayer });
+  socket.on("tod-start-round", async ({ roomCode }) => {
+    try {
+      console.log(`[ToD] tod-start-round from ${socket.id}`, { roomCode });
+      const room = await Room.findOne({ code: roomCode });
+      if (!room || room.players.length < 2) return;
+      room.locked = true;
+      if (room.currentIndex === undefined) room.currentIndex = 0;
+      await room.save();
+      const currentPlayer = room.players[room.currentIndex % room.players.length].name;
+      io.to(roomCode).emit("tod-your-turn", { player: currentPlayer });
+    } catch (e) {
+      console.error('tod-start-round error', e);
+    }
   });
 
   socket.on("tod-choice", async ({ roomCode, player, choice }) => {
-    console.log(`[ToD] tod-choice from ${socket.id}`, { roomCode, player, choice });
     try {
+      console.log(`[ToD] tod-choice from ${socket.id}`, { roomCode, player, choice });
       const question = await getRandomQuestion(choice);
-      // Lưu lại lựa chọn và câu hỏi cuối cùng
-      rooms[roomCode].lastChoice = choice;
-      rooms[roomCode].lastQuestion = question;
-      rooms[roomCode].votes = []; // <-- Reset votes tại đây!
-      console.log(`[ToD] emit tod-question to room ${roomCode}`);
+      const room = await Room.findOneAndUpdate(
+        { code: roomCode },
+        { lastChoice: choice, lastQuestion: question, votes: [] },
+        { new: true }
+      );
       io.to(roomCode).emit("tod-question", { player, choice, question });
     } catch (e) {
       console.error("Lỗi lấy câu hỏi:", e);
@@ -101,56 +108,51 @@ module.exports = (socket, io, rooms) => {
     }
   });
 
-  socket.on("tod-vote", ({ roomCode, player, vote }) => {
-    console.log(`[ToD] tod-vote from ${socket.id}`, { roomCode, player, vote });
-    const room = rooms[roomCode];
-    if (!room) return;
-    if (!room.votes) room.votes = [];
-    const currentAsked = room.players[room.currentIndex].name;
-    if (player === currentAsked) return; // BỎ QUA vote của người bị hỏi
-
-    if (!room.votes.some(v => v.player === player)) {
-      room.votes.push({ player, vote });
-    }
-    const total = room.players.length - 1; // Trừ người bị hỏi
-    const voted = room.votes.length;
-    const acceptCount = room.votes.filter(v => v.vote === "accept").length;
-
-    io.to(roomCode).emit("tod-voted", {
-      player, vote,
-      acceptCount, voted, total
-    });
-    console.log(`[ToD] emit tod-voted to room ${roomCode}`, { acceptCount, voted, total });
-
-    // Nếu tất cả đã vote
-    if (voted === total) {
-      if (acceptCount >= Math.ceil(total / 2)) {
-        console.log(`[ToD] emit tod-result accepted to room ${roomCode}`);
-        io.to(roomCode).emit("tod-result", { result: "accepted" });
-        room.currentIndex = (room.currentIndex + 1) % room.players.length;
-        // Không reset votes ở đây!
-        const nextPlayer = room.players[room.currentIndex].name;
-        setTimeout(() => {
-          io.to(roomCode).emit("tod-your-turn", { player: nextPlayer });
-        }, 2000);
-      } else {
-        console.log(`[ToD] emit tod-result rejected to room ${roomCode}`);
-        io.to(roomCode).emit("tod-result", { result: "rejected" });
-        // Random lại câu hỏi mới
-        setTimeout(async () => {
-          // Reset votes tại đây!
-          room.votes = [];
-          const lastChoice = room.lastChoice;
-          const question = await getRandomQuestion(lastChoice);
-          room.lastQuestion = question;
-          console.log(`[ToD] emit tod-question (retry) to room ${roomCode}`);
-          io.to(roomCode).emit("tod-question", {
-            player: room.players[room.currentIndex].name,
-            choice: lastChoice, // luôn có giá trị
-            question
-          });
-        }, 2000);
+  socket.on("tod-vote", async ({ roomCode, player, vote }) => {
+    try {
+      console.log(`[ToD] tod-vote from ${socket.id}`, { roomCode, player, vote });
+      const room = await Room.findOne({ code: roomCode });
+      if (!room) return;
+      const currentAsked = room.players[room.currentIndex]?.name;
+      if (player === currentAsked) return;
+      if (!room.votes) room.votes = [];
+      if (!room.votes.some(v => v.player === player)) {
+        room.votes.push({ player, vote });
+        await room.save();
       }
+      const total = room.players.length - 1;
+      const voted = room.votes.length;
+      const acceptCount = room.votes.filter(v => v.vote === "accept").length;
+
+      io.to(roomCode).emit("tod-voted", { player, vote, acceptCount, voted, total });
+
+      if (voted === total) {
+        if (acceptCount >= Math.ceil(total / 2)) {
+          io.to(roomCode).emit("tod-result", { result: "accepted" });
+          room.currentIndex = (room.currentIndex + 1) % room.players.length;
+          room.votes = [];
+          await room.save();
+          const nextPlayer = room.players[room.currentIndex].name;
+          setTimeout(() => io.to(roomCode).emit("tod-your-turn", { player: nextPlayer }), 2000);
+        } else {
+          io.to(roomCode).emit("tod-result", { result: "rejected" });
+          // retry question
+          setTimeout(async () => {
+            room.votes = [];
+            const lastChoice = room.lastChoice || 'truth';
+            const question = await getRandomQuestion(lastChoice);
+            room.lastQuestion = question;
+            await room.save();
+            io.to(roomCode).emit("tod-question", {
+              player: room.players[room.currentIndex].name,
+              choice: lastChoice,
+              question
+            });
+          }, 2000);
+        }
+      }
+    } catch (e) {
+      console.error('tod-vote error', e);
     }
   });
 };

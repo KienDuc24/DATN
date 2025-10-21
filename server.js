@@ -19,12 +19,19 @@ app.use(cors({
 }));
 
 // Kết nối MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-  .then(() => console.log('MongoDB connected!'))
-  .catch(err => console.error('MongoDB error:', err));
+(async () => {
+  try {
+    const uri = process.env.MONGO_URI;
+    if (!uri) {
+      console.warn('MONGO_URI not set in .env');
+    } else {
+      await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+      console.log('✅ MongoDB connected');
+    }
+  } catch (err) {
+    console.error('❌ MongoDB connection error', err);
+  }
+})();
 
 // Session cho passport
 app.use(session({
