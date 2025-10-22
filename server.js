@@ -1,8 +1,6 @@
 require('dotenv').config();
 
 const express = require('express');
-const session = require('express-session');
-const passport = require('passport');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
@@ -20,7 +18,7 @@ app.use(cors({
   credentials: true
 }));
 
-// static public
+// serve static public
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ensure uploads dir (best-effort)
@@ -29,41 +27,42 @@ try {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   console.log('[server] ensured uploads dir at', UPLOADS_DIR);
 } catch (err) {
-  console.warn('[server] could not create uploads dir at public/uploads, fallback to tmp', err && err.message);
+  console.warn('[server] could not create public/uploads, fallback to tmp', err && err.message);
   UPLOADS_DIR = os.tmpdir();
 }
 
-// serve uploads if possible
+// try serve uploads (may be tmp on serverless)
 try {
   app.use('/uploads', express.static(UPLOADS_DIR));
 } catch (e) {
   console.warn('[server] cannot serve uploads dir:', e && e.message);
 }
 
-// mount routers (require but will work only after file exists)
+// mount routers (routes may log on load)
 try {
   const authRouter = require('./routes/authRoutes');
   app.use('/api', authRouter);
 } catch (err) {
-  console.warn('[server] authRoutes require failed (will log on route load):', err && err.message);
+  console.warn('[server] failed to require authRoutes:', err && err.message);
 }
 try {
   const gameRoutes = require('./routes/gameRoutes');
   app.use('/api/games', gameRoutes);
 } catch (err) {
-  console.warn('[server] gameRoutes require failed:', err && err.message);
+  console.warn('[server] gameRoutes not mounted:', err && err.message);
 }
 try {
   const roomRoutes = require('./routes/roomRoutes');
   app.use('/api/room', roomRoutes);
 } catch (err) {
-  console.warn('[server] roomRoutes require failed:', err && err.message);
+  console.warn('[server] roomRoutes not mounted:', err && err.message);
 }
 
-// health
+// health endpoints
 app.get('/health', (req, res) => res.json({ ok: true }));
+app.get('/_status', (req, res) => res.json({ ok: true, env: process.env.NODE_ENV || 'dev' }));
 
-// global error handler
+// error handler
 app.use((err, req, res, next) => {
   console.error('[server] unhandled error', err && err.stack);
   if (!res.headersSent) res.status(500).json({ ok: false, message: 'Internal server error' });
@@ -74,9 +73,7 @@ const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO || process.env.MO
 const PORT = process.env.PORT || 3000;
 
 if (!MONGO_URI) {
-  console.error('[server] MONGODB_URI not set. Set it in environment variables and redeploy.');
-  // Still start server in read-only mode if you want, or exit:
-  // process.exit(1);
+  console.error('[server] MONGODB_URI not set. Starting server in read-only mode.');
   app.listen(PORT, () => {
     console.warn('[server] started WITHOUT MongoDB (read-only). PORT=', PORT);
   });
@@ -84,7 +81,7 @@ if (!MONGO_URI) {
   const connectOptions = {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000, // fail fast
+    serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000
   };
 
@@ -106,7 +103,6 @@ if (!MONGO_URI) {
         setTimeout(connectWithRetry, delay);
       } else {
         console.error('[server] failed to connect to MongoDB after multiple attempts. Exiting.');
-        // Option: exit to force redeploy / alert
         process.exit(1);
       }
     }

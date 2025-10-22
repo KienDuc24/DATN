@@ -3,17 +3,18 @@ const router = express.Router();
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const util = require('util');
+
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 
 console.log('[authRoutes] loaded');
 
-// Cloudinary setup
+// cloudinary setup (optional)
 let cloudinary = null;
 try {
   const cld = require('cloudinary');
   cloudinary = cld.v2;
-  // prefer CLOUDINARY_URL if set, otherwise use individual vars
   if (process.env.CLOUDINARY_URL) {
     cloudinary.config({ secure: true });
   } else {
@@ -24,13 +25,13 @@ try {
       secure: true
     });
   }
-  console.log('[authRoutes] cloudinary configured');
+  console.log('[authRoutes] cloudinary init (may be unconfigured)');
 } catch (err) {
-  console.warn('[authRoutes] cloudinary not available or not configured:', err && err.message);
+  console.warn('[authRoutes] cloudinary not available:', err && err.message);
   cloudinary = null;
 }
 
-// ensure uploads dir or fallback to tmp (only for temporary disk storage before upload)
+// uploads dir (temp)
 let uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
 try {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -41,7 +42,7 @@ try {
   console.log('[authRoutes] using tmp uploadsDir:', uploadsDir);
 }
 
-// Try require multer; if it fails (ESM-only), fall back to formidable
+// try multer; if ESM-only fails, fallback to formidable
 let multerInstance = null;
 let useFormidable = false;
 try {
@@ -64,12 +65,26 @@ if (!useFormidable && multerInstance) {
   uploadHandler = multerInstance({ storage });
 }
 
-// debug health route
-router.get('/_status', (req, res) => res.json({ ok: true, msg: 'authRoutes OK', uploadsDir }));
+// simple health
+router.get('/_status', (req, res) => res.json({ ok: true, uploadsDir }));
+
+// GET user by username or id: GET /api/user?username=... or ?id=...
+router.get('/user', async (req, res) => {
+  try {
+    const username = req.query.username || req.query.id || req.query._id;
+    if (!username) return res.status(400).json({ ok: false, message: 'username or id required' });
+    const q = req.query._id || req.query.id ? { _id: username } : { username };
+    const user = await User.findOne(q).select('-password -passwordHash');
+    if (!user) return res.status(404).json({ ok: false, message: 'Not found' });
+    return res.json({ ok: true, user });
+  } catch (err) {
+    console.error('[authRoutes] get user error', err && err.message);
+    return res.status(500).json({ ok: false, message: 'error' });
+  }
+});
 
 // Register
 router.post('/auth/register', async (req, res) => {
-  console.log('[authRoutes] POST /auth/register', req.body && { username: req.body.username });
   try {
     const { username, password } = req.body || {};
     if (!username || !password) return res.status(400).json({ ok: false, message: 'username and password required' });
@@ -82,14 +97,13 @@ router.post('/auth/register', async (req, res) => {
     delete user.password;
     res.json({ ok: true, user });
   } catch (err) {
-    console.error('[authRoutes] register error', err);
+    console.error('[authRoutes] register error', err && err.message);
     res.status(500).json({ ok: false, message: 'error' });
   }
 });
 
-// Login
+// Login (simple)
 router.post('/auth/login', async (req, res) => {
-  console.log('[authRoutes] POST /auth/login', req.body && { username: req.body.username });
   try {
     const { username, password } = req.body || {};
     if (!username || !password) return res.status(400).json({ ok: false, message: 'username and password required' });
@@ -99,16 +113,16 @@ router.post('/auth/login', async (req, res) => {
     if (!ok) return res.status(400).json({ ok: false, message: 'invalid credentials' });
     const user = u.toObject();
     delete user.password;
+    // TODO: sign JWT if you use tokens
     return res.json({ ok: true, token: '', user });
   } catch (err) {
-    console.error('[authRoutes] login error', err);
+    console.error('[authRoutes] login error', err && err.message);
     return res.status(500).json({ ok: false, message: 'error' });
   }
 });
 
 // Update user (PUT /api/user)
 router.put('/user', async (req, res) => {
-  console.log('[authRoutes] PUT /user', req.body && { username: req.body.username || req.body._id, fields: Object.keys(req.body || {}) });
   try {
     const body = req.body || {};
     const identifier = body.username || body._id;
@@ -127,12 +141,12 @@ router.put('/user', async (req, res) => {
 
     return res.json({ ok: true, user: updated });
   } catch (err) {
-    console.error('[authRoutes] update user error', err);
+    console.error('[authRoutes] update user error', err && err.message);
     return res.status(500).json({ ok: false, message: 'Internal error' });
   }
 });
 
-// Helper: upload local file at filePath to Cloudinary (if configured)
+// helpers
 async function uploadToCloudinary(filePath) {
   if (!cloudinary) throw new Error('Cloudinary not configured');
   return new Promise((resolve, reject) => {
@@ -142,37 +156,24 @@ async function uploadToCloudinary(filePath) {
     });
   });
 }
-
-/* Replace previous upload handlers with this robust handler that:
- - supports multer.disk (req.file.path) and multer memory (req.file.buffer)
- - supports formidable (file.filepath || file.path)
- - uploads to Cloudinary if configured (or returns /uploads URL fallback)
- - only unlink when localPath is a valid string, and catches errors
-*/
-const util = require('util');
 const stat = util.promisify(fs.stat);
 async function safeUnlink(p) {
   try {
     if (!p || typeof p !== 'string') return;
-    // ensure file exists before unlink
     await stat(p);
     fs.unlink(p, (err) => { if (err) console.warn('[authRoutes] unlink warn', err && err.message); });
-  } catch (e) {
-    // ignore missing file
-  }
+  } catch (e) { /* ignore */ }
 }
 
 async function uploadLocalOrBufferToCloudinary(localPath, buffer) {
   if (!cloudinary) {
-    // no cloudinary - return fallback url pointing to uploads (may not persist on Vercel)
     if (localPath && typeof localPath === 'string') {
       const savedName = path.basename(localPath);
-      return `${'https'/*proto*/}://${process.env.FRONTEND_HOST || '' || 'your-domain'}/uploads/${savedName}`;
+      return `${'https'}://${process.env.FRONTEND_HOST || '' || ''}/uploads/${savedName}`;
     }
-    throw new Error('No cloudinary and no localPath');
+    throw new Error('No cloudinary configured and no localPath available');
   }
 
-  // if buffer present: upload via upload_stream
   if (buffer && Buffer.isBuffer(buffer)) {
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream({ folder: 'avatars' }, (err, result) => {
@@ -183,33 +184,29 @@ async function uploadLocalOrBufferToCloudinary(localPath, buffer) {
     });
   }
 
-  // otherwise upload from local file path
   if (localPath && typeof localPath === 'string') {
-    const result = await uploadToCloudinary(localPath); // existing helper that uses cloudinary.uploader.upload
-    return result && (result.secure_url || result.url);
+    const r = await uploadToCloudinary(localPath);
+    return r && (r.secure_url || r.url);
   }
 
   throw new Error('No valid input to upload');
 }
 
-// unified route (works with multer if available OR formidable fallback)
-router.post('/user/upload-avatar', async (req, res, next) => {
+// unified upload handler
+async function unifiedUploadHandlerLogic(req, res) {
   try {
-    // if multer available and put file on disk or in memory
+    // multer populated req.file if used as middleware
     if (req.file) {
-      // multer disk: req.file.path; multer memory: req.file.buffer
       const localPath = req.file.path || null;
       const buffer = req.file.buffer || null;
       let finalUrl = '';
       try {
         finalUrl = await uploadLocalOrBufferToCloudinary(localPath, buffer);
       } catch (errUp) {
-        console.error('[authRoutes] cloudinary upload failed (multer path/buffer)', errUp && errUp.message);
-        // fallback: serve local file if exists
+        console.error('[authRoutes] cloudinary upload failed (multer)', errUp && errUp.message);
         if (localPath) finalUrl = `${req.protocol}://${req.get('host')}/uploads/${path.basename(localPath)}`;
-        else throw errUp;
+        else return res.status(500).json({ ok: false, message: 'Upload failed' });
       } finally {
-        // cleanup local file if a path was created
         await safeUnlink(localPath);
       }
 
@@ -225,9 +222,8 @@ router.post('/user/upload-avatar', async (req, res, next) => {
       return res.json({ ok: true, url: finalUrl });
     }
 
-    // formidable fallback: parse form if no req.file
-    if (useFormidable || (!req.file && req.headers['content-type'] &&
-        req.headers['content-type'].startsWith('multipart/form-data'))) {
+    // if not multer, use formidable fallback
+    if (useFormidable || (req.headers['content-type'] && req.headers['content-type'].startsWith('multipart/form-data'))) {
       const formidable = require('formidable');
       const form = new formidable.IncomingForm({
         uploadDir: uploadsDir,
@@ -242,14 +238,12 @@ router.post('/user/upload-avatar', async (req, res, next) => {
         const file = files.avatar || files.file || null;
         if (!file) return res.status(400).json({ ok: false, message: 'No file uploaded' });
 
-        // formidable v2 uses file.filepath; older use file.path
         const localPath = file.filepath || file.path || null;
         let finalUrl = '';
         try {
-          // upload localPath to cloudinary or return fallback
           finalUrl = await uploadLocalOrBufferToCloudinary(localPath, null);
-        } catch (errUp) {
-          console.error('[authRoutes] cloudinary upload failed (formidable)', errUp && errUp.message);
+        } catch (err2) {
+          console.error('[authRoutes] cloudinary upload failed (formidable)', err2 && err2.message);
           if (localPath) finalUrl = `${req.protocol}://${req.get('host')}/uploads/${path.basename(localPath)}`;
           else return res.status(500).json({ ok: false, message: 'Upload failed' });
         } finally {
@@ -270,12 +264,18 @@ router.post('/user/upload-avatar', async (req, res, next) => {
       return;
     }
 
-    // no file detected
     return res.status(400).json({ ok: false, message: 'No file data' });
   } catch (err) {
-    console.error('[authRoutes] upload avatar error (unified handler)', err && err.stack);
+    console.error('[authRoutes] upload avatar error (unified)', err && err.stack);
     return res.status(500).json({ ok: false, message: 'Upload failed' });
   }
-});
+}
+
+// register route using multer if available, otherwise plain handler
+if (uploadHandler) {
+  router.post('/user/upload-avatar', uploadHandler.single('avatar'), (req, res) => unifiedUploadHandlerLogic(req, res));
+} else {
+  router.post('/user/upload-avatar', (req, res) => unifiedUploadHandlerLogic(req, res));
+}
 
 module.exports = router;

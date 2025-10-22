@@ -7,316 +7,184 @@ let newGames = [];
 let gamesByCategory = {};
 
 
-// Use same origin API by default (safer). If you need cross-domain, set this env.
+// Use same origin API by default (safer).
 const BASE_API_URL = window.location.origin; // e.g. https://datn-smoky.vercel.app or http://localhost:3000
 
-// Lưu vị trí trang hiện tại cho từng slider
-let sliderPage = {
-  recent: 0,
-  top: 0,
-  featured: 0,
-  new: 0
-};
+(function profileAndSettingsUI() {
+  // helper: read user from localStorage safely
+  function getUserSafe() {
+    try {
+      const u = localStorage.getItem('user');
+      return u ? JSON.parse(u) : null;
+    } catch (e) {
+      return null;
+    }
+  }
 
-let MAX_SHOW = getMaxShow();
+  // Try fetch user from server by username (server supports GET /api/user?username=...)
+  async function fetchUserFromServer(identifier) {
+    if (!identifier) return null;
+    try {
+      const res = await fetch(`${BASE_API_URL}/api/user?username=${encodeURIComponent(identifier)}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) return null;
+      const j = await res.json();
+      return j && j.user ? j.user : j;
+    } catch (err) {
+      console.warn('fetchUserFromServer error', err && err.message);
+      return null;
+    }
+  }
 
-// Hàm render 1 game card
-function renderGameCard(game) {
-  const name = getGameName(game, currentLang);
-  const desc = getGameDesc(game, currentLang);
-  const category = getGameCategory(game, currentLang);
-  return `
-    <div class="game-card" onclick="handleGameClick('${game.id}', '${name.replace(/'/g, "\\'")}')">
-      ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
-      <img src="game/${game.id}/Img/logo.png" alt="${name}" />
-      <div class="game-title">${name}</div>
-      <div class="game-category">${category}</div>
-      <div class="game-desc">${desc}</div>
-      ${game.players ? `<div class="game-players">👥 ${game.players} ${LANGS[currentLang]?.players || ''}</div>` : ""}
-    </div>
-  `;
-}
-
-// Render slider cho 1 nhóm game với nút < >
-function renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey) {
-  const sliderContainer = document.getElementById(sliderId)?.parentElement;
-  if (!sliderContainer) return;
-
-  // Xóa nút cũ nếu có
-  sliderContainer.querySelectorAll('.slider-btn').forEach(btn => btn.remove());
-
-  let page = sliderPage[pageKey] || 0;
-  const totalPage = Math.ceil(games.length / MAX_SHOW);
-
-  const start = page * MAX_SHOW;
-  const end = Math.min(start + MAX_SHOW, games.length);
-  const showGames = games.slice(start, end);
-
-  // Render game card
-  const slider = document.getElementById(sliderId);
-  slider.innerHTML = showGames.map(renderGameCard).join('');
-
-  // Nếu số lượng game > MAX_SHOW thì thêm nút chuyển
-  if (games.length > MAX_SHOW) {
-    // Nút prev
-    const prevBtn = document.createElement('button');
-    prevBtn.className = 'slider-btn left';
-    prevBtn.innerHTML = '&#8249;';
-    prevBtn.style.display = page > 0 ? 'flex' : 'none';
-    prevBtn.onclick = () => {
-      sliderPage[pageKey]--;
-      renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey);
+  // header update helper (ensure elements exist)
+  if (typeof window.applyHeaderUser !== 'function') {
+    window.applyHeaderUser = function(user) {
+      try {
+        const avatarEl = document.querySelector('#header-avatar');
+        const nameEl = document.querySelector('#header-username');
+        const FALLBACK_AVATAR = 'https://www.gravatar.com/avatar/?d=mp&s=200';
+        if (avatarEl) {
+          const a = user && user.avatar;
+          avatarEl.src = (a && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'))) ? a : FALLBACK_AVATAR;
+        }
+        if (nameEl) nameEl.textContent = user && (user.displayName || user.username) || 'Khách';
+      } catch (e) {}
     };
-    sliderContainer.insertBefore(prevBtn, slider);
-
-    // Nút next
-    const nextBtn = document.createElement('button');
-    nextBtn.className = 'slider-btn right';
-    nextBtn.innerHTML = '&#8250;';
-    nextBtn.style.display = end < games.length ? 'flex' : 'none';
-    nextBtn.onclick = () => {
-      sliderPage[pageKey]++;
-      renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey);
-    };
-    sliderContainer.appendChild(nextBtn);
-  }
-}
-
-// Khi bấm "Xem thêm" (card cuối)
-function showAllGames(pageKey) {
-  // Có thể mở modal, chuyển trang, hoặc render toàn bộ game
-  alert('Hiển thị tất cả game cho mục này!');
-}
-
-// Sắp xếp và phân nhóm game
-function groupGames(games) {
-  games.sort((a, b) => (getGameName(a)).localeCompare(getGameName(b)));
-  recentGames = games;
-  topGames = games.filter(g => g.badge === "Hot" || g.badge === "Top");
-  featuredGames = games.filter(g => g.badge === "Hot" || g.badge === "Updated");
-  newGames = games.filter(g => g.badge === "New");
-  gamesByCategory = {};
-  games.forEach(g => {
-    const cat = g.category || 'Khác';
-    if (!gamesByCategory[cat]) gamesByCategory[cat] = [];
-    gamesByCategory[cat].push(g);
-  });
-}
-
-// Hiển thị các slider theo thể loại (có nút < > và logic "Xem thêm")
-function renderCategorySliders() {
-  const main = document.querySelector('.main-content');
-  document.querySelectorAll('.category-slider-section').forEach(e => e.remove());
-
-  Object.keys(gamesByCategory).forEach(cat => {
-    const section = document.createElement('div');
-    section.className = 'category-slider-section';
-    const catKey = cat.replace(/\s+/g, '-');
-    section.innerHTML = `
-      <div class="section-title-row" id="cat-${catKey}">
-        <div class="section-title">${cat}</div>
-      </div>
-      ${renderSortDropdown('newest', `cat-${catKey}`)}
-      <div class="games-slider-container" id="cat-container-${catKey}">
-        <div class="games-slider" id="catSlider-${catKey}"></div>
-      </div>
-    `;
-    main.appendChild(section);
-    if (!sliderPage[`cat-${catKey}`]) sliderPage[`cat-${catKey}`] = 0;
-    renderCategorySlider(cat, catKey);
-  });
-}
-
-function renderCategorySlider(cat, catKey) {
-  renderSlider(
-    gamesByCategory[cat],
-    `catSlider-${catKey}`,
-    `catShowMore-${catKey}`,
-    `catShowMore-${catKey}-prev`,
-    `cat-${catKey}`
-  );
-}
-
-// Tìm kiếm
-function searchGames() {
-  const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
-  const main = document.querySelector('.main-content');
-  let searchResultDiv = document.getElementById('search-result');
-
-  // Nếu không nhập gì, hiển thị lại toàn bộ
-  if (!keyword) {
-    Array.from(main.children).forEach(child => {
-      if (child.id !== 'search-result') child.style.display = '';
-    });
-    if (searchResultDiv) searchResultDiv.style.display = 'none';
-    return;
   }
 
-  Array.from(main.children).forEach(child => {
-    if (child.id !== 'search-result') child.style.display = 'none';
-  });
+  function createProfileModal() {
+    const modal = document.getElementById('profile-modal');
+    if (!modal) return;
 
-  // Sửa đoạn này:
-  const filtered = allGames.filter(g =>
-    getGameName(g).toLowerCase().includes(keyword) ||
-    getGameDesc(g).toLowerCase().includes(keyword) ||
-    getGameCategory(g).toLowerCase().includes(keyword)
-  );
+    const nameInput = modal.querySelector('#profile-modal-name');
+    const fileInput = modal.querySelector('#profile-modal-file');
+    const avatarImg = modal.querySelector('#profile-modal-avatar');
+    const saveBtn = modal.querySelector('#profile-modal-save');
+    const cancelBtn = modal.querySelector('#profile-modal-cancel');
 
-  // Tạo vùng kết quả nếu chưa có
-  if (!searchResultDiv) {
-    searchResultDiv = document.createElement('div');
-    searchResultDiv.id = 'search-result';
-    main.appendChild(searchResultDiv);
+    const FALLBACK_AVATAR = 'https://www.gravatar.com/avatar/?d=mp&s=200';
+
+    async function loadProfileIntoModal() {
+      let user = getUserSafe() || {};
+      // remove blob URLs stored locally (they will 404 when reopened)
+      if (user && typeof user.avatar === 'string' && user.avatar.startsWith('blob:')) {
+        delete user.avatar;
+        try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
+      }
+      if (user && (user.username || user._id)) {
+        const serverUser = await fetchUserFromServer(user.username || user._id).catch(() => null);
+        if (serverUser && typeof serverUser === 'object') {
+          user = Object.assign({}, user, serverUser);
+          try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
+        }
+      }
+      if (nameInput) nameInput.value = user.displayName || user.username || '';
+      if (avatarImg) {
+        const a = user.avatar;
+        const valid = typeof a === 'string' && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'));
+        avatarImg.src = valid ? a : FALLBACK_AVATAR;
+      }
+      if (fileInput) {
+        fileInput.value = '';
+        if (modal._previewUrl) {
+          try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {}
+          modal._previewUrl = null;
+        }
+      }
+    }
+
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; }
+        const url = URL.createObjectURL(f);
+        modal._previewUrl = url;
+        if (avatarImg) avatarImg.src = url;
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        const token = localStorage.getItem('token') || '';
+        let user = getUserSafe() || {};
+        try {
+          if (nameInput && nameInput.value.trim()) user.displayName = nameInput.value.trim();
+
+          // upload avatar if new file chosen
+          if (fileInput && fileInput.files && fileInput.files[0]) {
+            try {
+              const fd = new FormData();
+              fd.append('avatar', fileInput.files[0]);
+              if (user.username) fd.append('username', user.username);
+              else if (user._id) fd.append('username', user._id);
+
+              const res = await fetch(`${BASE_API_URL}/api/user/upload-avatar`, {
+                method: 'POST',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                body: fd
+              });
+              if (res.ok) {
+                const j = await res.json();
+                user.avatar = j.url || (j.user && j.user.avatar) || user.avatar;
+              } else {
+                console.warn('avatar upload failed', res.status);
+              }
+            } catch (err) {
+              console.warn('avatar upload error', err && err.message);
+            }
+          }
+
+          // update user record
+          try {
+            const payload = { username: user.username, _id: user._id, displayName: user.displayName, avatar: user.avatar };
+            const res2 = await fetch(`${BASE_API_URL}/api/user`, {
+              method: 'PUT',
+              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': `Bearer ${token}` } : {}),
+              body: JSON.stringify(payload)
+            });
+            if (!res2.ok) {
+              const txt = await res2.text().catch(() => '');
+              console.warn('update user failed', res2.status, txt);
+              alert('Cập nhật thất bại');
+              saveBtn.disabled = false;
+              return;
+            }
+            const j2 = await res2.json();
+            const serverUser = j2.user || j2;
+            try { localStorage.setItem('user', JSON.stringify(serverUser)); } catch (e) {}
+            applyHeaderUser(serverUser);
+            if (avatarImg) avatarImg.src = serverUser.avatar || FALLBACK_AVATAR;
+            if (nameInput) nameInput.value = serverUser.displayName || '';
+            if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; fileInput.value = ''; }
+            modal.style.display = 'none';
+            alert('Cập nhật hồ sơ thành công');
+          } catch (err) {
+            console.error('update user error', err && err.message);
+            alert('Lỗi khi cập nhật hồ sơ');
+          }
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; }
+        modal.style.display = 'none';
+      });
+    }
+
+    // populate on show
+    loadProfileIntoModal();
   }
-  searchResultDiv.style.display = '';
 
-  // Nếu không có kết quả
-  if (filtered.length === 0) {
-    searchResultDiv.innerHTML = `<div style="color:#ff9800;font-size:1.2rem;padding:32px 0;">Không tìm thấy trò chơi phù hợp.</div>`;
-    return;
-  }
-
-  // Hàm làm nổi bật từ khóa
-  function highlight(text) {
-    text = (text === undefined || text === null) ? '' : String(text); // ép về chuỗi
-    if (!text) return '';
-    return text.replace(
-      new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'),
-      '<span style="background:#ff9800;color:#fff;border-radius:4px;padding:1px 4px;">$1</span>'
-    );
-  }
-
-  // Hiển thị kết quả
-  searchResultDiv.innerHTML = `
-    <div class="section-title-row">
-      <div class="section-title">Kết quả tìm kiếm cho "<span style="color:#ff9800">${keyword}</span>"</div>
-    </div>
-    <div class="games-slider" style="flex-wrap:wrap;gap:32px 24px;">
-      ${filtered.map(game => {
-        const name = getGameName(game, currentLang);
-        const desc = getGameDesc(game, currentLang);
-        const category = getGameCategory(game, currentLang);
-        return `
-          <div class="game-card" onclick="handleGameClick('${game.id}', '${game.name}')">
-            ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
-            <img src="game/${game.id}/Img/logo.png" alt="${name}" />
-            <div class="game-title">${highlight(name)}</div>
-            <div class="game-category">${highlight(category)}</div>
-            <div class="game-desc">${highlight(desc)}</div>
-            ${game.players ? `<div class="game-players">👥 ${highlight(game.players)} ${LANGS[currentLang]?.players || 'người chơi'}</div>` : ""}
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-}
-
-// Sắp xếp game
-function sortGames(sectionKey, selectEl) {
-  // Nếu không truyền selectEl, tự tìm select theo sectionKey
-  if (!selectEl) {
-    selectEl = document.querySelector(
-      `[onchange*="sortGames('${sectionKey}'"]`
-    );
-  }
-  if (!selectEl) return;
-  const sortBy = selectEl.value;
-
-  // Lấy mảng game đúng theo sectionKey
-  let gamesArr;
-  if (sectionKey.startsWith('cat-')) {
-    const catName = sectionKey.replace(/^cat-/, '').replace(/-/g, ' ');
-    gamesArr = allGames.filter(g => (getGameCategory(g) || '').toLowerCase().includes(catName.toLowerCase()));
-  } else if (sectionKey === 'recent') {
-    gamesArr = recentGames.slice();
-  } else if (sectionKey === 'top') {
-    gamesArr = topGames.slice();
-  } else if (sectionKey === 'featured') {
-    gamesArr = featuredGames.slice();
-  } else if (sectionKey === 'new') {
-    gamesArr = newGames.slice();
-  } else {
-    return;
-  }
-
-  // Sắp xếp
-  if (sortBy === 'newest') {
-    gamesArr.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  } else if (sortBy === 'oldest') {
-    gamesArr.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-  } else if (sortBy === 'players_asc') {
-    gamesArr.sort((a, b) => (a.players || 0) - (b.players || 0));
-  } else if (sortBy === 'players_desc') {
-    gamesArr.sort((a, b) => (b.players || 0) - (a.players || 0));
-  } else if (sortBy === 'az') {
-    gamesArr.sort((a, b) => getGameName(a).localeCompare(getGameName(b)));
-  } else if (sortBy === 'za') {
-    gamesArr.sort((a, b) => getGameName(b).localeCompare(getGameName(a)));
-  }
-
-  // Render lại slider
-  renderSlider(
-    gamesArr,
-    sectionKey.startsWith('cat-') ? `catSlider-${sectionKey.replace(/^cat-/, '')}` : `${sectionKey}Slider`,
-    '',
-    '',
-    sectionKey
-  );
-}
-
-// Hiển thị game theo thể loại
-function renderGamesByCategory() {
-  // Gom game theo từng thể loại
-  const categoryMap = {};
-  allGames.forEach(game => {
-    const cats = (getGameCategory(game) || 'Khác').split(',').map(c => c.trim());
-    cats.forEach(cat => {
-      if (!categoryMap[cat]) categoryMap[cat] = [];
-      categoryMap[cat].push(game);
-    });
-  });
-
-  const categoryList = document.getElementById('category-list');
-  categoryList.innerHTML = '';
-  Object.keys(categoryMap).forEach(cat => {
-    const catKey = cat.replace(/\s+/g, '-');
-    const section = document.createElement('div');
-    section.className = 'category-slider-section';
-    section.innerHTML = `
-      <div class="section-title-row" id="cat-${catKey}">
-        <div class="section-title">${cat}</div>
-      </div>
-      <div class="sort-dropdown-row">
-        <label class="sort-label" data-i18n="sort_by"></label>
-        <div class="sort-dropdown">
-          <select class="sort-select" onchange="sortGames('cat-${catKey}', this)">
-            <option value="newest" data-i18n="sort_newest"></option>
-            <option value="oldest" data-i18n="sort_oldest"></option>
-            <option value="players_asc" data-i18n="sort_players_asc"></option>
-            <option value="players_desc" data-i18n="sort_players_desc"></option>
-            <option value="az" data-i18n="sort_az"></option>
-            <option value="za" data-i18n="sort_za"></option>
-          </select>
-        </div>
-      </div>
-      <div class="games-slider-container" id="cat-container-${catKey}">
-        <div class="games-slider" id="catSlider-${catKey}"></div>
-      </div>
-    `;
-    categoryList.appendChild(section);
-
-    // Khởi tạo trang cho từng thể loại
-    if (!sliderPage[`cat-${catKey}`]) sliderPage[`cat-${catKey}`] = 0;
-    renderSlider(
-      categoryMap[cat],
-      `catSlider-${catKey}`,
-      `catShowMore-${catKey}`,
-      `catShowMore-${catKey}-prev`,
-      `cat-${catKey}`
-    );
-  });
-}
+  try { createProfileModal(); } catch (e) { console.warn('createProfileModal init failed', e && e.message); }
+})();
 
 // Khởi tạo
 function showLoading(show = true) {
@@ -1176,200 +1044,234 @@ if (settingsBtn) {
 
 // Tạo / hiển thị modal "profile-modal" (Cài đặt tài khoản) và popup giữa màn hình (Hồ sơ)
 (function profileAndSettingsUI() {
-  // helper: read user from localStorage safely
+  // helpers
   function getUserSafe() {
-    try {
-      const u = localStorage.getItem('user');
-      return u ? JSON.parse(u) : null;
-    } catch (e) {
-      return null;
-    }
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+  }
+  function applyHeaderUser(updated) {
+    const ua = document.getElementById('userAvatar');
+    const da = document.getElementById('dropdownAvatar');
+    const du = document.getElementById('dropdownUsername');
+    if (ua && updated.avatar) ua.src = updated.avatar;
+    if (da && updated.avatar) da.src = updated.avatar;
+    if (du && (updated.displayName || updated.username)) du.innerText = updated.displayName || updated.username;
   }
 
-  // Try fetch user from server by username (server should support GET /api/user?username=...)
-  async function fetchUserFromServer(username) {
-    if (!username) return null;
-    try {
-      const res = await fetch(`${BASE_API_URL}/api/user?username=${encodeURIComponent(username)}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (!res.ok) return null;
-      const j = await res.json();
-      // expect { ok: true, user: {...} } or user object directly
-      return j && j.user ? j.user : j;
-    } catch (err) {
-      console.warn('fetchUserFromServer error', err && err.message);
-      return null;
-    }
-  }
-
-  // ensure there's an applyHeaderUser function (use existing if present)
-  if (typeof window.applyHeaderUser !== 'function') {
-    window.applyHeaderUser = function(user) {
-      try {
-        const avatarEl = document.querySelector('#header-avatar');
-        const nameEl = document.querySelector('#header-username');
-        if (avatarEl) {
-          const a = user && user.avatar;
-          avatarEl.src = (a && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'))) ? a : 'https://www.gravatar.com/avatar/?d=mp&s=200';
-        }
-        if (nameEl) nameEl.textContent = user && (user.displayName || user.username) || 'Khách';
-      } catch (e) {}
-    };
-  }
-
-  // Create / wire profile modal behaviors
+  // Create profile-modal (settings) if not exists
   function createProfileModal() {
-    const modal = document.getElementById('profile-modal');
-    if (!modal) return;
+    let modal = document.getElementById('profile-modal');
+    if (modal) return modal;
 
-    const nameInput = modal.querySelector('#profile-modal-name');
-    const fileInput = modal.querySelector('#profile-modal-file');
-    const avatarImg = modal.querySelector('#profile-modal-avatar');
-    const saveBtn = modal.querySelector('#profile-modal-save');
-    const cancelBtn = modal.querySelector('#profile-modal-cancel');
+    modal = document.createElement('div');
+    modal.id = 'profile-modal';
+    Object.assign(modal.style, {
+      position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, zIndex: 1400,
+      display: 'none', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.45)'
+    });
 
-    // fallback avatar
-    const FALLBACK_AVATAR = 'https://www.gravatar.com/avatar/?d=mp&s=200';
+    modal.innerHTML = `
+      <div id="profile-modal-box" style="width:90%;max-width:480px;background:#fff;border-radius:12px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-weight:700;font-size:1.05rem">Cài đặt tài khoản</div>
+          <button id="profile-modal-close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">×</button>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+          <img id="profile-modal-avatar" src="img/avt.png" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid #eee">
+          <div style="flex:1">
+            <div style="font-weight:700" id="profile-modal-name-display"></div>
+            <div style="color:#666;font-size:0.9rem" id="profile-modal-email-display"></div>
+          </div>
+        </div>
+        <label style="display:block;font-size:0.9rem;margin-bottom:6px">Tên hiển thị</label>
+        <input id="profile-modal-name" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin-bottom:10px" />
+        <label style="display:block;font-size:0.9rem;margin-bottom:6px">Avatar (tải ảnh lên)</label>
+        <input id="profile-modal-file" type="file" accept="image/*" style="width:100%;margin-bottom:12px" />
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="profile-modal-cancel" style="padding:8px 12px;border-radius:8px;background:#eee;border:none">Hủy</button>
+          <button id="profile-modal-save" style="padding:8px 12px;border-radius:8px;background:#00b59a;color:#fff;border:none">Lưu</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
 
-    // load profile into modal (localStorage first, then try server)
-    async function loadProfileIntoModal() {
-      let user = getUserSafe() || {};
-      // remove invalid blob URL left in localStorage (common cause ERR_FILE_NOT_FOUND)
-      if (user && typeof user.avatar === 'string' && user.avatar.startsWith('blob:')) {
-        delete user.avatar;
-        try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
+    // events
+
+    modal.querySelector('#profile-modal-close').addEventListener('click', () => modal.style.display = 'none');
+    modal.querySelector('#profile-modal-cancel').addEventListener('click', () => modal.style.display = 'none');
+
+    // Save handler: update localStorage and header UI (simplified)
+    modal.querySelector('#profile-modal-save').addEventListener('click', async () => {
+      const nameEl = document.getElementById('profile-modal-name');
+      const fileEl = document.getElementById('profile-modal-file');
+      let user = getUserSafe();
+
+      if (nameEl && nameEl.value.trim()) {
+        user.displayName = nameEl.value.trim();
       }
 
-      // try fetch fresh data from server if we have identifier
-      if (user && (user.username || user._id)) {
-        const serverUser = await fetchUserFromServer(user.username || user._id).catch(() => null);
-        if (serverUser && typeof serverUser === 'object') {
-          user = Object.assign({}, user, serverUser);
-          try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
-        }
-      }
-
-      // populate fields
-      if (nameInput) nameInput.value = user.displayName || user.username || '';
-      if (avatarImg) {
-        const a = user.avatar;
-        const valid = typeof a === 'string' && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'));
-        avatarImg.src = valid ? a : FALLBACK_AVATAR;
-      }
-      // clear file input preview state
-      if (fileInput) {
-        fileInput.value = '';
-        if (modal._previewUrl) {
-          try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {}
-          modal._previewUrl = null;
-        }
-      }
-    }
-
-    // preview when selecting file
-    if (fileInput) {
-      fileInput.addEventListener('change', (e) => {
-        const f = e.target.files && e.target.files[0];
-        if (!f) return;
-        // revoke previous preview
-        if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; }
-        const url = URL.createObjectURL(f);
-        modal._previewUrl = url;
-        if (avatarImg) avatarImg.src = url;
-      });
-    }
-
-    // save handler: upload avatar if file chosen, then update user on server (PUT /api/user)
-    if (saveBtn) {
-      saveBtn.addEventListener('click', async () => {
-        saveBtn.disabled = true;
-        const token = localStorage.getItem('token') || '';
-        let user = getUserSafe() || {};
+      // If user uploaded avatar, try upload endpoint; otherwise accept local object URL
+      if (fileEl && fileEl.files && fileEl.files[0]) {
         try {
-          if (nameInput && nameInput.value.trim()) user.displayName = nameInput.value.trim();
+          const fd = new FormData();
+          fd.append('avatar', fileEl.files[0]);
+          const uname = user.username || user.displayName || user.name;
+          if (uname) fd.append('username', uname);
 
-          // upload avatar if file chosen
-          if (fileInput && fileInput.files && fileInput.files[0]) {
-            try {
-              const fd = new FormData();
-              fd.append('avatar', fileInput.files[0]);
-              // include username/_id so server can update record
-              if (user.username) fd.append('username', user.username);
-              else if (user._id) fd.append('username', user._id);
-
-              const res = await fetch(`${BASE_API_URL}/api/user/upload-avatar`, {
-                method: 'POST',
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-                body: fd
-              });
-              if (res.ok) {
-                const j = await res.json();
-                // server returns { ok:true, url, user }
-                user.avatar = j.url || (j.user && j.user.avatar) || user.avatar;
-              } else {
-                console.warn('avatar upload failed', res.status);
-              }
-            } catch (err) {
-              console.warn('avatar upload error', err && err.message);
+          const token = localStorage.getItem('token');
+          const res = await fetch(`${BASE_API_URL}/api/user/upload-avatar`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: fd
+          });
+          if (res.ok) {
+            const j = await res.json();
+            if (j && j.ok && j.url) {
+              user.avatar = j.url;
+            } else {
+              // fallback to local preview
+              user.avatar = URL.createObjectURL(fileEl.files[0]);
             }
+          } else {
+            // fallback to local preview
+            user.avatar = URL.createObjectURL(fileEl.files[0]);
           }
-
-          // send update to user record (PUT)
-          try {
-            const payload = { username: user.username, _id: user._id, displayName: user.displayName, avatar: user.avatar };
-            const res2 = await fetch(`${BASE_API_URL}/api/user`, {
-              method: 'PUT',
-              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': `Bearer ${token}` } : {}),
-              body: JSON.stringify(payload)
-            });
-            if (!res2.ok) {
-              const txt = await res2.text().catch(() => '');
-              console.warn('update user failed', res2.status, txt);
-              alert('Cập nhật thất bại');
-              saveBtn.disabled = false;
-              return;
-            }
-            const j2 = await res2.json();
-            const serverUser = j2.user || j2;
-            // persist canonical user
-            try { localStorage.setItem('user', JSON.stringify(serverUser)); } catch (e) {}
-            // update header and modal
-            applyHeaderUser(serverUser);
-            if (avatarImg) avatarImg.src = serverUser.avatar || FALLBACK_AVATAR;
-            if (nameInput) nameInput.value = serverUser.displayName || '';
-            // cleanup preview
-            if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; fileInput.value = ''; }
-            modal.style.display = 'none';
-            alert('Cập nhật hồ sơ thành công');
-          } catch (err) {
-            console.error('update user error', err && err.message);
-            alert('Lỗi khi cập nhật hồ sơ');
-          }
-        } finally {
-          saveBtn.disabled = false;
+        } catch (err) {
+          console.warn('avatar upload failed, using local preview', err);
+          user.avatar = URL.createObjectURL(fileEl.files[0]);
         }
-      });
-    }
+      }
 
-    // cancel/close cleanup
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', () => {
-        if (modal._previewUrl) {
-          try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {}
-          modal._previewUrl = null;
-        }
-        modal.style.display = 'none';
-      });
-    }
+      // Try to persist updated user to server (MongoDB)
+      const saved = await updateUserOnServer(user);
+      if (saved) {
+        user = saved; // use canonical server user
+      } else {
+        // if server update fails, still keep local copy (graceful fallback)
+        localStorage.setItem('user', JSON.stringify(user));
+      }
 
-    // when modal shown, load profile
-    // assume some code shows the modal (e.g. button opens it) - ensure loadProfile called when shown:
-    // If modal is displayed by setting style.display='block' elsewhere, call loadProfileIntoModal() right away to populate.
-    loadProfileIntoModal();
+      applyHeaderUser(user);
+      // update modal display names
+      const disp = document.getElementById('profile-modal-name-display');
+      const emailEl = document.getElementById('profile-modal-email-display');
+      const avatarEl = document.getElementById('profile-modal-avatar');
+      if (disp) disp.innerText = user.displayName || user.username || 'Khách';
+      if (emailEl) emailEl.innerText = user.email || '';
+      if (avatarEl && user.avatar) avatarEl.src = user.avatar;
+      modal.style.display = 'none';
+      alert('Cập nhật hồ sơ thành công');
+    });
+
+    return modal;
   }
 
-  // init
-  try { createProfileModal(); } catch (e) { console.warn('createProfileModal init failed', e && e.message); }
+  // Create centered profile popup (only info, no action buttons)
+  function createProfileCenterPopup() {
+    let pop = document.getElementById('profile-center-popup');
+    if (pop) return pop;
+
+    pop = document.createElement('div');
+    pop.id = 'profile-center-popup';
+    Object.assign(pop.style, {
+      position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, zIndex: 1500,
+      display: 'none', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.35)'
+    });
+    pop.innerHTML = `
+      <div id="profile-center-box" style="min-width:260px;max-width:420px;background:#fff;border-radius:12px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.32);text-align:center">
+        <button id="profile-center-close" style="position:absolute;right:18px;top:18px;background:none;border:none;font-size:1.2rem;cursor:pointer">×</button>
+        <img id="profile-center-avatar" src="img/avt.png" style="width:86px;height:86px;border-radius:50%;object-fit:cover;border:2px solid #eee;margin-bottom:10px">
+        <div id="profile-center-name" style="font-weight:700;font-size:1.05rem;margin-bottom:4px"></div>
+        <div id="profile-center-email" style="color:#666;margin-bottom:12px"></div>
+        <!-- no action buttons per request -->
+      </div>
+    `;
+    document.body.appendChild(pop);
+
+    pop.addEventListener('click', (e) => {
+      if (e.target === pop) pop.style.display = 'none';
+    });
+    pop.querySelector('#profile-center-close').addEventListener('click', () => pop.style.display = 'none');
+    return pop;
+  }
+
+  // Populate and show center popup
+  function showProfileCenter(show = true) {
+    const pop = createProfileCenterPopup();
+    const user = getUserSafe();
+    const avatar = user.avatar || user.picture || 'img/avt.png';
+    const name = user.displayName || user.username || user.name || 'Khách';
+    const email = user.email || '';
+    const aEl = document.getElementById('profile-center-avatar');
+    const nEl = document.getElementById('profile-center-name');
+    const eEl = document.getElementById('profile-center-email');
+    if (aEl) aEl.src = avatar;
+    if (nEl) nEl.innerText = name;
+    if (eEl) eEl.innerText = email;
+    pop.style.display = show ? 'flex' : 'none';
+  }
+
+  // Wire buttons
+  const settingsBtn = document.getElementById('settingsBtn');
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const modal = createProfileModal();
+      // populate fields
+      const user = getUserSafe();
+      const nameInput = document.getElementById('profile-modal-name');
+      const display = document.getElementById('profile-modal-name-display');
+      const emailDisplay = document.getElementById('profile-modal-email-display');
+      const avatarImg = document.getElementById('profile-modal-avatar');
+      if (nameInput) nameInput.value = user.displayName || user.name || user.username || '';
+      if (display) display.innerText = user.displayName || user.username || 'Khách';
+      if (emailDisplay) emailDisplay.innerText = user.email || '';
+      if (avatarImg) avatarImg.src = user.avatar || user.picture || 'img/avt.png';
+      modal.style.display = 'flex';
+    });
+  }
+
+  const profileBtn = document.getElementById('profileBtn');
+  if (profileBtn) {
+    profileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showProfileCenter(true);
+    });
+  }
+
+  // close any created UI when clicking outside
+  document.addEventListener('click', () => {
+    const pc = document.getElementById('profile-center-popup');
+    if (pc) pc.style.display = 'none';
+  });
 })();
+
+// Hàm cập nhật thông tin người dùng lên server
+async function updateUserOnServer(user) {
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${BASE_API_URL}/api/user`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(user)
+    });
+    if (!res.ok) {
+      console.warn('updateUserOnServer failed', res.status);
+      return null;
+    }
+    const data = await res.json();
+    if (data && data.user) {
+      // store canonical user returned by server
+      localStorage.setItem('user', JSON.stringify(data.user));
+      return data.user;
+    }
+    return null;
+  } catch (err) {
+    console.error('updateUserOnServer error', err);
+    return null;
+  }
+}
