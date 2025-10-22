@@ -357,47 +357,33 @@
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script>
-+    // Debug init
-+    console.log("🔎 ToD client init. URL params:", window.location.search);
-
-    let voteAccept = 0, voteTotal = 0;
-    let askedResult = ""; // "", "accepted", "retry"
+    // Debug init
+    console.log("🔎 ToD client init. URL params:", window.location.search);
 
     const socket = io("https://datn-socket.up.railway.app", {
       transports: ["websocket"],
       secure: true
     });
-+    console.log("🔌 Socket client created");
+    console.log("🔌 Socket client created");
 
     const urlParams = new URLSearchParams(window.location.search);
     const roomCode = urlParams.get("code");
-    let playerName = urlParams.get("user"); // ƯU TIÊN LẤY TỪ URL
-
+    let playerName = urlParams.get("user");
     if (!playerName) {
       playerName = sessionStorage.getItem("playerName");
     }
     if (!playerName) {
       playerName = prompt("Vui lòng nhập tên của bạn:");
-      if (playerName) {
-        sessionStorage.setItem("playerName", playerName);
-      } else {
-        alert("Bạn phải nhập tên để tham gia trò chơi!");
-        window.location.href = "/";
-        throw new Error("Player name is required.");
-      }
+      if (playerName) sessionStorage.setItem("playerName", playerName);
+      else { alert("Bạn phải nhập tên để tham gia trò chơi!"); window.location.href = "/"; throw new Error("Player name required"); }
     }
 
-    document.getElementById("roomCode").textContent = roomCode;
-    let currentHost = null;
-    let currentAsked = null; // Lưu người bị hỏi để highlight
-    let lastQuestion = "";
-    let lastAsked = "";
-    let lastType = ""; // truth/dare
-    let questionShrink = false;
-
-+   // emit join (and re-emit on reconnect)
+    // --- ĐẢM BẢO emitJoin ĐƯỢC ĐỊNH NGHĨA TRƯỚC KHI GỌI ---
     function emitJoin() {
-      if (!roomCode || !playerName) return;
+      if (!roomCode || !playerName) {
+        console.warn("emitJoin: missing roomCode or playerName", { roomCode, playerName });
+        return;
+      }
       console.log("➡ Emitting tod-join", { roomCode, player: playerName });
       socket.emit("tod-join", { roomCode, player: playerName });
     }
