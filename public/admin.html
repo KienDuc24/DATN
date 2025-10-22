@@ -42,7 +42,6 @@
     <section id="gamesTab" class="admin-tab-content" style="display:none">
       <div class="section-title-row">
         <div class="section-title">Danh sách trò chơi</div>
-        <button class="btn" onclick="openGameForm()">+ Thêm trò chơi</button>
       </div>
       <div class="table-wrap">
         <table class="admin-table">
@@ -66,7 +65,14 @@
       <div class="table-wrap">
         <table class="admin-table">
           <thead>
-            <tr><th>Tên phòng</th><th>Trò chơi</th><th>Người tạo</th><th>Trạng thái</th><th>Hành động</th></tr>
+            <tr>
+              <th>Tên trò chơi</th>
+              <th>Mã phòng</th>
+              <th>Người tạo</th>
+              <th>Người tham gia</th>
+              <th>Trạng thái</th>
+              <th>Hành động</th>
+            </tr>
           </thead>
           <tbody id="adminRoomsList"></tbody>
         </table>
@@ -80,11 +86,12 @@
         <div class="controls">
           <input id="usersSearch" placeholder="Tìm username hoặc email..." />
           <button class="btn" onclick="loadData()">Làm mới</button>
+          <button class="btn" style="margin-left:8px;background:linear-gradient(90deg,#ffd36b,#ff9f43);color:#061022" onclick="openUserForm(null)">+ Thêm người dùng</button>
         </div>
       </div>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Hành động</th></tr></thead>
+          <thead><tr><th>Username</th><th>Lịch sử trò chơi</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
           <tbody id="adminUsersList"></tbody>
         </table>
       </div>

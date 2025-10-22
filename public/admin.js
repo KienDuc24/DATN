@@ -43,37 +43,209 @@ async function fetchGames(q){
   return j.games || [];
 }
 
-// renderGamesTable updated (show VI name/desc by default)
-function renderGamesTable(games){
-  const tbody = el('adminGamesList'); if(!tbody) return;
+// ensure escape helper exists
+if (typeof escapeHtml === 'undefined') {
+  window.escapeHtml = function(s){
+    return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  };
+}
+
+// Render users table
+function renderUsersTable(users){
+  const tbody = document.getElementById('adminUsersList');
+  if (!tbody) return;
   tbody.innerHTML = '';
-  games.forEach(g=>{
-    const title = (g.name && g.name.vi) ? g.name.vi : (g.name && g.name.en) ? g.name.en : (g.name || g.title || '');
-    const category = (g.category && g.category.vi) ? g.category.vi : (g.category && g.category.en) ? g.category.en : (g.category || '');
-    const players = g.players || '';
-    const desc = (g.desc && g.desc.vi) ? g.desc.vi : (g.desc && g.desc.en) ? g.desc.en : (g.desc || '');
+
+  if (!Array.isArray(users) || users.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="4" style="padding:18px;color:var(--muted);text-align:center">Không có người dùng</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  users.forEach(u => {
+    const id = u._id || u.id || '';
+    const username = escapeHtml(u.username || u.displayName || '');
+    // gameHistory: show last 5 entries (if array), else show count or '-'
+    let gh = '-';
+    if (Array.isArray(u.gameHistory) && u.gameHistory.length) {
+      const last = u.gameHistory.slice(-5).map(it => (typeof it === 'string' ? it : (it.name || it.id || JSON.stringify(it))));
+      gh = `${last.join(', ')}${u.gameHistory.length > 5 ? ` (… +${u.gameHistory.length - 5})` : ''}`;
+    } else if (typeof u.gameHistory === 'number') {
+      gh = String(u.gameHistory);
+    }
+
+    // status heuristic: prefer explicit fields, fallback to '-'
+    let status = '-';
+    if (u.currentRoom) status = `Đang tham gia: ${escapeHtml(String(u.currentRoom))}`;
+    else if (u.isOnline) status = 'Online';
+    else status = 'Offline';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="min-width:220px"><div style="font-weight:600">${username}</div></td>
+      <td style="max-width:480px;color:var(--muted);font-size:13px">${escapeHtml(gh)}</td>
+      <td>${escapeHtml(status)}</td>
+      <td style="display:flex;gap:8px;align-items:center">
+        <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa">
+          <!-- edit icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
+        <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa">
+          <!-- delete icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
+        <button class="icon-btn icon-add" title="Thêm" data-id="${id}" aria-label="Thêm" style="background:linear-gradient(90deg,#ffd36b,#ff9f43);color:#061022">
+          <!-- plus -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // bind actions
+  tbody.querySelectorAll('.icon-edit').forEach(btn => btn.addEventListener('click', onEditUser));
+  tbody.querySelectorAll('.icon-delete').forEach(btn => btn.addEventListener('click', onDeleteUser));
+  tbody.querySelectorAll('.icon-add').forEach(btn => btn.addEventListener('click', onAddUser));
+}
+
+// handlers: onAddUser uses existing user modal if present
+function onAddUser(e){
+  // open form modal to create new user
+  if (typeof openUserForm === 'function') return openUserForm(null);
+  alert('Chưa có form tạo user (openUserForm).');
+}
+
+// onEditUser and onDeleteUser assumed implemented earlier in file; if not, provide minimal fallback:
+if (typeof onEditUser !== 'function'){
+  async function onEditUser(e){
+    const id = e.currentTarget.dataset.id;
+    alert('Edit user not implemented on server for id=' + id);
+  }
+}
+if (typeof onDeleteUser !== 'function'){
+  async function onDeleteUser(e){
+    const id = e.currentTarget.dataset.id;
+    if (!confirm('Xác nhận xóa user?')) return;
+    try {
+      const res = await fetch(`${ADMIN_API}/api/admin/user/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'same-origin' });
+      if (!res.ok) {
+        const txt = await res.text().catch(()=>null);
+        throw new Error(txt || res.status);
+      }
+      alert('Đã xóa user');
+      loadData();
+    } catch (err) {
+      console.error('delete user error', err);
+      alert('Xóa thất bại: ' + (err.message || err));
+    }
+  }
+}
+
+// Render rooms table
+function renderRoomsTable(rooms){
+  const tbody = document.getElementById('adminRoomsList');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="6" style="padding:18px;color:var(--muted);text-align:center">Không có phòng chơi</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  rooms.forEach(r => {
+    // normalize fields - adapt to your DB shape
+    const roomId = r.code || r.id || r._id || '';
+    const gameName = (r.game && (r.game.name || r.game.title)) ? (r.game.name || r.game.title) : (r.game || r.gameName || '');
+    const owner = (r.owner && (r.owner.username || r.owner.displayName)) ? (r.owner.username || r.owner.displayName) : (r.owner || r.ownerName || '');
+    const participants = Array.isArray(r.participants) ? r.participants.map(p => (typeof p === 'string' ? p : (p.username || p.displayName || p.id))).join(', ') : (r.participants ? String(r.participants) : '-');
+    const status = r.status || (r.isOpen ? 'Đang mở' : (r.isPlaying ? 'Đang chơi' : 'Đã đóng')) || '-';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="min-width:240px"><div style="font-weight:600">${escapeHtml(gameName)}</div></td>
+      <td>${escapeHtml(String(roomId))}</td>
+      <td>${escapeHtml(owner)}</td>
+      <td style="max-width:360px;color:var(--muted);font-size:13px">${escapeHtml(participants || '-')}</td>
+      <td>${escapeHtml(status)}</td>
+      <td style="display:flex;gap:6px">
+        <button class="icon-btn icon-edit" title="Sửa" data-id="${escapeHtml(roomId)}" aria-label="Sửa">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
+        <button class="icon-btn icon-delete" title="Xóa" data-id="${escapeHtml(roomId)}" aria-label="Xóa">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.icon-edit').forEach(btn => {
+    btn.addEventListener('click', e => {
+      if (typeof onEditRoom === 'function') return onEditRoom(e);
+      alert('Edit room handler not implemented');
+    });
+  });
+  tbody.querySelectorAll('.icon-delete').forEach(btn => {
+    btn.addEventListener('click', e => {
+      if (typeof onDeleteRoom === 'function') return onDeleteRoom(e);
+      alert('Delete room handler not implemented');
+    });
+  });
+}
+
+// Render games table (nổi bật hiển thị tick)
+function renderGamesTable(games){
+  const tbody = document.getElementById('adminGamesList');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!Array.isArray(games) || games.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="5" style="padding:18px;color:var(--muted);text-align:center">Không có trò chơi</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  games.forEach(g => {
     const id = g.id || g._id || '';
+    const title = (g.name && (g.name.vi || g.name.en)) ? (g.name.vi || g.name.en) : (g.title || g.name || '');
+    const desc = (g.desc && (g.desc.vi || g.desc.en)) ? (g.desc.vi || g.desc.en) : (g.desc || '');
+    const category = (g.category && (g.category.vi || g.category.en)) ? (g.category.vi || g.category.en) : (g.category || '');
+    const players = g.players || '';
+
+    // tick icon for featured
+    const featuredHtml = g.featured
+      ? '<span title="Nổi bật" style="color:var(--success);font-weight:700;">✔</span>'
+      : '<span style="color:var(--muted)">–</span>';
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="min-width:260px">
         <div style="font-weight:600">${escapeHtml(title)}</div>
-        <div style="color:var(--muted);font-size:12px">${escapeHtml(desc)}</div>
+        <div style="color:var(--muted);font-size:12px">${escapeHtml(String(desc).slice(0,120))}</div>
       </td>
       <td>${escapeHtml(category)}</td>
       <td>${escapeHtml(players)}</td>
-      <td>${g.featured ? 'Có' : 'Không'}</td>
-      <td style="display:flex;gap:8px">
+      <td style="text-align:center">${featuredHtml}</td>
+      <td style="display:flex;gap:6px">
         <button class="icon-btn icon-edit" title="Sửa" data-id="${escapeHtml(id)}" aria-label="Sửa">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
         </button>
         <button class="icon-btn icon-delete" title="Xóa" data-id="${escapeHtml(id)}" aria-label="Xóa">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
         </button>
-      </td>`;
+      </td>
+    `;
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll('.icon-edit').forEach(b=>b.addEventListener('click', onEditGame));
-  tbody.querySelectorAll('.icon-delete').forEach(b=>b.addEventListener('click', onDeleteGame));
+
+  // bind handlers if exist
+  tbody.querySelectorAll('.icon-edit').forEach(b=>b.addEventListener('click', (e)=>{ if (typeof onEditGame === 'function') return onEditGame(e); alert('Edit game not implemented'); }));
+  tbody.querySelectorAll('.icon-delete').forEach(b=>b.addEventListener('click', (e)=>{ if (typeof onDeleteGame === 'function') return onDeleteGame(e); alert('Delete game not implemented'); }));
 }
 
 // Game modal handlers

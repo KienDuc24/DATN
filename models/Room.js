@@ -1,17 +1,32 @@
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const PlayerSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  avatar: { type: String, default: null } // lưu avatar (nếu có)
-}, { _id: false });
+const RoomSchema = new Schema({
+  code: { type: String, required: true, unique: true },        // mã phòng hiển thị
+  game: {
+    id: { type: String },
+    name: { type: String },
+    // optional: point to local game folder id
+  },
+  owner: {
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    username: { type: String }
+  },
+  participants: [{
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    username: { type: String }
+  }],
+  status: { type: String, enum: ['open','playing','closed','waiting'], default: 'open' },
+  isOpen: { type: Boolean, default: true },
+  isPlaying: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
 
-const RoomSchema = new mongoose.Schema({
-  code: { type: String, required: true, index: true, unique: true },
-  host: { type: String, default: null },
-  players: { type: [PlayerSchema], default: [] },
-  locked: { type: Boolean, default: false } // phòng đang chơi hay chờ
-}, {
-  timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }
+// update updatedAt on save
+RoomSchema.pre('save', function(next){
+  this.updatedAt = Date.now();
+  next();
 });
 
 // Only store minimal fields in DB. Dynamic game state kept in memory by game handler.
