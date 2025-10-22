@@ -108,7 +108,10 @@
       <h2 id="roomFormTitle">Chỉnh sửa phòng</h2>
       <input type="hidden" id="roomId" />
       <input id="roomName" placeholder="Tên phòng" required />
-      <input id="roomGame" placeholder="Trò chơi" required />
+      <!-- game selector populated from public/games.json -->
+      <select id="roomGame" required>
+        <option value="">-- Chọn trò chơi --</option>
+      </select>
       <input id="roomOwner" placeholder="Người tạo" required />
       <select id="roomStatus"><option>Đang mở</option><option>Đang chơi</option><option>Đã đóng</option></select>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">

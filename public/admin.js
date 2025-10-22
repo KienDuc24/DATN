@@ -197,7 +197,7 @@ function renderRoomsTable(rooms){
   });
 }
 
-// Render games table (nổi bật hiển thị tick)
+// update: renderGamesTable shows checkbox and wires change handler
 function renderGamesTable(games){
   const tbody = document.getElementById('adminGamesList');
   if (!tbody) return;
@@ -217,10 +217,7 @@ function renderGamesTable(games){
     const category = (g.category && (g.category.vi || g.category.en)) ? (g.category.vi || g.category.en) : (g.category || '');
     const players = g.players || '';
 
-    // tick icon for featured
-    const featuredHtml = g.featured
-      ? '<span title="Nổi bật" style="color:var(--success);font-weight:700;">✔</span>'
-      : '<span style="color:var(--muted)">–</span>';
+    const featuredChecked = g.featured ? 'checked' : '';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -230,7 +227,9 @@ function renderGamesTable(games){
       </td>
       <td>${escapeHtml(category)}</td>
       <td>${escapeHtml(players)}</td>
-      <td style="text-align:center">${featuredHtml}</td>
+      <td style="text-align:center">
+        <input type="checkbox" class="game-feature-checkbox" data-id="${escapeHtml(id)}" ${featuredChecked} aria-label="Nổi bật"/>
+      </td>
       <td style="display:flex;gap:6px">
         <button class="icon-btn icon-edit" title="Sửa" data-id="${escapeHtml(id)}" aria-label="Sửa">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
@@ -243,9 +242,42 @@ function renderGamesTable(games){
     tbody.appendChild(tr);
   });
 
-  // bind handlers if exist
+  // wire checkbox events
+  tbody.querySelectorAll('.game-feature-checkbox').forEach(cb => {
+    cb.addEventListener('change', async (e) => {
+      const id = e.currentTarget.dataset.id;
+      const checked = e.currentTarget.checked;
+      try {
+        await updateGameFeatured(id, checked);
+        // optional: show small toast / visual feedback
+      } catch (err) {
+        console.error('update featured failed', err);
+        alert('Không thể cập nhật trạng thái nổi bật: ' + (err.message || err));
+        // revert UI
+        e.currentTarget.checked = !checked;
+      }
+    });
+  });
+
+  // bind edit/delete if exist
   tbody.querySelectorAll('.icon-edit').forEach(b=>b.addEventListener('click', (e)=>{ if (typeof onEditGame === 'function') return onEditGame(e); alert('Edit game not implemented'); }));
   tbody.querySelectorAll('.icon-delete').forEach(b=>b.addEventListener('click', (e)=>{ if (typeof onDeleteGame === 'function') return onDeleteGame(e); alert('Delete game not implemented'); }));
+}
+
+// helper: update featured flag via API
+async function updateGameFeatured(id, featured){
+  if (!id) throw new Error('missing id');
+  const res = await fetch(`${ADMIN_API}/api/admin/games/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ featured: !!featured })
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(()=>null);
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+  return res.json();
 }
 
 // Game modal handlers
@@ -375,7 +407,45 @@ async function onDeleteUser(e){ const id = e.currentTarget.dataset.id; if(!confi
 function openRoomForm(room){ showOverlay(true); el('roomFormPopup').style.display = 'block'; el('roomFormTitle').innerText = room ? 'Sửa phòng' : 'Thêm phòng'; el('roomId').value = room? room._id : ''; el('roomName').value = room? room.name : ''; el('roomGame').value = room? room.game : ''; el('roomOwner').value = room? room.owner : ''; el('roomStatus').value = room? room.status : 'Đang mở'; }
 function closeRoomForm(){ el('roomFormPopup').style.display='none'; showOverlay(false); }
 async function onEditRoom(e){ const id = e.currentTarget.dataset.id; try{ const rooms = await fetchRooms(); const r = rooms.find(x=>x._id===id); if(!r) return alert('Room not found'); openRoomForm(r); }catch(err){ console.error(err); alert('Lỗi'); } }
-async function saveRoom(e){ e.preventDefault(); const id = el('roomId').value; const payload = { name: el('roomName').value.trim(), game: el('roomGame').value.trim(), owner: el('roomOwner').value.trim(), status: el('roomStatus').value }; if(!payload.name) return alert('Tên phòng không được để trống'); try{ let res; if(id){ res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) }); } else { return alert('Tạo phòng mới chưa được hỗ trợ qua API từ admin panel.'); } if(!res.ok) { const txt = await res.text(); throw new Error(txt||res.status); } alert('Phòng cập nhật thành công'); closeRoomForm(); loadData(); }catch(err){ console.error(err); alert('Cập nhật thất bại: '+(err.message||err)); } }
+async function saveRoom(e){
+  e.preventDefault();
+  const id = el('roomId').value;
+  const payload = {
+    name: el('roomName').value.trim(),
+    owner: el('roomOwner').value.trim(),
+    status: el('roomStatus').value
+  };
+  const sel = el('roomGame');
+  if (sel) {
+    const selVal = sel.value;
+    if(!selVal) return alert('Vui lòng chọn trò chơi cho phòng.');
+    const selText = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : selVal;
+    payload.game = { id: selVal, name: selText };
+  } else {
+    payload.game = el('roomGame').value.trim();
+  }
+
+  if(!payload.name) return alert('Tên phòng không được để trống');
+  try{
+    let res;
+    if(id){
+      res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+    } else {
+      // if API supports create
+      res = await fetch(`${ADMIN_API}/api/admin/room`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+    }
+    if(!res.ok){
+      const txt = await res.text().catch(()=>null);
+      throw new Error(txt||res.status);
+    }
+    alert('Phòng lưu thành công');
+    closeRoomForm();
+    loadData();
+  }catch(err){
+    console.error(err);
+    alert('Cập nhật thất bại: ' + (err.message || err));
+  }
+}
 async function onDeleteRoom(e){ const id = e.currentTarget.dataset.id; if(!confirm('Xác nhận xóa phòng?')) return; try{ const res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'DELETE', credentials:'same-origin' }); if(!res.ok) throw new Error('delete failed'); alert('Đã xóa phòng'); loadData(); }catch(err){ console.error(err); alert('Xóa thất bại'); } }
 
 function logoutAdmin(){ fetch('/admin/logout',{method:'POST', credentials:'same-origin'}).finally(()=> location.href='/admin-login.html'); }
@@ -405,6 +475,106 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // ensure game form submit handler
   el('gameForm') && el('gameForm').addEventListener('submit', saveGame);
   // initial load already called below in previous code
+});
+
+// populate room game select from public/games.json
+async function populateGameOptions(){
+  const sel = el('roomGame');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">-- Chọn trò chơi --</option>';
+  try{
+    const res = await fetch(`${window.location.origin}/games.json`, { credentials: 'same-origin' });
+    if(!res.ok) return console.warn('games.json fetch failed', res.status);
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (Array.isArray(data.games) ? data.games : []);
+    list.forEach(g=>{
+      const gid = g.id || g._id || (g.name && (g.name.en || g.name.vi)) || '';
+      const label = (g.name && (g.name.vi || g.name.en)) ? (g.name.vi || g.name.en) : (g.title || gid);
+      if(!gid) return;
+      const opt = document.createElement('option');
+      opt.value = gid;
+      opt.textContent = label;
+      sel.appendChild(opt);
+    });
+  }catch(err){
+    console.error('populateGameOptions error', err);
+  }
+}
+
+// openRoomForm: set select value when editing
+function openRoomForm(room){
+  showOverlay(true);
+  el('roomFormPopup').style.display = 'block';
+  el('roomFormTitle').innerText = room ? 'Sửa phòng' : 'Thêm phòng';
+  el('roomId').value = room? (room._id || room.id || '') : '';
+  el('roomName').value = room? (room.name || '') : '';
+  // try to set select by room.game.id / room.game / room.gameName
+  const sel = el('roomGame');
+  const gameId = room ? ( (room.game && (room.game.id || room.game.name || room.game.title)) || room.game || room.gameName ) : '';
+  if(sel){
+    // ensure options exist, try to set value (if not yet populated it will be set after populate)
+    sel.value = gameId || '';
+  }
+  el('roomOwner').value = room? (room.owner || '') : '';
+  el('roomStatus').value = room? (room.status || 'Đang mở') : 'Đang mở';
+}
+
+// saveRoom: read selected option (id + text) and send as game object
+async function saveRoom(e){
+  e.preventDefault();
+  const id = el('roomId').value;
+  const payload = {
+    name: el('roomName').value.trim(),
+    owner: el('roomOwner').value.trim(),
+    status: el('roomStatus').value
+  };
+  const sel = el('roomGame');
+  if (sel) {
+    const selVal = sel.value;
+    if(!selVal) return alert('Vui lòng chọn trò chơi cho phòng.');
+    const selText = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : selVal;
+    payload.game = { id: selVal, name: selText };
+  } else {
+    payload.game = el('roomGame').value.trim();
+  }
+
+  if(!payload.name) return alert('Tên phòng không được để trống');
+  try{
+    let res;
+    if(id){
+      res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+    } else {
+      // if API supports create
+      res = await fetch(`${ADMIN_API}/api/admin/room`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+    }
+    if(!res.ok){
+      const txt = await res.text().catch(()=>null);
+      throw new Error(txt||res.status);
+    }
+    alert('Phòng lưu thành công');
+    closeRoomForm();
+    loadData();
+  }catch(err){
+    console.error(err);
+    alert('Cập nhật thất bại: ' + (err.message || err));
+  }
+}
+
+// ensure game options populated on startup and before opening form
+document.addEventListener('DOMContentLoaded', ()=>{
+  // existing wiring...
+  populateGameOptions().catch(()=>{});
+  // re-populate when opening add-room form button (in case games.json changed)
+  const addRoomBtn = document.querySelector('button[onclick="openRoomForm()"]');
+  if(addRoomBtn){
+    addRoomBtn.addEventListener('click', ()=> populateGameOptions());
+  }
+  // also repopulate when rooms tab is activated
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      if(b.getAttribute('data-tab') === 'roomsTab') populateGameOptions();
+    });
+  });
 });
 
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }

@@ -142,7 +142,8 @@ router.post('/games', async (req, res) => {
       name: payload.name || { vi: payload.name_vi || '', en: payload.name_en || '' },
       desc: payload.desc || { vi: payload.desc_vi || '', en: payload.desc_en || '' },
       players: payload.players || '',
-      category: payload.category || { vi: payload.category_vi || '', en: payload.category_en || '' }
+      category: payload.category || { vi: payload.category_vi || '', en: payload.category_en || '' },
+      featured: !!payload.featured
     };
     list.push(newGame);
     await fs.writeFile(GAMES_PATH, JSON.stringify(list, null, 2), 'utf8');
@@ -169,6 +170,7 @@ router.put('/games/:id', async (req, res) => {
     if (body.desc) g.desc = body.desc;
     if (typeof body.players === 'string') g.players = body.players;
     if (body.category) g.category = body.category;
+    if (typeof body.featured !== 'undefined') g.featured = !!body.featured;
     if (body.id && body.id !== id) {
       // ensure id unique
       if (list.find(x => (x.id || x._id) === body.id)) return res.status(400).json({ ok: false, message: 'id exists' });
