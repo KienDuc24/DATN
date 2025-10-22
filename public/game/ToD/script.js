@@ -1,5 +1,9 @@
 // Minimal robust client script — safe DOM ops, responsive avatars, socket events.
 (() => {
+  // create single socket instance (reuse everywhere)
+  const SOCKET_URL = "https://datn-socket.up.railway.app";
+  window.socket = window.socket || (window.io && io(SOCKET_URL, { transports: ['websocket'], secure: true }));
+
   function ensureJoin() {
     function getParam(name) {
       try {
@@ -10,8 +14,8 @@
     const roomCode = getParam('code') || getParam('room') || '';
     const userParam = getParam('user') || `guest_${Math.random().toString(36).slice(2,6)}`;
 
-    // reuse existing io() instance if present
-    const socket = (window.socketIoInstance && window.socketIoInstance.socket) || (window.socket = window.io && io()) || (window.io && io());
+    // reuse single global socket instance
+    const socket = window.socket;
 
     if (!socket) {
       console.warn('[ToD][client] socket.io not available');
@@ -67,7 +71,8 @@
   // create settings button + modal
   
 
-  const socket = io("https://datn-socket.up.railway.app", { transports: ['websocket'], secure: true });
+  // use the same socket instance created above
+  const socket = window.socket;
 
   socket.on('connect', () => {
     console.log('socket connected', socket.id);
