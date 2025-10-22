@@ -12,7 +12,7 @@ let QUESTIONS = { truth: [], dare: [] };
 try {
   const raw = fs.readFileSync(QUESTIONS_PATH, 'utf8');
   QUESTIONS = JSON.parse(raw || '{}');
-  console.log('[ToD] questions.json loaded ->', QUESTIONS_PATH, 'truth:', (QUESTIONS.truth||[]).length, 'dare:', (QUESTIONS.dare||[]).length);
+  console.log('[ToD] questions.json loaded ->', QUESTIONS_PATH, 'truth:', (QUESTIONS.truth || []).length, 'dare:', (QUESTIONS.dare || []).length);
 } catch (err) {
   console.warn('[ToD] cannot load questions.json at', QUESTIONS_PATH, err && err.message);
   QUESTIONS = { truth: ["Bạn có bí mật nào chưa kể với mọi người không?"], dare: ["Hát một đoạn bài hát trước mọi người."] };
@@ -37,10 +37,11 @@ function normalizePlayerInput(input) {
   if (typeof input === 'string') {
     const s = input.trim();
     if (!s) return null;
-    return { name: s, displayName: null, avatar: null };
+    return { name: s, displayName: null, avatar: null, email: null };
   }
   if (typeof input === 'object') {
-    const name = (input.name || input.username || input.displayName || input.displayname || input.email || '').toString().trim();
+    const nameRaw = input.name || input.username || input.displayName || input.displayname || input.email || '';
+    const name = (typeof nameRaw === 'string' ? nameRaw : String(nameRaw || '')).trim();
     const displayName = input.displayName || input.displayname || null;
     const avatar = input.avatar || input.avatarUrl || input.photo || null;
     const email = input.email || null;
@@ -67,13 +68,19 @@ async function attachAvatarsToPlayers(players) {
   if (displayNames.length) ors.push({ displayName: { $in: displayNames } });
   if (emails.length) ors.push({ email: { $in: emails } });
 
-  const users = await User.find({ $or: ors }).lean();
+  let users = [];
+  try {
+    users = await User.find({ $or: ors }).lean();
+  } catch (e) {
+    console.warn('[ToD] attachAvatarsToPlayers user lookup failed', e && e.message);
+    users = [];
+  }
+
   const map = {};
   users.forEach(u => {
     if (u.username) map[u.username] = u;
     if (u.displayName) map[u.displayName] = u;
     if (u.email) map[u.email] = u;
-    // try some alternate keys
     if (u.name) map[u.name] = u;
   });
 
@@ -87,14 +94,14 @@ async function attachAvatarsToPlayers(players) {
 }
 
 // helper: normalize players list from room document
-function getPlayersFromRoom(room){
+function getPlayersFromRoom(room) {
   if (!room) return [];
   // support different possible field names and types (string/object/map)
   let raw = [];
   if (Array.isArray(room.players) && room.players.length) raw = room.players;
   else if (Array.isArray(room.participants) && room.participants.length) raw = room.participants;
   else if (Array.isArray(room.playersList) && room.playersList.length) raw = room.playersList;
-  else if (room.players && typeof room.players === 'object') raw = Object.values(room.players).filter(Boolean);
+  else if (room.players && typeof room.players === 'object' && !Array.isArray(room.players)) raw = Object.values(room.players).filter(Boolean);
   else return [];
 
   // normalize each entry
@@ -106,7 +113,7 @@ function getPlayersFromRoom(room){
 }
 
 // when creating/updating room, ensure both fields exist (keep data compatible)
-async function ensureRoomPlayersField(roomDoc){
+async function ensureRoomPlayersField(roomDoc) {
   let changed = false;
   if (!Array.isArray(roomDoc.players) && Array.isArray(roomDoc.participants)) {
     roomDoc.players = roomDoc.participants;
@@ -119,7 +126,7 @@ async function ensureRoomPlayersField(roomDoc){
     changed = true;
   }
   if (changed) {
-    try { await roomDoc.save(); } catch(e){ /* ignore save failure for compatibility */ }
+    try { await roomDoc.save(); } catch (e) { /* ignore save failure for compatibility */ }
   }
   return roomDoc;
 }
@@ -131,6 +138,7 @@ module.exports = (socket, io) => {
     try {
       if (!roomCode) return socket.emit('tod-joined', { participants: [], host: null });
       const room = await Room.findOne({ code: roomCode }).lean();
+      console.log('[ToD][debug] tod-who room lookup:', { roomCode, found: !!room, roomSnapshot: room && { players: room.players, participants: room.participants, host: room.host, code: room.code } });
       if (!room) return socket.emit('tod-joined', { participants: [], host: null });
 
       const playersArr = getPlayersFromRoom(room);
@@ -167,7 +175,7 @@ module.exports = (socket, io) => {
   socket.on('tod-join', async ({ roomCode, player }) => {
     try {
       console.log('[ToD] tod-join received', { socketId: socket.id, roomCode, player });
-      const normalizedInput = normalizePlayerInput(player) || normalizePlayerInput(`guest_${socket.id.slice(0,6)}`);
+      const normalizedInput = normalizePlayerInput(player) || normalizePlayerInput(`guest_${socket.id.slice(0, 6)}`);
       if (!normalizedInput) return socket.emit('tod-join-failed', { reason: 'Invalid player' });
 
       const playerName = normalizedInput.name;
@@ -175,20 +183,27 @@ module.exports = (socket, io) => {
       const playerAvatarCandidate = normalizedInput.avatar;
 
       // try to resolve user by several fields
-      const user = await User.findOne({ $or: [{ username: playerName }, { displayName: playerName }, { email: normalizedInput.email }] }).lean();
+      let user = null;
+      try {
+        user = await User.findOne({ $or: [{ username: playerName }, { displayName: playerName }, { email: normalizedInput.email }] }).lean();
+      } catch (e) {
+        console.warn('[ToD] user lookup failed', e && e.message);
+      }
 
       let room = await Room.findOne({ code: roomCode });
+      console.log('[ToD][debug] tod-join room lookup (pre-create):', { roomCode, found: !!room, roomSnapshot: room && { players: room.players, participants: room.participants, host: room.host, code: room.code } });
+
       if (!room) {
         console.log('[ToD] creating new room', roomCode, playerName);
+        const playerObj = { name: playerName, displayName: playerDisplay || (user ? (user.displayName || null) : null), avatar: (user && (user.avatarUrl || user.avatar)) || playerAvatarCandidate || null };
         room = await Room.create({
           code: roomCode,
           host: playerName,
-          players: [{ name: playerName, displayName: playerDisplay || (user ? user.displayName || null : null), avatar: user?.avatarUrl || playerAvatarCandidate || null }],
-          participants: [{ name: playerName, displayName: playerDisplay || (user ? user.displayName || null : null), avatar: user?.avatarUrl || playerAvatarCandidate || null }],
+          players: [playerObj],
+          participants: [playerObj],
           status: 'open'
         });
       } else {
-        console.log('[ToD] found room document', { id: room._id, code: room.code, players: Array.isArray(room.players) ? room.players.length : 0, participants: Array.isArray(room.participants) ? room.participants.length : 0 });
         // ensure arrays exist and stay in sync
         await ensureRoomPlayersField(room);
         if (!Array.isArray(room.players)) room.players = [];
@@ -199,11 +214,11 @@ module.exports = (socket, io) => {
         });
 
         if (!exists) {
-          const toPush = { name: playerName, displayName: playerDisplay || (user ? user.displayName || null : null), avatar: user?.avatarUrl || playerAvatarCandidate || null };
+          const toPush = { name: playerName, displayName: playerDisplay || (user ? (user.displayName || null) : null), avatar: (user && (user.avatarUrl || user.avatar)) || playerAvatarCandidate || null };
           room.players.push(toPush);
           room.participants = room.players;
-          if (!room.host) room.host = room.players[0]?.name || playerName;
-          await room.save();
+          if (!room.host) room.host = room.players[0] && (room.players[0].name || room.players[0].displayName) || playerName;
+          try { await room.save(); } catch (e) { console.warn('[ToD] save room failed', e && e.message); }
           console.log('[ToD] appended player and saved room', { roomCode, player: playerName });
         } else {
           // still ensure participants in DB include this player
@@ -213,7 +228,7 @@ module.exports = (socket, io) => {
           });
           if (!existsInParticipants) {
             room.participants = room.players;
-            await room.save();
+            try { await room.save(); } catch (e) { console.warn('[ToD] sync participants save failed', e && e.message); }
             console.log('[ToD] synced participants array for room', roomCode);
           }
         }
@@ -223,7 +238,7 @@ module.exports = (socket, io) => {
       getRoomState(roomCode);
 
       const fresh = await Room.findOne({ code: roomCode }).lean();
-      const playersWithAvt = await attachAvatarsToPlayers(Array.isArray(fresh.players) ? fresh.players : []);
+      const playersWithAvt = await attachAvatarsToPlayers(Array.isArray(fresh && fresh.players) ? fresh.players : []);
       const state = getRoomState(roomCode);
 
       // normalize room status
@@ -261,12 +276,13 @@ module.exports = (socket, io) => {
       const room = await Room.findOne({ code: roomCode });
       if (!room || !Array.isArray(room.players) || room.players.length < 1) return;
       room.locked = true;
-      await room.save();
+      try { await room.save(); } catch (e) { console.warn('[ToD] save locked state failed', e && e.message); }
 
       const state = getRoomState(roomCode);
       if (typeof state.currentIndex !== 'number') state.currentIndex = 0;
 
       const playersNorm = getPlayersFromRoom(room);
+      if (!playersNorm.length) return;
       const currentPlayer = playersNorm[state.currentIndex % playersNorm.length].name;
       io.to(roomCode).emit('tod-your-turn', { player: currentPlayer });
     } catch (e) {
@@ -297,7 +313,7 @@ module.exports = (socket, io) => {
       const state = getRoomState(roomCode);
 
       const playersNorm = getPlayersFromRoom(room);
-      const currentAsked = playersNorm[state.currentIndex]?.name;
+      const currentAsked = playersNorm[state.currentIndex] && playersNorm[state.currentIndex].name;
       if (player === currentAsked) return;
       if (!state.votes) state.votes = [];
       if (!state.votes.some(v => v.player === player)) state.votes.push({ player, vote });
@@ -350,7 +366,7 @@ module.exports = (socket, io) => {
       });
       if (room.host === oldName) room.host = newName || room.host;
       if (changed) {
-        await room.save();
+        try { await room.save(); } catch (e) { console.warn('[ToD] save after profile-updated failed', e && e.message); }
         const playersWithAvt = await attachAvatarsToPlayers(room.players || []);
         io.to(roomCode).emit('tod-joined', { host: room.host, participants: playersWithAvt });
       }
@@ -363,7 +379,6 @@ module.exports = (socket, io) => {
     try {
       const rooms = Array.from(socket.rooms).filter(r => r !== socket.id);
       for (const rc of rooms) {
-        // optional cleanup logic; don't assume Room is undefined
         try {
           const room = await Room.findOne({ code: rc });
           if (!room) continue;
