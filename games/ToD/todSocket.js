@@ -168,6 +168,7 @@ module.exports = (socket, io) => {
 
       // emit to current socket and broadcast to room
       socket.emit('tod-joined', payload);
+      socket.emit('tod-joined', { players: payload.data.participants, host: payload.data.host, state: payload.state });
       io.to(roomCode).emit('tod-joined', payload);
     } catch (e) { console.error('[ToD] tod-who error', e); }
   });
@@ -182,7 +183,7 @@ module.exports = (socket, io) => {
       const playerDisplay = normalizedInput.displayName;
       const playerAvatarCandidate = normalizedInput.avatar;
 
-      // try to resolve user by several fields
+      // try to resolve user by several fields (best-effort)
       let user = null;
       try {
         user = await User.findOne({ $or: [{ username: playerName }, { displayName: playerName }, { email: normalizedInput.email }] }).lean();
@@ -190,48 +191,27 @@ module.exports = (socket, io) => {
         console.warn('[ToD] user lookup failed', e && e.message);
       }
 
-      let room = await Room.findOne({ code: roomCode });
-      console.log('[ToD][debug] tod-join room lookup (pre-create):', { roomCode, found: !!room, roomSnapshot: room && { players: room.players, participants: room.participants, host: room.host, code: room.code } });
+      const playerObj = {
+        name: playerName,
+        displayName: playerDisplay || (user ? (user.displayName || null) : null),
+        avatar: (user && (user.avatarUrl || user.avatar)) || playerAvatarCandidate || null
+      };
 
-      if (!room) {
-        console.log('[ToD] creating new room', roomCode, playerName);
-        const playerObj = { name: playerName, displayName: playerDisplay || (user ? (user.displayName || null) : null), avatar: (user && (user.avatarUrl || user.avatar)) || playerAvatarCandidate || null };
-        room = await Room.create({
-          code: roomCode,
-          host: playerName,
-          players: [playerObj],
-          participants: [playerObj],
-          status: 'open'
-        });
-      } else {
-        // ensure arrays exist and stay in sync
-        await ensureRoomPlayersField(room);
-        if (!Array.isArray(room.players)) room.players = [];
+      // atomic upsert + addToSet to avoid save/version conflicts
+      const room = await Room.findOneAndUpdate(
+        { code: roomCode },
+        {
+          $setOnInsert: { code: roomCode, host: playerName, status: 'open' },
+          $addToSet: { players: playerObj }
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
 
-        const exists = room.players.some(p => {
-          const np = normalizePlayerInput(p);
-          return np && np.name === playerName;
-        });
-
-        if (!exists) {
-          const toPush = { name: playerName, displayName: playerDisplay || (user ? (user.displayName || null) : null), avatar: (user && (user.avatarUrl || user.avatar)) || playerAvatarCandidate || null };
-          room.players.push(toPush);
-          room.participants = room.players;
-          if (!room.host) room.host = room.players[0] && (room.players[0].name || room.players[0].displayName) || playerName;
-          try { await room.save(); } catch (e) { console.warn('[ToD] save room failed', e && e.message); }
-          console.log('[ToD] appended player and saved room', { roomCode, player: playerName });
-        } else {
-          // still ensure participants in DB include this player
-          const existsInParticipants = Array.isArray(room.participants) && room.participants.some(p => {
-            const np = normalizePlayerInput(p);
-            return np && np.name === playerName;
-          });
-          if (!existsInParticipants) {
-            room.participants = room.players;
-            try { await room.save(); } catch (e) { console.warn('[ToD] sync participants save failed', e && e.message); }
-            console.log('[ToD] synced participants array for room', roomCode);
-          }
-        }
+      // ensure participants mirrors players (best-effort, atomic update)
+      try {
+        await Room.updateOne({ _id: room._id }, { $set: { participants: room.players, host: room.host || playerName } });
+      } catch (e) {
+        console.warn('[ToD] sync participants save failed', e && e.message);
       }
 
       socket.join(roomCode);
@@ -241,7 +221,6 @@ module.exports = (socket, io) => {
       const playersWithAvt = await attachAvatarsToPlayers(Array.isArray(fresh && fresh.players) ? fresh.players : []);
       const state = getRoomState(roomCode);
 
-      // normalize room status
       const roomStatus = fresh && (fresh.status || (fresh.isPlaying ? 'playing' : (fresh.isOpen ? 'open' : 'closed'))) || 'open';
 
       const payload = {
@@ -262,8 +241,8 @@ module.exports = (socket, io) => {
         }
       };
 
-      // emit to current socket and broadcast to room
       socket.emit('tod-joined', payload);
+      socket.emit('tod-joined', { players: payload.data.participants, host: payload.data.host, state: payload.state });
       io.to(roomCode).emit('tod-joined', payload);
     } catch (e) {
       console.error('[ToD] tod-join error', e);
@@ -273,10 +252,10 @@ module.exports = (socket, io) => {
 
   socket.on('tod-start-round', async ({ roomCode }) => {
     try {
-      const room = await Room.findOne({ code: roomCode });
+      // fetch only for validation / players list, update locked atomically
+      const room = await Room.findOne({ code: roomCode }).lean();
       if (!room || !Array.isArray(room.players) || room.players.length < 1) return;
-      room.locked = true;
-      try { await room.save(); } catch (e) { console.warn('[ToD] save locked state failed', e && e.message); }
+      await Room.updateOne({ _id: room._id }, { $set: { locked: true } }).catch(err => console.warn('[ToD] set locked failed', err && err.message));
 
       const state = getRoomState(roomCode);
       if (typeof state.currentIndex !== 'number') state.currentIndex = 0;
@@ -356,20 +335,32 @@ module.exports = (socket, io) => {
   socket.on('profile-updated', async ({ roomCode, oldName, newName, avatar }) => {
     try {
       if (!roomCode || !oldName) return;
-      const room = await Room.findOne({ code: roomCode });
-      if (!room) return;
-      let changed = false;
-      room.players = (room.players || []).map(p => {
-        const np = normalizePlayerInput(p);
-        if (np && np.name === oldName) { changed = true; return { name: newName || oldName, displayName: newName || null, avatar: avatar || (np.avatar || null) }; }
-        return p;
-      });
-      if (room.host === oldName) room.host = newName || room.host;
-      if (changed) {
-        try { await room.save(); } catch (e) { console.warn('[ToD] save after profile-updated failed', e && e.message); }
-        const playersWithAvt = await attachAvatarsToPlayers(room.players || []);
-        io.to(roomCode).emit('tod-joined', { host: room.host, participants: playersWithAvt });
+      // atomic update: update first matching player by name
+      const updates = {};
+      if (newName) {
+        updates['players.$.name'] = newName;
+        updates['players.$.displayName'] = newName;
       }
+      if (typeof avatar !== 'undefined') updates['players.$.avatar'] = avatar;
+
+      const res = await Room.updateOne({ code: roomCode, 'players.name': oldName }, { $set: updates }).catch(err => { console.warn('[ToD] profile update failed', err && err.message); return null; });
+      // if host matches oldName, update host field too
+      await Room.updateOne({ code: roomCode, host: oldName }, { $set: { host: newName || oldName } }).catch(()=>{});
+
+      // emit fresh players list
+      const fresh = await Room.findOne({ code: roomCode }).lean();
+      if (!fresh) return;
+      const playersWithAvt = await attachAvatarsToPlayers(fresh.players || []);
+      io.to(roomCode).emit('tod-joined', {
+        data: {
+          roomCode: fresh.code,
+          host: fresh.host,
+          status: fresh.status,
+          participantsCount: Array.isArray(fresh.players) ? fresh.players.length : 0,
+          participants: playersWithAvt
+        },
+        state: getRoomState(roomCode)
+      });
     } catch (e) {
       console.error('[ToD] profile-updated handler error', e);
     }

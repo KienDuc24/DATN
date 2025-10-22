@@ -1,5 +1,5 @@
 // Admin frontend: fetch data from /api/admin/*, edit modal UI, delete actions.
-const ADMIN_API = window.BASE_API_URL || window.location.origin;
+const ADMIN_API = window.BASE_API_URL ;
 
 function el(id){return document.getElementById(id);}
 function showOverlay(show){ el('popupOverlay').style.display = show ? 'block' : 'none'; }
