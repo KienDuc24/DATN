@@ -1,15 +1,17 @@
+const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
-const Room = require('../../models/Room');
-const User = require('../../models/User'); // <-- require User
-// load questions from file in public (fallback to built-in if missing)
-let QUESTIONS = null;
+const QUESTIONS_PATH = path.resolve(__dirname, '../../public/game/ToD/questions.json');
+
+let QUESTIONS = { truth: [], dare: [] };
 try {
-  QUESTIONS = require(path.resolve(__dirname, '../../public/game/ToD/questions.json'));
-  console.log('[ToD] questions.json loaded, truth:', QUESTIONS.truth?.length, 'dare:', QUESTIONS.dare?.length);
-} catch (e) {
-  console.warn('[ToD] questions.json not found, using fallback list');
+  const raw = fs.readFileSync(QUESTIONS_PATH, 'utf8');
+  QUESTIONS = JSON.parse(raw || '{}');
+  console.log('[ToD] questions.json loaded ->', QUESTIONS_PATH, 'truth:', (QUESTIONS.truth||[]).length, 'dare:', (QUESTIONS.dare||[]).length);
+} catch (err) {
+  console.warn('[ToD] cannot load questions.json at', QUESTIONS_PATH, err && err.message);
+  // fallback minimal content
   QUESTIONS = {
     truth: ["Bạn có bí mật nào chưa kể với mọi người không?"],
     dare: ["Hát một đoạn bài hát trước mọi người."]

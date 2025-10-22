@@ -161,28 +161,36 @@ router.put('/games/:id', async (req, res) => {
     const body = req.body || {};
     const raw = await fs.readFile(GAMES_PATH, 'utf8');
     const list = JSON.parse(raw || '[]');
-    const idx = list.findIndex(g => (g.id || g._id) === id);
-    if (idx === -1) return res.status(404).json({ ok: false, message: 'not found' });
 
-    const g = list[idx];
-    // update fields if provided
-    if (body.name) g.name = body.name;
-    if (body.desc) g.desc = body.desc;
-    if (typeof body.players === 'string') g.players = body.players;
-    if (body.category) g.category = body.category;
-    if (typeof body.featured !== 'undefined') g.featured = !!body.featured;
-    if (body.id && body.id !== id) {
-      // ensure id unique
-      if (list.find(x => (x.id || x._id) === body.id)) return res.status(400).json({ ok: false, message: 'id exists' });
-      g.id = body.id;
+    const idx = list.findIndex(g => String((g.id || g._id || '')).toLowerCase() === String(id).toLowerCase());
+    if (idx === -1) {
+      return res.status(404).json({ ok:false, message: 'game not found' });
     }
 
-    list[idx] = g;
+    const game = list[idx];
+
+    // Update allowed fields
+    if (body.name) game.name = body.name;
+    if (body.desc) game.desc = body.desc;
+    if (typeof body.players === 'string') game.players = body.players;
+    if (body.category) game.category = body.category;
+    if (typeof body.featured !== 'undefined') game.featured = !!body.featured;
+    if (body.id && body.id !== id) {
+      // ensure new id unique
+      if (list.some((x, i) => i !== idx && ((x.id || x._id) === body.id))) {
+        return res.status(400).json({ ok:false, message: 'id exists' });
+      }
+      game.id = body.id;
+    }
+
+    list[idx] = game;
     await fs.writeFile(GAMES_PATH, JSON.stringify(list, null, 2), 'utf8');
-    return res.json({ ok: true, game: g });
+
+    return res.json({ ok:true, game });
   } catch (err) {
-    console.error('[adminRoutes] update game error', err && err.message);
-    return res.status(500).json({ ok: false, message: 'cannot update game' });
+    console.error('[adminRoutes] PUT /games/:id error', err && err.stack ? err.stack : err);
+    // trả thông tin ngắn gọn cho client, log chi tiết ở server
+    return res.status(500).json({ ok:false, message: 'cannot update game', error: err.message });
   }
 });
 

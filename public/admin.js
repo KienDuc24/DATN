@@ -245,16 +245,20 @@ function renderGamesTable(games){
   // wire checkbox events
   tbody.querySelectorAll('.game-feature-checkbox').forEach(cb => {
     cb.addEventListener('change', async (e) => {
-      const id = e.currentTarget.dataset.id;
-      const checked = e.currentTarget.checked;
+      const cbEl = e.currentTarget;            // giữ tham chiếu
+      const id = cbEl.dataset.id;
+      const checked = cbEl.checked;
+      cbEl.disabled = true;                    // disable UI trong khi chờ
       try {
         await updateGameFeatured(id, checked);
-        // optional: show small toast / visual feedback
+        // thành công: giữ trạng thái mới
       } catch (err) {
         console.error('update featured failed', err);
         alert('Không thể cập nhật trạng thái nổi bật: ' + (err.message || err));
-        // revert UI
-        e.currentTarget.checked = !checked;
+        // revert UI using saved ref
+        try { cbEl.checked = !checked; } catch(e2){ console.warn('revert failed', e2); }
+      } finally {
+        cbEl.disabled = false;
       }
     });
   });
