@@ -95,10 +95,6 @@ function renderUsersTable(users){
           <!-- delete icon -->
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
         </button>
-        <button class="icon-btn icon-add" title="Thêm" data-id="${id}" aria-label="Thêm" style="background:linear-gradient(90deg,#ffd36b,#ff9f43);color:#061022">
-          <!-- plus -->
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
-        </button>
       </td>
     `;
     tbody.appendChild(tr);
