@@ -1,52 +1,58 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
-const { GoogleSpreadsheet } = require('google-spreadsheet');
-const doc = new GoogleSpreadsheet('1V9DHRD02AZTVp-jzHcJRFsY0-sxsPg_o3IW-uSYCx3o');
-const Room = require('../../models/Room');
-
-const creds = {
-  type: "service_account",
-  project_id: process.env.GOOGLE_PROJECT_ID,
-  private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
-  private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-  client_email: process.env.GOOGLE_CLIENT_EMAIL,
-  client_id: process.env.GOOGLE_CLIENT_ID,
-  auth_uri: "https://accounts.google.com/o/oauth2/auth",
-  token_uri: "https://oauth2.googleapis.com/token",
-  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-  client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(process.env.GOOGLE_CLIENT_EMAIL)}`,
-  universe_domain: "googleapis.com"
-};
-
-async function getRandomQuestion(type) {
-  await doc.useServiceAccountAuth({
-    client_email: creds.client_email,
-    private_key: creds.private_key,
-  });
-  await doc.loadInfo();
-  const sheet = doc.sheetsByIndex[0];
-  const rows = await sheet.getRows();
-  console.log("Row keys:", Object.keys(rows[0]));
-
-  // Tìm key phù hợp bất kể viết hoa/thường hay dấu cách
-  const col = type === "truth"
-    ? Object.keys(rows[0]).find(k => k.trim().toUpperCase().startsWith("TRUTH"))
-    : Object.keys(rows[0]).find(k => k.trim().toUpperCase().startsWith("DARE"));
-
-  if (!col) throw new Error("Không tìm thấy cột câu hỏi phù hợp!");
-
-  const questions = rows
-    .map(row => row[col])
-    .filter(q => typeof q === "string" && q.trim().length > 0);
-
-  console.log(`[ToD] Đã lấy được ${questions.length} câu hỏi (${col}):`, questions);
-
-  if (!questions.length) throw new Error("Không có câu hỏi nào!");
-  const random = questions[Math.floor(Math.random() * questions.length)];
-  return random;
+let GoogleSpreadsheet, doc;
+try {
+  // require only if installed
+  GoogleSpreadsheet = require('google-spreadsheet').GoogleSpreadsheet;
+  doc = new GoogleSpreadsheet('1V9DHRD02AZTVp-jzHcJRFsY0-sxsPg_o3IW-uSYCx3o');
+  console.log('[ToD] google-spreadsheet module loaded');
+} catch (err) {
+  console.warn('[ToD] google-spreadsheet not available, falling back to local questions. Error:', err.code || err.message);
+  GoogleSpreadsheet = null;
+  doc = null;
 }
 
-module.exports = (socket, io) => {
+const Room = require('../../models/Room');
+
+// fallback questions if Google sheet not available
+const FALLBACK_QUESTIONS = {
+  truth: [
+    "Bạn đã từng nói dối lớn nhất là gì?",
+    "Bạn có bí mật nào chưa kể với mọi người không?"
+  ],
+  dare: [
+    "Hát một đoạn bài hát trước mọi người.",
+    "Ăn một thìa ớt (hoặc tương tương ứng)."
+  ]
+};
+
+async function getRandomQuestion(type = 'truth') {
+  if (GoogleSpreadsheet && doc) {
+    try {
+      await doc.useServiceAccountAuth({
+        client_email: process.env.GOOGLE_CLIENT_EMAIL,
+        private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+      });
+      await doc.loadInfo();
+      const sheet = doc.sheetsByIndex[0];
+      const rows = await sheet.getRows();
+      // filter by type if your sheet has a type column, fallback to random row text
+      const items = rows.map(r => r._rawData.join(' ').trim()).filter(Boolean);
+      if (items.length === 0) throw new Error('No rows in sheet');
+      return items[Math.floor(Math.random() * items.length)];
+    } catch (e) {
+      console.error('[ToD] Error reading Google sheet, fallback to static questions:', e.message);
+      const arr = FALLBACK_QUESTIONS[type] || FALLBACK_QUESTIONS.truth;
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+  } else {
+    // fallback
+    const arr = FALLBACK_QUESTIONS[type] || FALLBACK_QUESTIONS.truth;
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+}
+
+module.exports = (socket, io, rooms) => {
   console.log(`[ToD] handler attached for socket ${socket.id}`);
 
   socket.on("tod-join", async ({ roomCode, player }) => {
