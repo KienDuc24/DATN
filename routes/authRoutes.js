@@ -121,12 +121,16 @@ router.post('/auth/login', async (req, res) => {
   }
 });
 
-// Update user (PUT /api/user)
+// Update user (PUT /api/user) - debug-friendly
 router.put('/user', async (req, res) => {
+  console.log('[authRoutes] PUT /user body=', req.body);
   try {
     const body = req.body || {};
     const identifier = body.username || body._id;
-    if (!identifier) return res.status(400).json({ ok: false, message: 'username or _id required' });
+    if (!identifier) {
+      console.warn('[authRoutes] missing identifier in body');
+      return res.status(400).json({ ok: false, message: 'username or _id required in request body' });
+    }
 
     const query = body._id ? { _id: body._id } : { username: identifier };
     const allowed = {};
@@ -134,14 +138,25 @@ router.put('/user', async (req, res) => {
     if (typeof body.email === 'string') allowed.email = body.email;
     if (typeof body.avatar === 'string') allowed.avatar = body.avatar;
 
-    if (Object.keys(allowed).length === 0) return res.status(400).json({ ok: false, message: 'no updatable fields' });
+    if (Object.keys(allowed).length === 0) {
+      console.warn('[authRoutes] no updatable fields provided');
+      return res.status(400).json({ ok: false, message: 'no updatable fields provided' });
+    }
 
-    const updated = await User.findOneAndUpdate(query, { $set: allowed }, { new: true }).select('-password');
-    if (!updated) return res.status(404).json({ ok: false, message: 'User not found' });
+    console.log('[authRoutes] updating user', { query, allowed });
+    const updated = await User.findOneAndUpdate(query, { $set: allowed }, { new: true, runValidators: true }).select('-password');
+    if (!updated) {
+      console.warn('[authRoutes] user not found for', query);
+      return res.status(404).json({ ok: false, message: 'User not found' });
+    }
 
+    console.log('[authRoutes] update success', updated._id.toString());
     return res.json({ ok: true, user: updated });
   } catch (err) {
-    console.error('[authRoutes] update user error', err && err.message);
+    console.error('[authRoutes] update user error', err && (err.stack || err.message));
+    if (err && err.name && err.name.includes('Mongo')) {
+      return res.status(500).json({ ok: false, message: 'MongoDB error', detail: err.message });
+    }
     return res.status(500).json({ ok: false, message: 'Internal error' });
   }
 });
