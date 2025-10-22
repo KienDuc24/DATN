@@ -1,5 +1,55 @@
 // Minimal robust client script — safe DOM ops, responsive avatars, socket events.
 (() => {
+  function ensureJoin() {
+    function getParam(name) {
+      try {
+        const u = new URL(window.location.href);
+        return u.searchParams.get(name);
+      } catch (e) { return null; }
+    }
+    const roomCode = getParam('code') || getParam('room') || '';
+    const userParam = getParam('user') || `guest_${Math.random().toString(36).slice(2,6)}`;
+
+    // reuse existing io() instance if present
+    const socket = (window.socketIoInstance && window.socketIoInstance.socket) || (window.socket = window.io && io()) || (window.io && io());
+
+    if (!socket) {
+      console.warn('[ToD][client] socket.io not available');
+      return;
+    }
+
+    socket.on('connect', () => {
+      console.log('[ToD][client] socket connected', socket.id, { roomCode, userParam });
+      // emit join so server adds this player to room.players (or at least responds with tod-joined)
+      socket.emit('tod-join', { roomCode, player: userParam });
+    });
+
+    // show server response — useful to debug participantsCount 0
+    socket.on('tod-joined', (payload) => {
+      console.log('[ToD][client] evt tod-joined', payload);
+      try {
+        const countEl = document.getElementById('playersCount');
+        const codeEl = document.getElementById('roomCode');
+        if (payload && payload.data) {
+          if (codeEl) codeEl.textContent = payload.data.roomCode || roomCode || '—';
+          if (countEl) countEl.textContent = 'Người chơi: ' + (payload.data.participantsCount || (payload.data.participants && payload.data.participants.length) || 0);
+          // optionally render avatars/names into #avatars
+          const avatars = document.getElementById('avatars');
+          if (avatars && Array.isArray(payload.data.participants)) {
+            avatars.innerHTML = payload.data.participants.map(p => {
+              const name = p.displayName || p.name || '';
+              return `<div class="avatar-item" title="${name}">${(name[0]||'?').toUpperCase()}</div>`;
+            }).join('');
+          }
+        }
+      } catch (e) { /* ignore UI update error */ }
+    });
+
+    socket.on('connect_error', (err) => console.warn('[ToD][client] connect_error', err));
+    socket.on('disconnect', (reason) => console.log('[ToD][client] disconnect', reason));
+  }
+  ensureJoin();
+
   const url = new URL(window.location.href);
   const params = new URLSearchParams(url.search);
   const roomCode = params.get('code') || '';
