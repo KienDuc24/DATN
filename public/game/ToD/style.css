@@ -1,0 +1,131 @@
+:root{
+  --bg:#071126;
+  --card:#ffffffee;
+  --muted:#9aa6ad;
+  --accent1:#00d4b4;
+  --accent2:#00b59a;
+  --danger:#ff6b6b;
+  --glass: rgba(255,255,255,0.04);
+  --radius:14px;
+  --max-width:980px;
+  --text:#ecf8f7;
+  --shadow: 0 12px 40px rgba(2,6,10,0.5);
+  --avatar-size:64px;
+  --ui-gap:12px;
+  --card-elev: 0 10px 30px rgba(3,8,14,0.6);
+  --accent-contrast: #012429;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#051026 0%, #0b1720 70%);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+.page{max-width:var(--max-width);margin:18px auto;padding:12px;display:flex;flex-direction:column;gap:16px}
+
+/* top bar */
+.topbar{background:linear-gradient(180deg,rgba(255,255,255,0.03), rgba(255,255,255,0.02));border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.topbar-inner{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.title{font-weight:700;color:#e8fbf9}
+.meta{display:flex;gap:12px;align-items:center}
+.room-code{background:linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));padding:6px 10px;border-radius:10px;color:var(--text);font-weight:700}
+.players-count{background:rgba(255,255,255,0.02);padding:6px 10px;border-radius:10px;color:var(--muted);font-weight:600}
+
+/* arena */
+.game-shell{display:flex;justify-content:center}
+.arena{width:100%;max-width:980px;min-height:64vh;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border-radius:18px;padding:18px;position:relative;box-shadow:var(--card-elev);overflow:hidden}
+.camp{position:relative;width:100%;height:62vh;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.camp-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.06;pointer-events:none}
+
+/* campfire centering fix: anchor centrally within arena */
+.campfire{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:140px;
+  height:140px;
+  z-index:40;
+}
+.campfire img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  filter:drop-shadow(0 10px 30px rgba(0,0,0,0.5));
+}
+@media (max-width:720px){
+  .campfire{ width:100px; height:100px; top:56%; }
+}
+
+/* avatars */
+.avatars{position:absolute;inset:0;pointer-events:none;z-index:30}
+.player{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:6px;width:var(--avatar-size);height:calc(var(--avatar-size) + 18px)}
+.player .pic{width:var(--avatar-size);height:var(--avatar-size);border-radius:50%;background:linear-gradient(180deg,#ffffff,#f0fff9);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,0.35);overflow:hidden;border:3px solid rgba(255,255,255,0.04)}
+.player.you .pic{outline:3px solid rgba(0,212,180,0.95);box-shadow:0 14px 36px rgba(0,212,180,0.06)}
+.player .name{font-size:0.78rem;color:var(--text);background:rgba(0,0,0,0.35);padding:4px 8px;border-radius:999px;white-space:nowrap}
+
+/* question card */
+.question-card{position:absolute;left:50%;top:10%;transform:translateX(-50%);min-width:320px;max-width:88%;padding:12px 14px;border-radius:12px;background:linear-gradient(180deg,#ffffff,#f3f7f7);color:#072026;font-weight:700;z-index:60;box-shadow:0 12px 40px rgba(0,0,0,0.25);display:flex;align-items:center;gap:10px}
+.question-card .q-text{flex:1;display:block}
+.question-card.collapsed .q-text{display:none}
+.question-card.collapsed{
+  position:fixed !important;
+  left:auto !important;
+  top:auto !important;
+  right:18px;
+  bottom:18px;
+  transform:none !important;
+  min-width:56px;
+  width:auto;
+  padding:8px 10px;
+  border-radius:999px;
+  box-shadow:0 20px 60px rgba(2,6,10,0.6);
+  background:linear-gradient(90deg,#ffffff,#f8faf9);
+  color:#032026;
+}
+
+/* ensure toggle icon visible in collapsed mode */
+.question-card .q-toggle{background:transparent;border:none;font-size:1.05rem;cursor:pointer;padding:6px;border-radius:8px;min-width:36px;min-height:36px}
+.question-card.truth{border-left:6px solid #7de1d1}
+.question-card.dare{border-left:6px solid #ff8aa3}
+
+/* expanded view */
+.question-card.expanded{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:min(880px,94%);
+  z-index:999;
+  padding:20px;
+  border-radius:18px;
+  box-shadow:0 30px 80px rgba(2,6,10,0.8);
+}
+
+/* controls bottom */
+.controls{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:12px;align-items:center;z-index:70}
+.turn-text{background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:10px;color:var(--text);font-weight:700}
+.action-btns{display:flex;gap:8px}
+.btn{padding:10px 14px;border-radius:12px;border:none;cursor:pointer;font-weight:800}
+.btn-accept{background:linear-gradient(90deg,#3be88c,#12c2a6);color:#042522}
+.btn-reject{background:linear-gradient(90deg,#ff7b7b,#ff6a4d);color:#fff}
+.btn-primary{background:linear-gradient(90deg,var(--accent2),var(--accent1));color:var(--accent-contrast)}
+
+/* footer */
+.footer{display:flex;justify-content:center}
+.vote-info{background:rgba(255,255,255,0.95);color:#072022;padding:8px 12px;border-radius:10px;display:none;box-shadow:0 8px 20px rgba(0,0,0,0.12)}
+
+/* hidden helper */
+.hidden{display:none !important}
+
+/* responsive */
+@media (max-width:720px){
+  :root{--avatar-size:52px}
+  .topbar-inner{flex-direction:column;align-items:flex-start;gap:8px}
+  .question-card{top:6%;min-width:240px;padding:10px}
+  .question-card.expanded{padding:14px}
+  .campfire{width:86px;height:86px;top:72%}
+  .controls{bottom:12px}
+  .turn-text{font-size:0.95rem}
+  .campfire{position:absolute;left:50%;top:72%;transform:translate(-50%,-8%);width:140px;height:140px;z-index:40}
+}
+@media (max-width:720px){
+  .campfire{width:100px;height:100px;top:78%;transform:translate(-50%,-6%)}
+}

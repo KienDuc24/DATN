@@ -1,212 +1,193 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
-
-let GoogleSpreadsheet, doc;
-try {
-  GoogleSpreadsheet = require('google-spreadsheet').GoogleSpreadsheet;
-  doc = new GoogleSpreadsheet('1V9DHRD02AZTVp-jzHcJRFsY0-sxsPg_o3IW-uSYCx3o');
-  console.log('[ToD] google-spreadsheet module loaded');
-} catch (err) {
-  console.warn('[ToD] google-spreadsheet not available, falling back to local questions. Error:', err && err.code ? err.code : err.message);
-  GoogleSpreadsheet = null;
-  doc = null;
-}
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const Room = require('../../models/Room');
+// load questions from file in public (fallback to built-in if missing)
+let QUESTIONS = null;
+try {
+  QUESTIONS = require(path.resolve(__dirname, '../../public/game/ToD/questions.json'));
+  console.log('[ToD] questions.json loaded, truth:', QUESTIONS.truth?.length, 'dare:', QUESTIONS.dare?.length);
+} catch (e) {
+  console.warn('[ToD] questions.json not found, using fallback list');
+  QUESTIONS = {
+    truth: ["Bạn có bí mật nào chưa kể với mọi người không?"],
+    dare: ["Hát một đoạn bài hát trước mọi người."]
+  };
+}
 
-const FALLBACK_QUESTIONS = {
-  truth: [
-    "Bạn đã từng nói dối lớn nhất là gì?",
-    "Bạn có bí mật nào chưa kể với mọi người không?"
-  ],
-  dare: [
-    "Hát một đoạn bài hát trước mọi người.",
-    "Ăn một thìa ớt (hoặc tương tương ứng)."
-  ]
-};
+// in-memory state per room — not persisted
+const ROOM_STATE = {}; // { [roomCode]: { currentIndex: number, lastQuestion, lastChoice, votes: [{player,vote}] } }
 
-async function getRandomQuestion(type = 'truth') {
-  if (GoogleSpreadsheet && doc) {
-    try {
-      await doc.useServiceAccountAuth({
-        client_email: process.env.GOOGLE_CLIENT_EMAIL,
-        private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-      });
-      await doc.loadInfo();
-      const sheet = doc.sheetsByIndex[0];
-      const rows = await sheet.getRows();
-      const items = rows.map(r => r._rawData.join(' ').trim()).filter(Boolean);
-      if (!items.length) throw new Error('No rows in sheet');
-      return items[Math.floor(Math.random() * items.length)];
-    } catch (e) {
-      console.error('[ToD] Error reading Google sheet, fallback to static questions:', e && e.message ? e.message : e);
-      const arr = FALLBACK_QUESTIONS[type] || FALLBACK_QUESTIONS.truth;
-      return arr[Math.floor(Math.random() * arr.length)];
-    }
-  } else {
-    const arr = FALLBACK_QUESTIONS[type] || FALLBACK_QUESTIONS.truth;
-    return arr[Math.floor(Math.random() * arr.length)];
-  }
+function getRoomState(code) {
+  if (!ROOM_STATE[code]) ROOM_STATE[code] = { currentIndex: 0, lastQuestion: null, lastChoice: null, votes: [] };
+  return ROOM_STATE[code];
+}
+
+function getRandomQuestion(type = 'truth') {
+  const arr = (QUESTIONS && QUESTIONS[type] && QUESTIONS[type].length) ? QUESTIONS[type] : (QUESTIONS.truth || []);
+  if (!arr.length) return 'Không có câu hỏi';
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 module.exports = (socket, io) => {
   console.log(`[ToD] handler attached for socket ${socket.id}`);
 
-  // trả trạng thái khi client yêu cầu
   socket.on('tod-who', async ({ roomCode }) => {
     try {
-      console.log(`[ToD] tod-who from ${socket.id}`, { roomCode });
       const room = await Room.findOne({ code: roomCode });
-      const payload = {
-        players: (room && room.players) ? room.players : [],
-        host: room && room.players && room.players[0] ? room.players[0].name : null,
-        lastQuestion: room ? room.lastQuestion : null,
-        lastChoice: room ? room.lastChoice : null
-      };
-      console.log(`[ToD] replying tod-joined -> socket ${socket.id}`, payload);
-      socket.emit('tod-joined', payload);
-      // nếu có câu hỏi active, gửi luôn
-      if (payload.lastQuestion) {
-        socket.emit('tod-question', {
-          player: payload.host,
-          choice: payload.lastChoice || 'truth',
-          question: payload.lastQuestion
-        });
+      if (!room) {
+        socket.emit('tod-joined', { players: [], host: null });
+        return;
       }
+      const state = ROOM_STATE[roomCode];
+      socket.emit('tod-joined', {
+        players: room.players || [],
+        host: room.host || (room.players[0] && room.players[0].name) || null,
+        lastQuestion: state ? state.lastQuestion : null,
+        lastChoice: state ? state.lastChoice : null
+      });
     } catch (e) {
-      console.error('[ToD] tod-who error', e && e.stack ? e.stack : e);
+      console.error('[ToD] tod-who error', e);
     }
   });
 
-  socket.on("tod-join", async ({ roomCode, player }) => {
-    console.log(`[ToD] tod-join from ${socket.id}`, { roomCode, player });
+  socket.on('tod-join', async ({ roomCode, player }) => {
     try {
-      // đảm bảo có tên, nếu không có dùng socket id làm guest
       player = (player && String(player).trim()) ? String(player).trim() : `guest_${socket.id.slice(0,6)}`;
 
       let room = await Room.findOne({ code: roomCode });
-
       if (!room) {
-        // tạo phòng mới với player
-        room = await Room.create({ code: roomCode, players: [{ name: player, order: 1 }] });
+        room = await Room.create({ code: roomCode, host: player, players: [{ name: player }] });
       } else {
         if (room.locked) {
-          socket.emit("tod-join-failed", { reason: "Phòng đã bắt đầu, không thể vào thêm!" });
+          socket.emit('tod-join-failed', { reason: 'Phòng đã bắt đầu, không thể vào thêm!' });
           return;
         }
-
-        // nếu trùng tên, thêm hậu tố để tránh bỏ qua vì duplicate
-        if (room.players.some(p => p.name === player)) {
-          const base = player;
-          let i = 2;
-          while (room.players.some(p => p.name === `${base} (${i})`)) i++;
-          player = `${base} (${i})`;
+        if (!room.players.some(p => p.name === player)) {
+          room.players.push({ name: player });
+          // keep host as first player
+          if (!room.host) room.host = room.players[0]?.name || player;
+          await room.save();
         }
-
-        room.players.push({ name: player, order: room.players.length + 1 });
-        await room.save();
       }
 
-      // đảm bảo join trước khi broadcast
       socket.join(roomCode);
+      // ensure in-memory state exists
+      getRoomState(roomCode);
 
-      // đọc lại room mới nhất từ DB và emit cho socket & room
+      // fetch fresh room
       const fresh = await Room.findOne({ code: roomCode });
       const payload = {
-        host: fresh.players[0]?.name || null,
+        host: fresh.host || (fresh.players[0] && fresh.players[0].name) || null,
         players: fresh.players || []
       };
 
-      console.log(`[ToD] emit tod-joined -> socket ${socket.id}`, payload);
+      // send directly to socket and broadcast
       socket.emit('tod-joined', payload);
-
-      console.log(`[ToD] broadcast tod-joined -> room ${roomCode}`, payload);
       io.to(roomCode).emit('tod-joined', payload);
-
-      // nếu có câu hỏi active, gửi cho tất cả
-      if (fresh.lastQuestion) {
-        console.log(`[ToD] broadcasting existing question to room ${roomCode}`);
-        io.to(roomCode).emit('tod-question', {
-          player: fresh.players[fresh.currentIndex]?.name,
-          choice: fresh.lastChoice || 'truth',
-          question: fresh.lastQuestion
-        });
-      }
     } catch (e) {
-      console.error('tod-join error', e && e.stack ? e.stack : e);
+      console.error('[ToD] tod-join error', e);
       socket.emit('tod-join-failed', { reason: 'Lỗi server' });
     }
   });
 
-  socket.on("tod-start-round", async ({ roomCode }) => {
-    console.log(`[ToD] tod-start-round from ${socket.id}`, { roomCode });
+  socket.on('tod-start-round', async ({ roomCode }) => {
     try {
       const room = await Room.findOne({ code: roomCode });
-      if (!room || room.players.length < 2) return;
+      if (!room || room.players.length < 1) return;
       room.locked = true;
-      if (typeof room.currentIndex !== 'number') room.currentIndex = 0;
       await room.save();
-      const currentPlayer = room.players[room.currentIndex % room.players.length].name;
-      io.to(roomCode).emit("tod-your-turn", { player: currentPlayer });
+
+      const state = getRoomState(roomCode);
+      if (typeof state.currentIndex !== 'number') state.currentIndex = 0;
+
+      const currentPlayer = room.players[state.currentIndex % room.players.length].name;
+      io.to(roomCode).emit('tod-your-turn', { player: currentPlayer });
     } catch (e) {
-      console.error('tod-start-round error', e && e.stack ? e.stack : e);
+      console.error('[ToD] tod-start-round error', e);
     }
   });
 
-  socket.on("tod-choice", async ({ roomCode, player, choice }) => {
-    console.log(`[ToD] tod-choice from ${socket.id}`, { roomCode, player, choice });
-    try {
-      const question = await getRandomQuestion(choice);
-      const room = await Room.findOneAndUpdate({ code: roomCode }, { lastChoice: choice, lastQuestion: question, votes: [] }, { new: true, upsert: false });
-      io.to(roomCode).emit("tod-question", { player, choice, question });
-    } catch (e) {
-      console.error("Lỗi lấy câu hỏi:", e && e.stack ? e.stack : e);
-      io.to(roomCode).emit("tod-question", { player, choice, question: "Không lấy được câu hỏi!" });
-    }
-  });
-
-  socket.on("tod-vote", async ({ roomCode, player, vote }) => {
-    console.log(`[ToD] tod-vote from ${socket.id}`, { roomCode, player, vote });
+  socket.on('tod-choice', async ({ roomCode, player, choice }) => {
     try {
       const room = await Room.findOne({ code: roomCode });
       if (!room) return;
-      const currentAsked = room.players[room.currentIndex]?.name;
+      const state = getRoomState(roomCode);
+      const question = getRandomQuestion(choice || 'truth');
+      state.lastChoice = choice;
+      state.lastQuestion = question;
+      state.votes = [];
+      io.to(roomCode).emit('tod-question', { player, choice, question });
+    } catch (e) {
+      console.error('[ToD] tod-choice error', e);
+      io.to(roomCode).emit('tod-question', { player, choice, question: 'Không lấy được câu hỏi!' });
+    }
+  });
+
+  socket.on('tod-vote', async ({ roomCode, player, vote }) => {
+    try {
+      const room = await Room.findOne({ code: roomCode });
+      if (!room) return;
+      const state = getRoomState(roomCode);
+      const currentAsked = room.players[state.currentIndex]?.name;
       if (player === currentAsked) return;
-      if (!room.votes) room.votes = [];
-      if (!room.votes.some(v => v.player === player)) {
-        room.votes.push({ player, vote });
-        await room.save();
+      if (!state.votes) state.votes = [];
+      if (!state.votes.some(v => v.player === player)) {
+        state.votes.push({ player, vote });
       }
-      const total = room.players.length - 1;
-      const voted = room.votes.length;
-      const acceptCount = room.votes.filter(v => v.vote === "accept").length;
-      io.to(roomCode).emit("tod-voted", { player, vote, acceptCount, voted, total });
+
+      const total = Math.max(0, (room.players.length - 1));
+      const voted = state.votes.length;
+      const acceptCount = state.votes.filter(v => v.vote === 'accept').length;
+
+      io.to(roomCode).emit('tod-voted', { player, vote, acceptCount, voted, total });
 
       if (voted === total) {
         if (acceptCount >= Math.ceil(total / 2)) {
-          io.to(roomCode).emit("tod-result", { result: "accepted" });
-          room.currentIndex = (room.currentIndex + 1) % room.players.length;
-          room.votes = [];
-          await room.save();
-          const nextPlayer = room.players[room.currentIndex].name;
-          setTimeout(() => io.to(roomCode).emit("tod-your-turn", { player: nextPlayer }), 2000);
+          io.to(roomCode).emit('tod-result', { result: 'accepted' });
+          // advance turn
+          state.votes = [];
+          state.currentIndex = (state.currentIndex + 1) % room.players.length;
+          // broadcast next turn after small delay
+          setTimeout(() => {
+            const nextPlayer = room.players[state.currentIndex].name;
+            io.to(roomCode).emit('tod-your-turn', { player: nextPlayer });
+          }, 800);
         } else {
-          io.to(roomCode).emit("tod-result", { result: "rejected" });
-          setTimeout(async () => {
-            room.votes = [];
-            const lastChoice = room.lastChoice || 'truth';
-            const question = await getRandomQuestion(lastChoice);
-            room.lastQuestion = question;
-            await room.save();
-            io.to(roomCode).emit("tod-question", {
-              player: room.players[room.currentIndex].name,
+          io.to(roomCode).emit('tod-result', { result: 'rejected' });
+          // pick a new question immediately, persist only in memory
+          const lastChoice = state.lastChoice || 'truth';
+          const newQ = getRandomQuestion(lastChoice);
+          state.lastQuestion = newQ;
+          state.votes = [];
+          setTimeout(() => {
+            io.to(roomCode).emit('tod-question', {
+              player: room.players[state.currentIndex].name,
               choice: lastChoice,
-              question
+              question: newQ
             });
-          }, 2000);
+          }, 700);
         }
       }
     } catch (e) {
-      console.error('tod-vote error', e && e.stack ? e.stack : e);
+      console.error('[ToD] tod-vote error', e);
+    }
+  });
+
+  // optional: handle leave / cleanup
+  socket.on('disconnecting', async () => {
+    try {
+      const rooms = Array.from(socket.rooms).filter(r => r !== socket.id);
+      for (const rc of rooms) {
+        // remove player from DB players list
+        const room = await Room.findOne({ code: rc });
+        if (!room) continue;
+        const idx = room.players.findIndex(p => p.name && p.name.startsWith && p.name.startsWith(socket.id.slice(0,6)) ? false : false);
+        // NOTE: we don't have mapping socket->player name server-side; client should emit leave if needed.
+        // Keep DB minimal — do not auto-delete here.
+      }
+    } catch (e) {
+      console.error('[ToD] disconnecting handler error', e);
     }
   });
 };

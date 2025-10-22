@@ -1,19 +1,17 @@
 const mongoose = require('mongoose');
 
 const PlayerSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  order: { type: Number, default: 0 }
+  name: { type: String, required: true }
 }, { _id: false });
 
 const RoomSchema = new mongoose.Schema({
   code: { type: String, required: true, index: true, unique: true },
-  gameId: { type: String, default: null },
+  host: { type: String, default: null },
   players: { type: [PlayerSchema], default: [] },
-  currentIndex: { type: Number, default: 0 },
-  locked: { type: Boolean, default: false },
-  votes: { type: [{ player: String, vote: String }], default: [] },
-  lastQuestion: { type: String, default: "" },
-  lastChoice: { type: String, default: "" }
-}, { timestamps: true });
+  locked: { type: Boolean, default: false } // phòng đang chơi hay chờ
+}, {
+  timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }
+});
 
+// Only store minimal fields in DB. Dynamic game state kept in memory by game handler.
 module.exports = mongoose.models.Room || mongoose.model('Room', RoomSchema);
