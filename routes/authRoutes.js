@@ -313,11 +313,12 @@ if (uploadHandler) {
 
 // GET /auth/google (OAuth start) & callback
 router.get('/google', (req, res, next) => {
-  // existing passport authenticate start
+  console.log('[authRoutes] GET /google');
+  // start oauth (passport)...
   next();
 });
 router.get('/google/callback', (req, res, next) => {
-  // existing passport callback
+  console.log('[authRoutes] GET /google/callback');
   next();
 });
 

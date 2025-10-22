@@ -97,4 +97,25 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
+// after all app.use(...) calls add:
+setTimeout(()=> {
+  try {
+    const routes = [];
+    app._router.stack.forEach(m => {
+      if (m.route && m.route.path) {
+        const methods = Object.keys(m.route.methods).join(',').toUpperCase();
+        routes.push(`${methods} ${m.route.path}`);
+      } else if (m.name === 'router' && m.handle && m.handle.stack) {
+        m.handle.stack.forEach(r => {
+          if (r.route && r.route.path) {
+            const methods = Object.keys(r.route.methods).join(',').toUpperCase();
+            routes.push(`${methods} ${r.route.path}  (parent mount: ${m.regexp})`);
+          }
+        });
+      }
+    });
+    console.log('[server] registered routes:\n' + routes.join('\n'));
+  } catch(e){ console.warn('list routes failed', e); }
+}, 500);
+
 module.exports = app;
