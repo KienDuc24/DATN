@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Room = require('../models/Room');
+const fs = require('fs').promises;
+const path = require('path');
+const GAMES_PATH = path.join(__dirname, '..', 'public', 'games.json');
 
 // Basic admin endpoints (no auth). Add auth middleware if needed.
 
@@ -105,6 +108,95 @@ router.delete('/room/:id', async (req, res) => {
   } catch (err) {
     console.error('[adminRoutes] delete room error', err && err.message);
     return res.status(500).json({ ok: false, message: 'error' });
+  }
+});
+
+// GAMES
+
+// GET /api/admin/games
+router.get('/games', async (req, res) => {
+  try {
+    const raw = await fs.readFile(GAMES_PATH, 'utf8');
+    const list = JSON.parse(raw || '[]');
+    return res.json({ ok: true, games: list });
+  } catch (err) {
+    console.error('[adminRoutes] read games error', err && err.message);
+    return res.status(500).json({ ok: false, message: 'cannot read games' });
+  }
+});
+
+// POST /api/admin/games  -> add new game
+router.post('/games', async (req, res) => {
+  try {
+    const payload = req.body || {};
+    if (!payload.id) return res.status(400).json({ ok: false, message: 'id required' });
+
+    const raw = await fs.readFile(GAMES_PATH, 'utf8');
+    const list = JSON.parse(raw || '[]');
+
+    if (list.find(g => (g.id || g._id) === payload.id)) return res.status(400).json({ ok: false, message: 'id exists' });
+
+    // normalize fields
+    const newGame = {
+      id: payload.id,
+      name: payload.name || { vi: payload.name_vi || '', en: payload.name_en || '' },
+      desc: payload.desc || { vi: payload.desc_vi || '', en: payload.desc_en || '' },
+      players: payload.players || '',
+      category: payload.category || { vi: payload.category_vi || '', en: payload.category_en || '' }
+    };
+    list.push(newGame);
+    await fs.writeFile(GAMES_PATH, JSON.stringify(list, null, 2), 'utf8');
+    return res.json({ ok: true, game: newGame });
+  } catch (err) {
+    console.error('[adminRoutes] create game error', err && err.message);
+    return res.status(500).json({ ok: false, message: 'cannot create game' });
+  }
+});
+
+// PUT /api/admin/games/:id  -> update by id
+router.put('/games/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const body = req.body || {};
+    const raw = await fs.readFile(GAMES_PATH, 'utf8');
+    const list = JSON.parse(raw || '[]');
+    const idx = list.findIndex(g => (g.id || g._id) === id);
+    if (idx === -1) return res.status(404).json({ ok: false, message: 'not found' });
+
+    const g = list[idx];
+    // update fields if provided
+    if (body.name) g.name = body.name;
+    if (body.desc) g.desc = body.desc;
+    if (typeof body.players === 'string') g.players = body.players;
+    if (body.category) g.category = body.category;
+    if (body.id && body.id !== id) {
+      // ensure id unique
+      if (list.find(x => (x.id || x._id) === body.id)) return res.status(400).json({ ok: false, message: 'id exists' });
+      g.id = body.id;
+    }
+
+    list[idx] = g;
+    await fs.writeFile(GAMES_PATH, JSON.stringify(list, null, 2), 'utf8');
+    return res.json({ ok: true, game: g });
+  } catch (err) {
+    console.error('[adminRoutes] update game error', err && err.message);
+    return res.status(500).json({ ok: false, message: 'cannot update game' });
+  }
+});
+
+// DELETE /api/admin/games/:id
+router.delete('/games/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const raw = await fs.readFile(GAMES_PATH, 'utf8');
+    let list = JSON.parse(raw || '[]');
+    const newList = list.filter(g => (g.id || g._id) !== id);
+    if (newList.length === list.length) return res.status(404).json({ ok: false, message: 'not found' });
+    await fs.writeFile(GAMES_PATH, JSON.stringify(newList, null, 2), 'utf8');
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[adminRoutes] delete game error', err && err.message);
+    return res.status(500).json({ ok: false, message: 'cannot delete game' });
   }
 });
 

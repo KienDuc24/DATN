@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Camping Game - Admin</title>
   <link rel="icon" type="image/svg+xml" href="img/fav.svg" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="admin.css">
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -15,406 +15,164 @@
       <span>Admin Panel</span>
     </div>
     <nav>
-      <a href="admin.html" class="active"><span class="icon">&#128295;</span> Quản lý trò chơi</a>
-      <a href="index.html"><span class="icon">&#8962;</span> Trang người dùng</a>
+      <a href="admin.html" class="active" data-tab="gamesTab"><span class="icon">🎮</span> Trò chơi</a>
+      <a href="admin.html" data-tab="roomsTab"><span class="icon">🛋️</span> Phòng chơi</a>
+      <a href="admin.html" data-tab="usersTab"><span class="icon">👥</span> Người dùng</a>
       <div class="sidebar-auth">
         <button onclick="logoutAdmin()">Đăng xuất</button>
       </div>
     </nav>
   </aside>
-  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
   <header>
-    <button class="sidebar-toggle" onclick="toggleSidebar()">
-      <span class="icon">&#9776;</span>
-    </button>
     <div class="header-main">
       <img src="img/fav.svg" alt="Camping Game Logo" class="logo-animate" />
-      <h1>Quản trị trò chơi</h1>
+      <h1>Dashboard Admin</h1>
     </div>
   </header>
+
   <main class="main-content fullheight">
-    <div class="admin-tabs">
-      <button class="tab-btn active" onclick="showTab('gamesTab')">Trò chơi</button>
-      <button class="tab-btn" onclick="showTab('roomsTab')">Phòng chơi</button>
-      <button class="tab-btn" onclick="showTab('playersTab')">Người chơi</button>
+    <div class="admin-tabs" role="tablist">
+      <button class="tab-btn" data-tab="gamesTab">Trò chơi</button>
+      <button class="tab-btn" data-tab="roomsTab">Phòng chơi</button>
+      <button class="tab-btn active" data-tab="usersTab">Người dùng</button>
     </div>
-    <!-- Quản lý trò chơi -->
-    <section id="gamesTab" class="admin-tab-content">
+
+    <!-- Games (local client-managed) -->
+    <section id="gamesTab" class="admin-tab-content" style="display:none">
       <div class="section-title-row">
         <div class="section-title">Danh sách trò chơi</div>
         <button class="btn" onclick="openGameForm()">+ Thêm trò chơi</button>
       </div>
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Tên trò chơi</th>
-            <th>Thể loại</th>
-            <th>Số người</th>
-            <th>Nổi bật</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody id="adminGamesList">
-          <!-- Dữ liệu sẽ được render bằng JS -->
-        </tbody>
-      </table>
-      <!-- Form thêm/sửa trò chơi -->
-      <div id="gameFormPopup" class="auth-popup">
-        <form class="auth-form" id="gameForm" autocomplete="off" onsubmit="return saveGame(event)">
-          <h2 id="gameFormTitle">Thêm trò chơi</h2>
-          <input type="hidden" name="id" id="gameId" />
-          <input type="text" name="name" id="gameName" placeholder="Tên trò chơi" required />
-          <input type="text" name="category" id="gameCategory" placeholder="Thể loại" required />
-          <input type="number" name="players" id="gamePlayers" placeholder="Số người" min="1" required />
-          <label>
-            <input type="checkbox" name="featured" id="gameFeatured" />
-            Nổi bật
-          </label>
-          <button type="submit">Lưu</button>
-          <div id="gameFormMsg" class="auth-msg"></div>
-          <span class="auth-close" onclick="closeGameForm()">&times;</span>
-        </form>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Tên</th><th>Thể loại</th><th>Số người</th><th>Nổi bật</th><th>Hành động</th></tr>
+          </thead>
+          <tbody id="adminGamesList"></tbody>
+        </table>
       </div>
-      <div id="popupOverlay" class="popup-overlay" onclick="closeGameForm()"></div>
     </section>
-    <!-- Quản lý phòng chơi -->
+
+    <!-- Rooms (from API) -->
     <section id="roomsTab" class="admin-tab-content" style="display:none">
       <div class="section-title-row">
         <div class="section-title">Danh sách phòng chơi</div>
-        <button class="btn" onclick="openRoomForm()">+ Thêm phòng</button>
+        <div class="controls">
+          <input id="roomsSearch" placeholder="Tìm phòng..." />
+          <button class="btn" onclick="openRoomForm()">+ Thêm phòng</button>
+        </div>
       </div>
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Tên phòng</th>
-            <th>Trò chơi</th>
-            <th>Người tạo</th>
-            <th>Trạng thái</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody id="adminRoomsList">
-          <!-- Dữ liệu phòng sẽ render bằng JS -->
-        </tbody>
-      </table>
-      <!-- Form thêm/sửa phòng -->
-      <div id="roomFormPopup" class="auth-popup">
-        <form class="auth-form" id="roomForm" autocomplete="off" onsubmit="return saveRoom(event)">
-          <h2 id="roomFormTitle">Thêm phòng</h2>
-          <input type="hidden" name="id" id="roomId" />
-          <input type="text" name="name" id="roomName" placeholder="Tên phòng" required />
-          <input type="text" name="game" id="roomGame" placeholder="Trò chơi" required />
-          <input type="text" name="owner" id="roomOwner" placeholder="Người tạo" required />
-          <select name="status" id="roomStatus">
-            <option value="Đang mở">Đang mở</option>
-            <option value="Đang chơi">Đang chơi</option>
-            <option value="Đã đóng">Đã đóng</option>
-          </select>
-          <button type="submit">Lưu</button>
-          <span class="auth-close" onclick="closeRoomForm()">&times;</span>
-        </form>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Tên phòng</th><th>Trò chơi</th><th>Người tạo</th><th>Trạng thái</th><th>Hành động</th></tr>
+          </thead>
+          <tbody id="adminRoomsList"></tbody>
+        </table>
       </div>
     </section>
-    <!-- Quản lý người chơi -->
-    <section id="playersTab" class="admin-tab-content" style="display:none">
+
+    <!-- Users (from API) -->
+    <section id="usersTab" class="admin-tab-content">
       <div class="section-title-row">
-        <div class="section-title">Danh sách người chơi</div>
+        <div class="section-title">Người dùng</div>
+        <div class="controls">
+          <input id="usersSearch" placeholder="Tìm username hoặc email..." />
+          <button class="btn" onclick="loadData()">Làm mới</button>
+        </div>
       </div>
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Tên</th>
-            <th>Email</th>
-            <th>Phòng</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody id="adminPlayersList">
-          <!-- Dữ liệu người chơi sẽ render bằng JS -->
-        </tbody>
-      </table>
-    </section>
-    <!-- Quản lý người dùng -->
-    <section id="usersTab" class="admin-tab-content" style="display:none">
-      <div class="section-title-row">
-        <div class="section-title">Danh sách người dùng</div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Hành động</th></tr></thead>
+          <tbody id="adminUsersList"></tbody>
+        </table>
       </div>
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody id="adminUsersList">
-          <!-- Dữ liệu người dùng sẽ render bằng JS -->
-        </tbody>
-      </table>
     </section>
   </main>
-  <footer>
-    &copy; 2025 Camping Game Admin.
-  </footer>
+
+  <footer style="margin-left:220px;padding:14px;color:var(--muted)">© 2025 Camping Game Admin</footer>
+
+  <div id="popupOverlay" class="popup-overlay"></div>
+
+  <!-- Room edit modal -->
+  <div id="roomFormPopup" class="auth-popup">
+    <form id="roomForm" class="auth-form" onsubmit="return saveRoom(event)">
+      <h2 id="roomFormTitle">Chỉnh sửa phòng</h2>
+      <input type="hidden" id="roomId" />
+      <input id="roomName" placeholder="Tên phòng" required />
+      <input id="roomGame" placeholder="Trò chơi" required />
+      <input id="roomOwner" placeholder="Người tạo" required />
+      <select id="roomStatus"><option>Đang mở</option><option>Đang chơi</option><option>Đã đóng</option></select>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button type="button" onclick="closeRoomForm()" class="action-btn">Hủy</button>
+        <button type="submit" class="btn">Lưu</button>
+      </div>
+      <span class="auth-close" onclick="closeRoomForm()">×</span>
+    </form>
+  </div>
+
+  <!-- User edit modal -->
+  <div id="userFormPopup" class="auth-popup">
+    <form id="userForm" class="auth-form" onsubmit="return saveUser(event)">
+      <h2 id="userFormTitle">Chỉnh sửa người dùng</h2>
+      <input type="hidden" id="userId" />
+      <input id="userUsername" placeholder="Username" required />
+      <input id="userEmail" placeholder="Email" />
+      <select id="userRole"><option value="user">user</option><option value="admin">admin</option></select>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button type="button" onclick="closeUserForm()" class="action-btn">Hủy</button>
+        <button type="submit" class="btn">Lưu</button>
+      </div>
+      <span class="auth-close" onclick="closeUserForm()">×</span>
+    </form>
+  </div>
+
+  <!-- add Game edit modal (place before closing body) -->
+  <div id="gameFormPopup" class="auth-popup">
+    <form id="gameForm" class="auth-form" onsubmit="return saveGame(event)">
+      <h2 id="gameFormTitle">Chỉnh sửa trò chơi</h2>
+      <input type="hidden" id="gameIdOrig" />
+      <label>Tên (VI)</label>
+      <input id="gameNameVI" placeholder="Tên tiếng Việt" />
+      <label>Tên (EN)</label>
+      <input id="gameNameEN" placeholder="Name (English)" />
+      <label>Mô tả (VI)</label>
+      <input id="gameDescVI" placeholder="Mô tả tiếng Việt" />
+      <label>Mô tả (EN)</label>
+      <input id="gameDescEN" placeholder="Description (English)" />
+      <label>Players (e.g. 3+)</label>
+      <input id="gamePlayers" placeholder="3+" />
+      <label>Category (VI)</label>
+      <input id="gameCatVI" placeholder="Thể loại (VI)" />
+      <label>Category (EN)</label>
+      <input id="gameCatEN" placeholder="Category (EN)" />
+      <label>ID (unique)</label>
+      <input id="gameId" placeholder="Draw" required />
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button type="button" onclick="closeGameForm()" class="action-btn">Hủy</button>
+        <button type="submit" class="btn">Lưu</button>
+      </div>
+      <span class="auth-close" onclick="closeGameForm()">×</span>
+    </form>
+  </div>
+
   <script src="admin.js"></script>
   <script>
-    // Dữ liệu mẫu, thay bằng fetch từ server/games.json nếu cần
-    let games = [
-      {id: 1, name: "Draw", category: "Vẽ", players: 4, featured: true},
-      {id: 2, name: "ToD", category: "Truth or Dare", players: 6, featured: false}
-    ];
-    function renderGames() {
-      const tbody = document.getElementById('adminGamesList');
-      tbody.innerHTML = '';
-      games.forEach(game => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${game.name}</td>
-            <td>${game.category}</td>
-            <td>${game.players}</td>
-            <td>${game.featured ? "✔️" : ""}</td>
-            <td>
-              <button onclick="editGame(${game.id})">Sửa</button>
-              <button onclick="deleteGame(${game.id})">Xóa</button>
-            </td>
-          </tr>
-        `;
+    // wire sidebar tab clicks to showTab
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.sidebar nav a').forEach(a=>{
+        a.addEventListener('click', (e)=>{
+          const t = a.getAttribute('data-tab');
+          if (t) {
+            document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b=>{ if (b.getAttribute('data-tab')===t) b.classList.add('active') });
+            showTab(t);
+            e.preventDefault();
+          }
+        });
       });
-    }
-    function openGameForm(edit = false) {
-      document.getElementById('gameFormPopup').style.display = 'flex';
-      document.getElementById('popupOverlay').style.display = 'block';
-      document.getElementById('gameFormTitle').innerText = edit ? "Sửa trò chơi" : "Thêm trò chơi";
-      if (!edit) {
-        document.getElementById('gameForm').reset();
-        document.getElementById('gameId').value = '';
-      }
-    }
-    function closeGameForm() {
-      document.getElementById('gameFormPopup').style.display = 'none';
-      document.getElementById('popupOverlay').style.display = 'none';
-    }
-    function saveGame(e) {
-      e.preventDefault();
-      const id = document.getElementById('gameId').value;
-      const name = document.getElementById('gameName').value;
-      const category = document.getElementById('gameCategory').value;
-      const players = parseInt(document.getElementById('gamePlayers').value);
-      const featured = document.getElementById('gameFeatured').checked;
-      if (id) {
-        // Sửa
-        const idx = games.findIndex(g => g.id == id);
-        games[idx] = {id: Number(id), name, category, players, featured};
-      } else {
-        // Thêm mới
-        const newId = games.length ? Math.max(...games.map(g => g.id)) + 1 : 1;
-        games.push({id: newId, name, category, players, featured});
-      }
-      renderGames();
-      closeGameForm();
-      return false;
-    }
-    function editGame(id) {
-      const game = games.find(g => g.id == id);
-      openGameForm(true);
-      document.getElementById('gameId').value = game.id;
-      document.getElementById('gameName').value = game.name;
-      document.getElementById('gameCategory').value = game.category;
-      document.getElementById('gamePlayers').value = game.players;
-      document.getElementById('gameFeatured').checked = game.featured;
-    }
-    function deleteGame(id) {
-      if (confirm("Bạn có chắc muốn xóa trò chơi này?")) {
-        games = games.filter(g => g.id != id);
-        renderGames();
-      }
-    }
-    function logoutAdmin() {
-      alert("Đăng xuất thành công!");
-      window.location.href = "index.html";
-    }
-    // Tab chuyển đổi
-    function showTab(tabId) {
-      document.querySelectorAll('.admin-tab-content').forEach(e => e.style.display = 'none');
-      document.querySelectorAll('.tab-btn').forEach(e => e.classList.remove('active'));
-      document.getElementById(tabId).style.display = '';
-      event.target.classList.add('active');
-    }
-
-    // Dữ liệu mẫu phòng chơi và người chơi
-    let rooms = [
-      {id: 1, name: "Phòng 1", game: "Draw", owner: "admin", status: "Đang mở"},
-      {id: 2, name: "Phòng 2", game: "ToD", owner: "user1", status: "Đang chơi"}
-    ];
-    let players = [
-      {id: 1, name: "Nguyễn Văn A", email: "a@gmail.com", room: "Phòng 1"},
-      {id: 2, name: "Trần Thị B", email: "b@gmail.com", room: "Phòng 2"}
-    ];
-
-    // Render phòng chơi
-    function renderRooms() {
-      const tbody = document.getElementById('adminRoomsList');
-      tbody.innerHTML = '';
-      rooms.forEach(room => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${room.name}</td>
-            <td>${room.game}</td>
-            <td>${room.owner}</td>
-            <td>${room.status}</td>
-            <td>
-              <button onclick="editRoom(${room.id})">Sửa</button>
-              <button onclick="deleteRoom(${room.id})">Xóa</button>
-            </td>
-          </tr>
-        `;
-      });
-    }
-    function openRoomForm(edit = false) {
-      document.getElementById('roomFormPopup').style.display = 'flex';
-      document.getElementById('popupOverlay').style.display = 'block';
-      document.getElementById('roomFormTitle').innerText = edit ? "Sửa phòng" : "Thêm phòng";
-      if (!edit) {
-        document.getElementById('roomForm').reset();
-        document.getElementById('roomId').value = '';
-      }
-    }
-    function closeRoomForm() {
-      document.getElementById('roomFormPopup').style.display = 'none';
-      document.getElementById('popupOverlay').style.display = 'none';
-    }
-    function saveRoom(e) {
-      e.preventDefault();
-      const id = document.getElementById('roomId').value;
-      const name = document.getElementById('roomName').value;
-      const game = document.getElementById('roomGame').value;
-      const owner = document.getElementById('roomOwner').value;
-      const status = document.getElementById('roomStatus').value;
-      if (id) {
-        const idx = rooms.findIndex(r => r.id == id);
-        rooms[idx] = {id: Number(id), name, game, owner, status};
-      } else {
-        const newId = rooms.length ? Math.max(...rooms.map(r => r.id)) + 1 : 1;
-        rooms.push({id: newId, name, game, owner, status});
-      }
-      renderRooms();
-      closeRoomForm();
-      return false;
-    }
-    function editRoom(id) {
-      const room = rooms.find(r => r.id == id);
-      openRoomForm(true);
-      document.getElementById('roomId').value = room.id;
-      document.getElementById('roomName').value = room.name;
-      document.getElementById('roomGame').value = room.game;
-      document.getElementById('roomOwner').value = room.owner;
-      document.getElementById('roomStatus').value = room.status;
-    }
-    function deleteRoom(id) {
-      if (confirm("Bạn có chắc muốn xóa phòng này?")) {
-        rooms = rooms.filter(r => r.id != id);
-        renderRooms();
-      }
-    }
-
-    // Render người chơi
-    function renderPlayers() {
-      const tbody = document.getElementById('adminPlayersList');
-      tbody.innerHTML = '';
-      players.forEach(player => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${player.name}</td>
-            <td>${player.email}</td>
-            <td>${player.room}</td>
-            <td>
-              <button onclick="deletePlayer(${player.id})">Xóa</button>
-            </td>
-          </tr>
-        `;
-      });
-    }
-    function deletePlayer(id) {
-      if (confirm("Bạn có chắc muốn xóa người chơi này?")) {
-        players = players.filter(p => p.id != id);
-        renderPlayers();
-      }
-    }
-
-    // Dữ liệu mẫu người dùng
-    let users = [
-      {id: 1, username: "admin", email: "admin@gmail.com", role: "Quản trị viên"},
-      {id: 2, username: "user1", email: "user1@gmail.com", role: "Người dùng"}
-    ];
-    // Render người dùng
-    function renderUsers() {
-      const tbody = document.getElementById('adminUsersList');
-      tbody.innerHTML = '';
-      users.forEach(user => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${user.username}</td>
-            <td>${user.email}</td>
-            <td>${user.role}</td>
-            <td>
-              <button onclick="editUser(${user.id})">Sửa</button>
-              <button onclick="deleteUser(${user.id})">Xóa</button>
-            </td>
-          </tr>
-        `;
-      });
-    }
-    function openUserForm(edit = false) {
-      document.getElementById('userFormPopup').style.display = 'flex';
-      document.getElementById('popupOverlay').style.display = 'block';
-      document.getElementById('userFormTitle').innerText = edit ? "Sửa người dùng" : "Thêm người dùng";
-      if (!edit) {
-        document.getElementById('userForm').reset();
-        document.getElementById('userId').value = '';
-      }
-    }
-    function closeUserForm() {
-      document.getElementById('userFormPopup').style.display = 'none';
-      document.getElementById('popupOverlay').style.display = 'none';
-    }
-    function saveUser(e) {
-      e.preventDefault();
-      const id = document.getElementById('userId').value;
-      const username = document.getElementById('username').value;
-      const email = document.getElementById('email').value;
-      const role = document.getElementById('role').value;
-      if (id) {
-        const idx = users.findIndex(u => u.id == id);
-        users[idx] = {id: Number(id), username, email, role};
-      } else {
-        const newId = users.length ? Math.max(...users.map(u => u.id)) + 1 : 1;
-        users.push({id: newId, username, email, role});
-      }
-      renderUsers();
-      closeUserForm();
-      return false;
-    }
-    function editUser(id) {
-      const user = users.find(u => u.id == id);
-      openUserForm(true);
-      document.getElementById('userId').value = user.id;
-      document.getElementById('username').value = user.username;
-      document.getElementById('email').value = user.email;
-      document.getElementById('role').value = user.role;
-    }
-    function deleteUser(id) {
-      if (confirm("Bạn có chắc muốn xóa người dùng này?")) {
-        users = users.filter(u => u.id != id);
-        renderUsers();
-      }
-    }
-
-    // Khởi tạo
-    renderGames();
-    renderRooms();
-    renderPlayers();
-    renderUsers();
+    });
   </script>
 </body>
 </html>
