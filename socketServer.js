@@ -24,15 +24,22 @@ app.use(express.static(path.join(__dirname, 'public')));
   }
 })();
 
-// safe globals
+// Robust startup helpers (insert at very top)
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err && err.stack ? err.stack : err);
+  console.error('[FATAL] uncaughtException:', err && (err.stack || err.message || err));
+  // keep logs flush then exit
+  setTimeout(()=> process.exit(1), 200);
 });
-process.on('unhandledRejection', (reason, p) => {
-  console.error('Unhandled Rejection at:', p, 'reason:', reason);
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] unhandledRejection:', reason);
 });
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received - shutting down gracefully');
+  console.warn('[SIGTERM] received, shutting down gracefully');
+  try { if (global.__server && typeof global.__server.close === 'function') global.__server.close(); } catch(e){ console.error('shutdown error', e); }
+  setTimeout(()=> process.exit(0), 200);
+});
+process.on('SIGINT', () => {
+  console.warn('[SIGINT] received');
   process.exit(0);
 });
 

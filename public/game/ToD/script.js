@@ -137,4 +137,18 @@
   window.addEventListener('resize', () => {
     socket.emit('tod-who', { roomCode });
   });
+
+  // fallback cho ActionBtns nếu chưa có (ngăn ReferenceError)
+  if (typeof window.ActionBtns === 'undefined') {
+    window.ActionBtns = {
+      enable() {
+        document.querySelectorAll('.action-btn').forEach(b => { b.disabled = false; });
+      },
+      disable() {
+        document.querySelectorAll('.action-btn').forEach(b => { b.disabled = true; });
+      },
+      // tiện ích thêm nếu code khác gọi
+      setDisabled(v) { return v ? this.disable() : this.enable(); }
+    };
+  }
 })();
