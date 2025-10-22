@@ -1,16 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 
-// debug log on load
 console.log('[authRoutes] loaded');
 
-// uploads dir: try public/uploads, fallback to os.tmpdir()
+// ensure uploads dir or fallback to tmp
 let uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
 try {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -21,20 +19,31 @@ try {
   console.log('[authRoutes] using tmp uploadsDir:', uploadsDir);
 }
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
-  },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname);
-    const name = `${Date.now()}-${Math.random().toString(36).slice(2,8)}${ext}`;
-    cb(null, name);
-  }
-});
-const upload = multer({ storage });
+// Try require multer; if it fails (ESM-only), fall back to formidable
+let multerInstance = null;
+let useFormidable = false;
+try {
+  multerInstance = require('multer'); // may throw in ESM-only builds
+  console.log('[authRoutes] multer loaded');
+} catch (err) {
+  console.warn('[authRoutes] multer require failed, falling back to formidable:', err && err.message);
+  useFormidable = true;
+}
 
-// simple health check for routes
-router.get('/_status', (req, res) => res.json({ ok: true, msg: 'authRoutes ok' }));
+let uploadHandler = null;
+if (!useFormidable && multerInstance) {
+  const storage = multerInstance.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadsDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname || '');
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2,8)}${ext}`);
+    }
+  });
+  uploadHandler = multerInstance({ storage });
+}
+
+// debug health route
+router.get('/_status', (req, res) => res.json({ ok: true, msg: 'authRoutes OK', uploadsDir }));
 
 // Register
 router.post('/auth/register', async (req, res) => {
@@ -102,37 +111,71 @@ router.put('/user', async (req, res) => {
 });
 
 // Upload avatar (POST /api/user/upload-avatar)
-router.post('/user/upload-avatar', upload.single('avatar'), async (req, res) => {
-  console.log('[authRoutes] POST /user/upload-avatar file=', req.file && req.file.filename, 'body=', req.body);
-  try {
-    if (!req.file) return res.status(400).json({ ok: false, message: 'No file uploaded' });
-    const savedName = req.file.filename || path.basename(req.file.path || '');
-    const host = req.get('host');
-    const proto = req.protocol;
-    let url = '';
-    if (uploadsDir.includes(path.join(__dirname, '..', 'public'))) {
-      url = `${proto}://${host}/uploads/${savedName}`;
-    } else {
-      // attempt best-effort URL; may not be served on serverless
-      url = `${proto}://${host}/uploads/${savedName}`;
+// Two modes:
+//  - if multer available: use multer.diskStorage to save under uploadsDir
+//  - otherwise: use formidable to parse and save to uploadsDir (fallback)
+if (uploadHandler) {
+  router.post('/user/upload-avatar', uploadHandler.single('avatar'), async (req, res) => {
+    console.log('[authRoutes] POST /user/upload-avatar (multer) file=', req.file && req.file.filename, 'body=', req.body);
+    try {
+      if (!req.file) return res.status(400).json({ ok: false, message: 'No file uploaded' });
+      const savedName = req.file.filename || path.basename(req.file.path || '');
+      const host = req.get('host');
+      const proto = req.protocol;
+      const url = uploadsDir.includes(path.join(__dirname, '..', 'public')) ? `${proto}://${host}/uploads/${savedName}` : `${proto}://${host}/uploads/${savedName}`;
+      const username = req.body.username;
+      if (username) {
+        const updated = await User.findOneAndUpdate(
+          { $or: [{ username }, { _id: username }] },
+          { $set: { avatar: url } },
+          { new: true }
+        ).select('-password');
+        if (updated) return res.json({ ok: true, url, user: updated });
+      }
+      return res.json({ ok: true, url });
+    } catch (err) {
+      console.error('[authRoutes] upload avatar error (multer)', err);
+      return res.status(500).json({ ok: false, message: 'Upload failed' });
     }
-
-    // Optionally update user record if username provided
-    const username = req.body.username;
-    if (username) {
-      const updated = await User.findOneAndUpdate(
-        { $or: [{ username }, { _id: username }] },
-        { $set: { avatar: url } },
-        { new: true }
-      ).select('-password');
-      if (updated) return res.json({ ok: true, url, user: updated });
-    }
-
-    return res.json({ ok: true, url });
-  } catch (err) {
-    console.error('[authRoutes] upload avatar error', err);
-    return res.status(500).json({ ok: false, message: 'Upload failed' });
-  }
-});
+  });
+} else {
+  // fallback using formidable (CommonJS)
+  const formidable = require('formidable');
+  router.post('/user/upload-avatar', (req, res) => {
+    console.log('[authRoutes] POST /user/upload-avatar (formidable) start');
+    const form = new formidable.IncomingForm({
+      uploadDir: uploadsDir,
+      keepExtensions: true,
+      maxFileSize: 10 * 1024 * 1024 // 10MB
+    });
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        console.error('[authRoutes] formidable parse error', err);
+        return res.status(500).json({ ok: false, message: 'parse error' });
+      }
+      const file = files.avatar || files.file || null;
+      if (!file) return res.status(400).json({ ok: false, message: 'No file uploaded' });
+      try {
+        const savedName = path.basename(file.path);
+        const host = req.get('host');
+        const proto = req.protocol;
+        const url = uploadsDir.includes(path.join(__dirname, '..', 'public')) ? `${proto}://${host}/uploads/${savedName}` : `${proto}://${host}/uploads/${savedName}`;
+        const username = fields.username;
+        if (username) {
+          const updated = await User.findOneAndUpdate(
+            { $or: [{ username }, { _id: username }] },
+            { $set: { avatar: url } },
+            { new: true }
+          ).select('-password');
+          if (updated) return res.json({ ok: true, url, user: updated });
+        }
+        return res.json({ ok: true, url });
+      } catch (err2) {
+        console.error('[authRoutes] upload avatar error (formidable)', err2);
+        return res.status(500).json({ ok: false, message: 'Upload failed' });
+      }
+    });
+  });
+}
 
 module.exports = router;

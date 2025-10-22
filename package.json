@@ -18,6 +18,7 @@
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "express-session": "^1.18.2",
+    "formidable": "^3.5.4",
     "get": "^1.4.0",
     "mongoose": "^7.8.7",
     "multer": "^3.0.0-alpha.1",
