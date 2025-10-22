@@ -7,184 +7,316 @@ let newGames = [];
 let gamesByCategory = {};
 
 
-// Use same origin API by default (safer).
+// Use same origin API by default (safer). If you need cross-domain, set this env.
 const BASE_API_URL = window.location.origin; // e.g. https://datn-smoky.vercel.app or http://localhost:3000
 
-(function profileAndSettingsUI() {
-  // helper: read user from localStorage safely
-  function getUserSafe() {
-    try {
-      const u = localStorage.getItem('user');
-      return u ? JSON.parse(u) : null;
-    } catch (e) {
-      return null;
-    }
-  }
+// Lưu vị trí trang hiện tại cho từng slider
+let sliderPage = {
+  recent: 0,
+  top: 0,
+  featured: 0,
+  new: 0
+};
 
-  // Try fetch user from server by username (server supports GET /api/user?username=...)
-  async function fetchUserFromServer(identifier) {
-    if (!identifier) return null;
-    try {
-      const res = await fetch(`${BASE_API_URL}/api/user?username=${encodeURIComponent(identifier)}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (!res.ok) return null;
-      const j = await res.json();
-      return j && j.user ? j.user : j;
-    } catch (err) {
-      console.warn('fetchUserFromServer error', err && err.message);
-      return null;
-    }
-  }
+let MAX_SHOW = getMaxShow();
 
-  // header update helper (ensure elements exist)
-  if (typeof window.applyHeaderUser !== 'function') {
-    window.applyHeaderUser = function(user) {
-      try {
-        const avatarEl = document.querySelector('#header-avatar');
-        const nameEl = document.querySelector('#header-username');
-        const FALLBACK_AVATAR = 'https://www.gravatar.com/avatar/?d=mp&s=200';
-        if (avatarEl) {
-          const a = user && user.avatar;
-          avatarEl.src = (a && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'))) ? a : FALLBACK_AVATAR;
-        }
-        if (nameEl) nameEl.textContent = user && (user.displayName || user.username) || 'Khách';
-      } catch (e) {}
+// Hàm render 1 game card
+function renderGameCard(game) {
+  const name = getGameName(game, currentLang);
+  const desc = getGameDesc(game, currentLang);
+  const category = getGameCategory(game, currentLang);
+  return `
+    <div class="game-card" onclick="handleGameClick('${game.id}', '${name.replace(/'/g, "\\'")}')">
+      ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
+      <img src="game/${game.id}/Img/logo.png" alt="${name}" />
+      <div class="game-title">${name}</div>
+      <div class="game-category">${category}</div>
+      <div class="game-desc">${desc}</div>
+      ${game.players ? `<div class="game-players">👥 ${game.players} ${LANGS[currentLang]?.players || ''}</div>` : ""}
+    </div>
+  `;
+}
+
+// Render slider cho 1 nhóm game với nút < >
+function renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey) {
+  const sliderContainer = document.getElementById(sliderId)?.parentElement;
+  if (!sliderContainer) return;
+
+  // Xóa nút cũ nếu có
+  sliderContainer.querySelectorAll('.slider-btn').forEach(btn => btn.remove());
+
+  let page = sliderPage[pageKey] || 0;
+  const totalPage = Math.ceil(games.length / MAX_SHOW);
+
+  const start = page * MAX_SHOW;
+  const end = Math.min(start + MAX_SHOW, games.length);
+  const showGames = games.slice(start, end);
+
+  // Render game card
+  const slider = document.getElementById(sliderId);
+  slider.innerHTML = showGames.map(renderGameCard).join('');
+
+  // Nếu số lượng game > MAX_SHOW thì thêm nút chuyển
+  if (games.length > MAX_SHOW) {
+    // Nút prev
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'slider-btn left';
+    prevBtn.innerHTML = '&#8249;';
+    prevBtn.style.display = page > 0 ? 'flex' : 'none';
+    prevBtn.onclick = () => {
+      sliderPage[pageKey]--;
+      renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey);
     };
+    sliderContainer.insertBefore(prevBtn, slider);
+
+    // Nút next
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'slider-btn right';
+    nextBtn.innerHTML = '&#8250;';
+    nextBtn.style.display = end < games.length ? 'flex' : 'none';
+    nextBtn.onclick = () => {
+      sliderPage[pageKey]++;
+      renderSlider(games, sliderId, nextBtnId, prevBtnId, pageKey);
+    };
+    sliderContainer.appendChild(nextBtn);
+  }
+}
+
+// Khi bấm "Xem thêm" (card cuối)
+function showAllGames(pageKey) {
+  // Có thể mở modal, chuyển trang, hoặc render toàn bộ game
+  alert('Hiển thị tất cả game cho mục này!');
+}
+
+// Sắp xếp và phân nhóm game
+function groupGames(games) {
+  games.sort((a, b) => (getGameName(a)).localeCompare(getGameName(b)));
+  recentGames = games;
+  topGames = games.filter(g => g.badge === "Hot" || g.badge === "Top");
+  featuredGames = games.filter(g => g.badge === "Hot" || g.badge === "Updated");
+  newGames = games.filter(g => g.badge === "New");
+  gamesByCategory = {};
+  games.forEach(g => {
+    const cat = g.category || 'Khác';
+    if (!gamesByCategory[cat]) gamesByCategory[cat] = [];
+    gamesByCategory[cat].push(g);
+  });
+}
+
+// Hiển thị các slider theo thể loại (có nút < > và logic "Xem thêm")
+function renderCategorySliders() {
+  const main = document.querySelector('.main-content');
+  document.querySelectorAll('.category-slider-section').forEach(e => e.remove());
+
+  Object.keys(gamesByCategory).forEach(cat => {
+    const section = document.createElement('div');
+    section.className = 'category-slider-section';
+    const catKey = cat.replace(/\s+/g, '-');
+    section.innerHTML = `
+      <div class="section-title-row" id="cat-${catKey}">
+        <div class="section-title">${cat}</div>
+      </div>
+      ${renderSortDropdown('newest', `cat-${catKey}`)}
+      <div class="games-slider-container" id="cat-container-${catKey}">
+        <div class="games-slider" id="catSlider-${catKey}"></div>
+      </div>
+    `;
+    main.appendChild(section);
+    if (!sliderPage[`cat-${catKey}`]) sliderPage[`cat-${catKey}`] = 0;
+    renderCategorySlider(cat, catKey);
+  });
+}
+
+function renderCategorySlider(cat, catKey) {
+  renderSlider(
+    gamesByCategory[cat],
+    `catSlider-${catKey}`,
+    `catShowMore-${catKey}`,
+    `catShowMore-${catKey}-prev`,
+    `cat-${catKey}`
+  );
+}
+
+// Tìm kiếm
+function searchGames() {
+  const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
+  const main = document.querySelector('.main-content');
+  let searchResultDiv = document.getElementById('search-result');
+
+  // Nếu không nhập gì, hiển thị lại toàn bộ
+  if (!keyword) {
+    Array.from(main.children).forEach(child => {
+      if (child.id !== 'search-result') child.style.display = '';
+    });
+    if (searchResultDiv) searchResultDiv.style.display = 'none';
+    return;
   }
 
-  function createProfileModal() {
-    const modal = document.getElementById('profile-modal');
-    if (!modal) return;
+  Array.from(main.children).forEach(child => {
+    if (child.id !== 'search-result') child.style.display = 'none';
+  });
 
-    const nameInput = modal.querySelector('#profile-modal-name');
-    const fileInput = modal.querySelector('#profile-modal-file');
-    const avatarImg = modal.querySelector('#profile-modal-avatar');
-    const saveBtn = modal.querySelector('#profile-modal-save');
-    const cancelBtn = modal.querySelector('#profile-modal-cancel');
+  // Sửa đoạn này:
+  const filtered = allGames.filter(g =>
+    getGameName(g).toLowerCase().includes(keyword) ||
+    getGameDesc(g).toLowerCase().includes(keyword) ||
+    getGameCategory(g).toLowerCase().includes(keyword)
+  );
 
-    const FALLBACK_AVATAR = 'https://www.gravatar.com/avatar/?d=mp&s=200';
+  // Tạo vùng kết quả nếu chưa có
+  if (!searchResultDiv) {
+    searchResultDiv = document.createElement('div');
+    searchResultDiv.id = 'search-result';
+    main.appendChild(searchResultDiv);
+  }
+  searchResultDiv.style.display = '';
 
-    async function loadProfileIntoModal() {
-      let user = getUserSafe() || {};
-      // remove blob URLs stored locally (they will 404 when reopened)
-      if (user && typeof user.avatar === 'string' && user.avatar.startsWith('blob:')) {
-        delete user.avatar;
-        try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
-      }
-      if (user && (user.username || user._id)) {
-        const serverUser = await fetchUserFromServer(user.username || user._id).catch(() => null);
-        if (serverUser && typeof serverUser === 'object') {
-          user = Object.assign({}, user, serverUser);
-          try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
-        }
-      }
-      if (nameInput) nameInput.value = user.displayName || user.username || '';
-      if (avatarImg) {
-        const a = user.avatar;
-        const valid = typeof a === 'string' && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'));
-        avatarImg.src = valid ? a : FALLBACK_AVATAR;
-      }
-      if (fileInput) {
-        fileInput.value = '';
-        if (modal._previewUrl) {
-          try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {}
-          modal._previewUrl = null;
-        }
-      }
-    }
-
-    if (fileInput) {
-      fileInput.addEventListener('change', (e) => {
-        const f = e.target.files && e.target.files[0];
-        if (!f) return;
-        if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; }
-        const url = URL.createObjectURL(f);
-        modal._previewUrl = url;
-        if (avatarImg) avatarImg.src = url;
-      });
-    }
-
-    if (saveBtn) {
-      saveBtn.addEventListener('click', async () => {
-        saveBtn.disabled = true;
-        const token = localStorage.getItem('token') || '';
-        let user = getUserSafe() || {};
-        try {
-          if (nameInput && nameInput.value.trim()) user.displayName = nameInput.value.trim();
-
-          // upload avatar if new file chosen
-          if (fileInput && fileInput.files && fileInput.files[0]) {
-            try {
-              const fd = new FormData();
-              fd.append('avatar', fileInput.files[0]);
-              if (user.username) fd.append('username', user.username);
-              else if (user._id) fd.append('username', user._id);
-
-              const res = await fetch(`${BASE_API_URL}/api/user/upload-avatar`, {
-                method: 'POST',
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-                body: fd
-              });
-              if (res.ok) {
-                const j = await res.json();
-                user.avatar = j.url || (j.user && j.user.avatar) || user.avatar;
-              } else {
-                console.warn('avatar upload failed', res.status);
-              }
-            } catch (err) {
-              console.warn('avatar upload error', err && err.message);
-            }
-          }
-
-          // update user record
-          try {
-            const payload = { username: user.username, _id: user._id, displayName: user.displayName, avatar: user.avatar };
-            const res2 = await fetch(`${BASE_API_URL}/api/user`, {
-              method: 'PUT',
-              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': `Bearer ${token}` } : {}),
-              body: JSON.stringify(payload)
-            });
-            if (!res2.ok) {
-              const txt = await res2.text().catch(() => '');
-              console.warn('update user failed', res2.status, txt);
-              alert('Cập nhật thất bại');
-              saveBtn.disabled = false;
-              return;
-            }
-            const j2 = await res2.json();
-            const serverUser = j2.user || j2;
-            try { localStorage.setItem('user', JSON.stringify(serverUser)); } catch (e) {}
-            applyHeaderUser(serverUser);
-            if (avatarImg) avatarImg.src = serverUser.avatar || FALLBACK_AVATAR;
-            if (nameInput) nameInput.value = serverUser.displayName || '';
-            if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; fileInput.value = ''; }
-            modal.style.display = 'none';
-            alert('Cập nhật hồ sơ thành công');
-          } catch (err) {
-            console.error('update user error', err && err.message);
-            alert('Lỗi khi cập nhật hồ sơ');
-          }
-        } finally {
-          saveBtn.disabled = false;
-        }
-      });
-    }
-
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', () => {
-        if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; }
-        modal.style.display = 'none';
-      });
-    }
-
-    // populate on show
-    loadProfileIntoModal();
+  // Nếu không có kết quả
+  if (filtered.length === 0) {
+    searchResultDiv.innerHTML = `<div style="color:#ff9800;font-size:1.2rem;padding:32px 0;">Không tìm thấy trò chơi phù hợp.</div>`;
+    return;
   }
 
-  try { createProfileModal(); } catch (e) { console.warn('createProfileModal init failed', e && e.message); }
-})();
+  // Hàm làm nổi bật từ khóa
+  function highlight(text) {
+    text = (text === undefined || text === null) ? '' : String(text); // ép về chuỗi
+    if (!text) return '';
+    return text.replace(
+      new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'),
+      '<span style="background:#ff9800;color:#fff;border-radius:4px;padding:1px 4px;">$1</span>'
+    );
+  }
+
+  // Hiển thị kết quả
+  searchResultDiv.innerHTML = `
+    <div class="section-title-row">
+      <div class="section-title">Kết quả tìm kiếm cho "<span style="color:#ff9800">${keyword}</span>"</div>
+    </div>
+    <div class="games-slider" style="flex-wrap:wrap;gap:32px 24px;">
+      ${filtered.map(game => {
+        const name = getGameName(game, currentLang);
+        const desc = getGameDesc(game, currentLang);
+        const category = getGameCategory(game, currentLang);
+        return `
+          <div class="game-card" onclick="handleGameClick('${game.id}', '${game.name}')">
+            ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
+            <img src="game/${game.id}/Img/logo.png" alt="${name}" />
+            <div class="game-title">${highlight(name)}</div>
+            <div class="game-category">${highlight(category)}</div>
+            <div class="game-desc">${highlight(desc)}</div>
+            ${game.players ? `<div class="game-players">👥 ${highlight(game.players)} ${LANGS[currentLang]?.players || 'người chơi'}</div>` : ""}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+// Sắp xếp game
+function sortGames(sectionKey, selectEl) {
+  // Nếu không truyền selectEl, tự tìm select theo sectionKey
+  if (!selectEl) {
+    selectEl = document.querySelector(
+      `[onchange*="sortGames('${sectionKey}'"]`
+    );
+  }
+  if (!selectEl) return;
+  const sortBy = selectEl.value;
+
+  // Lấy mảng game đúng theo sectionKey
+  let gamesArr;
+  if (sectionKey.startsWith('cat-')) {
+    const catName = sectionKey.replace(/^cat-/, '').replace(/-/g, ' ');
+    gamesArr = allGames.filter(g => (getGameCategory(g) || '').toLowerCase().includes(catName.toLowerCase()));
+  } else if (sectionKey === 'recent') {
+    gamesArr = recentGames.slice();
+  } else if (sectionKey === 'top') {
+    gamesArr = topGames.slice();
+  } else if (sectionKey === 'featured') {
+    gamesArr = featuredGames.slice();
+  } else if (sectionKey === 'new') {
+    gamesArr = newGames.slice();
+  } else {
+    return;
+  }
+
+  // Sắp xếp
+  if (sortBy === 'newest') {
+    gamesArr.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  } else if (sortBy === 'oldest') {
+    gamesArr.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  } else if (sortBy === 'players_asc') {
+    gamesArr.sort((a, b) => (a.players || 0) - (b.players || 0));
+  } else if (sortBy === 'players_desc') {
+    gamesArr.sort((a, b) => (b.players || 0) - (a.players || 0));
+  } else if (sortBy === 'az') {
+    gamesArr.sort((a, b) => getGameName(a).localeCompare(getGameName(b)));
+  } else if (sortBy === 'za') {
+    gamesArr.sort((a, b) => getGameName(b).localeCompare(getGameName(a)));
+  }
+
+  // Render lại slider
+  renderSlider(
+    gamesArr,
+    sectionKey.startsWith('cat-') ? `catSlider-${sectionKey.replace(/^cat-/, '')}` : `${sectionKey}Slider`,
+    '',
+    '',
+    sectionKey
+  );
+}
+
+// Hiển thị game theo thể loại
+function renderGamesByCategory() {
+  // Gom game theo từng thể loại
+  const categoryMap = {};
+  allGames.forEach(game => {
+    const cats = (getGameCategory(game) || 'Khác').split(',').map(c => c.trim());
+    cats.forEach(cat => {
+      if (!categoryMap[cat]) categoryMap[cat] = [];
+      categoryMap[cat].push(game);
+    });
+  });
+
+  const categoryList = document.getElementById('category-list');
+  categoryList.innerHTML = '';
+  Object.keys(categoryMap).forEach(cat => {
+    const catKey = cat.replace(/\s+/g, '-');
+    const section = document.createElement('div');
+    section.className = 'category-slider-section';
+    section.innerHTML = `
+      <div class="section-title-row" id="cat-${catKey}">
+        <div class="section-title">${cat}</div>
+      </div>
+      <div class="sort-dropdown-row">
+        <label class="sort-label" data-i18n="sort_by"></label>
+        <div class="sort-dropdown">
+          <select class="sort-select" onchange="sortGames('cat-${catKey}', this)">
+            <option value="newest" data-i18n="sort_newest"></option>
+            <option value="oldest" data-i18n="sort_oldest"></option>
+            <option value="players_asc" data-i18n="sort_players_asc"></option>
+            <option value="players_desc" data-i18n="sort_players_desc"></option>
+            <option value="az" data-i18n="sort_az"></option>
+            <option value="za" data-i18n="sort_za"></option>
+          </select>
+        </div>
+      </div>
+      <div class="games-slider-container" id="cat-container-${catKey}">
+        <div class="games-slider" id="catSlider-${catKey}"></div>
+      </div>
+    `;
+    categoryList.appendChild(section);
+
+    // Khởi tạo trang cho từng thể loại
+    if (!sliderPage[`cat-${catKey}`]) sliderPage[`cat-${catKey}`] = 0;
+    renderSlider(
+      categoryMap[cat],
+      `catSlider-${catKey}`,
+      `catShowMore-${catKey}`,
+      `catShowMore-${catKey}-prev`,
+      `cat-${catKey}`
+    );
+  });
+}
 
 // Khởi tạo
 function showLoading(show = true) {
@@ -1275,3 +1407,179 @@ async function updateUserOnServer(user) {
     return null;
   }
 }
+
+(function profileAndSettingsUI() {
+  // helper: read user from localStorage safely
+  function getUserSafe() {
+    try {
+      const u = localStorage.getItem('user');
+      return u ? JSON.parse(u) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Try fetch user from server by username (server supports GET /api/user?username=...)
+  async function fetchUserFromServer(identifier) {
+    if (!identifier) return null;
+    try {
+      const res = await fetch(`${BASE_API_URL}/api/user?username=${encodeURIComponent(identifier)}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) return null;
+      const j = await res.json();
+      return j && j.user ? j.user : j;
+    } catch (err) {
+      console.warn('fetchUserFromServer error', err && err.message);
+      return null;
+    }
+  }
+
+  // header update helper (ensure elements exist)
+  if (typeof window.applyHeaderUser !== 'function') {
+    window.applyHeaderUser = function(user) {
+      try {
+        const avatarEl = document.querySelector('#header-avatar');
+        const nameEl = document.querySelector('#header-username');
+        const FALLBACK_AVATAR = 'https://www.gravatar.com/avatar/?d=mp&s=200';
+        if (avatarEl) {
+          const a = user && user.avatar;
+          avatarEl.src = (a && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'))) ? a : FALLBACK_AVATAR;
+        }
+        if (nameEl) nameEl.textContent = user && (user.displayName || user.username) || 'Khách';
+      } catch (e) {}
+    };
+  }
+
+  function createProfileModal() {
+    const modal = document.getElementById('profile-modal');
+    if (!modal) return;
+
+    const nameInput = modal.querySelector('#profile-modal-name');
+    const fileInput = modal.querySelector('#profile-modal-file');
+    const avatarImg = modal.querySelector('#profile-modal-avatar');
+    const saveBtn = modal.querySelector('#profile-modal-save');
+    const cancelBtn = modal.querySelector('#profile-modal-cancel');
+
+    const FALLBACK_AVATAR = 'https://www.gravatar.com/avatar/?d=mp&s=200';
+
+    async function loadProfileIntoModal() {
+      let user = getUserSafe() || {};
+      // remove blob URLs stored locally (they will 404 when reopened)
+      if (user && typeof user.avatar === 'string' && user.avatar.startsWith('blob:')) {
+        delete user.avatar;
+        try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
+      }
+      if (user && (user.username || user._id)) {
+        const serverUser = await fetchUserFromServer(user.username || user._id).catch(() => null);
+        if (serverUser && typeof serverUser === 'object') {
+          user = Object.assign({}, user, serverUser);
+          try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
+        }
+      }
+      if (nameInput) nameInput.value = user.displayName || user.username || '';
+      if (avatarImg) {
+        const a = user.avatar;
+        const valid = typeof a === 'string' && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'));
+        avatarImg.src = valid ? a : FALLBACK_AVATAR;
+      }
+      if (fileInput) {
+        fileInput.value = '';
+        if (modal._previewUrl) {
+          try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {}
+          modal._previewUrl = null;
+        }
+      }
+    }
+
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; }
+        const url = URL.createObjectURL(f);
+        modal._previewUrl = url;
+        if (avatarImg) avatarImg.src = url;
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        const token = localStorage.getItem('token') || '';
+        let user = getUserSafe() || {};
+        try {
+          if (nameInput && nameInput.value.trim()) user.displayName = nameInput.value.trim();
+
+          // upload avatar if new file chosen
+          if (fileInput && fileInput.files && fileInput.files[0]) {
+            try {
+              const fd = new FormData();
+              fd.append('avatar', fileInput.files[0]);
+              if (user.username) fd.append('username', user.username);
+              else if (user._id) fd.append('username', user._id);
+
+              const res = await fetch(`${BASE_API_URL}/api/user/upload-avatar`, {
+                method: 'POST',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                body: fd
+              });
+              if (res.ok) {
+                const j = await res.json();
+                user.avatar = j.url || (j.user && j.user.avatar) || user.avatar;
+              } else {
+                console.warn('avatar upload failed', res.status);
+              }
+            } catch (err) {
+              console.warn('avatar upload error', err && err.message);
+            }
+          }
+
+          // update user record
+          try {
+            const payload = { username: user.username, _id: user._id, displayName: user.displayName, avatar: user.avatar };
+            const res2 = await fetch(`${BASE_API_URL}/api/user`, {
+              method: 'PUT',
+              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': `Bearer ${token}` } : {}),
+              body: JSON.stringify(payload)
+            });
+            if (!res2.ok) {
+              const txt = await res2.text().catch(() => '');
+              console.warn('update user failed', res2.status, txt);
+              alert('Cập nhật thất bại');
+              saveBtn.disabled = false;
+              return;
+            }
+            const j2 = await res2.json();
+            const serverUser = j2.user || j2;
+            try { localStorage.setItem('user', JSON.stringify(serverUser)); } catch (e) {}
+            applyHeaderUser(serverUser);
+            if (avatarImg) avatarImg.src = serverUser.avatar || FALLBACK_AVATAR;
+            if (nameInput) nameInput.value = serverUser.displayName || '';
+            if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; fileInput.value = ''; }
+            modal.style.display = 'none';
+            alert('Cập nhật hồ sơ thành công');
+          } catch (err) {
+            console.error('update user error', err && err.message);
+            alert('Lỗi khi cập nhật hồ sơ');
+          }
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; }
+        modal.style.display = 'none';
+      });
+    }
+
+    // populate on show
+    loadProfileIntoModal();
+  }
+
+  try { createProfileModal(); } catch (e) { console.warn('createProfileModal init failed', e && e.message); }
+})();
