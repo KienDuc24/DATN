@@ -912,18 +912,32 @@ document.getElementById('loginForm').onsubmit = async function(e) {
   e.preventDefault();
   const username = document.getElementById('login-username').value;
   const password = document.getElementById('login-password').value;
-  const res = await fetch(`${BASE_API_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
-  });
-  const data = await res.json();
-  document.getElementById('login-message').innerText = data.message || '';
-  if (data.token && data.user) {
-    saveUserToLocal(data.user);
-    closeAuthModal();
-    showUserInfo(data.user); // Hiện avatar và info như Google
-    alert('Đăng nhập thành công!');
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const text = await res.text().catch(()=>null);
+    console.log('[client] /api/auth/login status=', res.status, 'body=', text);
+    let data;
+    try { data = text ? JSON.parse(text) : {}; } catch(e) { data = { raw: text }; }
+    if (!res.ok) {
+      document.getElementById('login-message').innerText = data.message || data.raw || 'Login failed';
+      return;
+    }
+    // success path
+    if (data.token && data.user) {
+      saveUserToLocal(data.user);
+      closeAuthModal();
+      showUserInfo(data.user);
+      alert('Đăng nhập thành công!');
+    } else {
+      document.getElementById('login-message').innerText = 'No token/user returned';
+    }
+  } catch (err) {
+    console.error('[client] login error', err);
+    alert('Lỗi khi gọi API login: ' + (err && err.message));
   }
 };
 

@@ -42,8 +42,12 @@ try {
 
 // mount routers (routes may log on load)
 try {
-  const authRouter = require('./routes/authRoutes');
-  app.use('/api', authRouter);
+  const authRoutes = require('./routes/authRoutes');
+  // mount API login under /api/auth (client hiện dùng /api/auth/login)
+  app.use('/api/auth', authRoutes);
+
+  // mount OAuth endpoints at /auth (for browser redirects)
+  app.use('/auth', authRoutes);
 } catch (err) {
   console.warn('[server] failed to require authRoutes:', err && err.message);
 }

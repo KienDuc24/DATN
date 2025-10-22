@@ -104,6 +104,11 @@ router.post('/auth/register', async (req, res) => {
 
 // Login (simple)
 router.post('/auth/login', async (req, res) => {
+  // debug helper
+  function dbg(req) {
+    console.log('[authRoutes] %s %s body=%j query=%j cookies=%j', req.method, req.originalUrl, req.body, req.query, req.cookies);
+  }
+  dbg(req);
   try {
     const { username, password } = req.body || {};
     if (!username || !password) return res.status(400).json({ ok: false, message: 'username and password required' });
@@ -116,8 +121,8 @@ router.post('/auth/login', async (req, res) => {
     // TODO: sign JWT if you use tokens
     return res.json({ ok: true, token: '', user });
   } catch (err) {
-    console.error('[authRoutes] login error', err && err.message);
-    return res.status(500).json({ ok: false, message: 'error' });
+    console.error('[authRoutes] login error', err && (err.stack || err));
+    return res.status(500).json({ ok: false, message: 'server error', error: err.message });
   }
 });
 
@@ -305,5 +310,15 @@ if (uploadHandler) {
 } else {
   router.post('/user/upload-avatar', (req, res) => unifiedUploadHandlerLogic(req, res));
 }
+
+// GET /auth/google (OAuth start) & callback
+router.get('/google', (req, res, next) => {
+  // existing passport authenticate start
+  next();
+});
+router.get('/google/callback', (req, res, next) => {
+  // existing passport callback
+  next();
+});
 
 module.exports = router;
