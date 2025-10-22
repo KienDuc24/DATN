@@ -51,6 +51,31 @@ async function getRandomQuestion(type = 'truth') {
 module.exports = (socket, io) => {
   console.log(`[ToD] handler attached for socket ${socket.id}`);
 
+  // Client asks for current room state
+  socket.on('tod-who', async ({ roomCode }) => {
+    try {
+      const room = await Room.findOne({ code: roomCode });
+      if (!room) {
+        socket.emit('tod-joined', { players: [], host: null });
+        return;
+      }
+      socket.emit('tod-joined', {
+        players: room.players || [],
+        host: room.players && room.players[0] ? room.players[0].name : null
+      });
+      // if a question is already active, send it too
+      if (room.lastQuestion) {
+        socket.emit('tod-question', {
+          player: room.players[room.currentIndex]?.name || null,
+          choice: room.lastChoice || 'truth',
+          question: room.lastQuestion
+        });
+      }
+    } catch (e) {
+      console.error('tod-who error', e && e.stack ? e.stack : e);
+    }
+  });
+
   socket.on("tod-join", async ({ roomCode, player }) => {
     console.log(`[ToD] tod-join from ${socket.id}`, { roomCode, player });
     try {
@@ -68,10 +93,21 @@ module.exports = (socket, io) => {
         }
       }
       socket.join(roomCode);
+
+      // broadcast updated players to room
       io.to(roomCode).emit("tod-joined", {
         host: room.players[0]?.name || null,
         players: room.players
       });
+
+      // if there's an active question, broadcast it (so late joiners get it)
+      if (room.lastQuestion) {
+        io.to(roomCode).emit("tod-question", {
+          player: room.players[room.currentIndex]?.name,
+          choice: room.lastChoice || 'truth',
+          question: room.lastQuestion
+        });
+      }
     } catch (e) {
       console.error('tod-join error', e && e.stack ? e.stack : e);
       socket.emit('tod-join-failed', { reason: 'Lỗi server' });
