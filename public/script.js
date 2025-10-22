@@ -1176,234 +1176,200 @@ if (settingsBtn) {
 
 // Tạo / hiển thị modal "profile-modal" (Cài đặt tài khoản) và popup giữa màn hình (Hồ sơ)
 (function profileAndSettingsUI() {
-  // helpers
+  // helper: read user from localStorage safely
   function getUserSafe() {
-    try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
-  }
-  function applyHeaderUser(updated) {
-    const ua = document.getElementById('userAvatar');
-    const da = document.getElementById('dropdownAvatar');
-    const du = document.getElementById('dropdownUsername');
-    if (ua && updated.avatar) ua.src = updated.avatar;
-    if (da && updated.avatar) da.src = updated.avatar;
-    if (du && (updated.displayName || updated.username)) du.innerText = updated.displayName || updated.username;
+    try {
+      const u = localStorage.getItem('user');
+      return u ? JSON.parse(u) : null;
+    } catch (e) {
+      return null;
+    }
   }
 
-  // Create profile-modal (settings) if not exists
+  // Try fetch user from server by username (server should support GET /api/user?username=...)
+  async function fetchUserFromServer(username) {
+    if (!username) return null;
+    try {
+      const res = await fetch(`${BASE_API_URL}/api/user?username=${encodeURIComponent(username)}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) return null;
+      const j = await res.json();
+      // expect { ok: true, user: {...} } or user object directly
+      return j && j.user ? j.user : j;
+    } catch (err) {
+      console.warn('fetchUserFromServer error', err && err.message);
+      return null;
+    }
+  }
+
+  // ensure there's an applyHeaderUser function (use existing if present)
+  if (typeof window.applyHeaderUser !== 'function') {
+    window.applyHeaderUser = function(user) {
+      try {
+        const avatarEl = document.querySelector('#header-avatar');
+        const nameEl = document.querySelector('#header-username');
+        if (avatarEl) {
+          const a = user && user.avatar;
+          avatarEl.src = (a && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'))) ? a : 'https://www.gravatar.com/avatar/?d=mp&s=200';
+        }
+        if (nameEl) nameEl.textContent = user && (user.displayName || user.username) || 'Khách';
+      } catch (e) {}
+    };
+  }
+
+  // Create / wire profile modal behaviors
   function createProfileModal() {
-    let modal = document.getElementById('profile-modal');
-    if (modal) return modal;
+    const modal = document.getElementById('profile-modal');
+    if (!modal) return;
 
-    modal = document.createElement('div');
-    modal.id = 'profile-modal';
-    Object.assign(modal.style, {
-      position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, zIndex: 1400,
-      display: 'none', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(0,0,0,0.45)'
-    });
+    const nameInput = modal.querySelector('#profile-modal-name');
+    const fileInput = modal.querySelector('#profile-modal-file');
+    const avatarImg = modal.querySelector('#profile-modal-avatar');
+    const saveBtn = modal.querySelector('#profile-modal-save');
+    const cancelBtn = modal.querySelector('#profile-modal-cancel');
 
-    modal.innerHTML = `
-      <div id="profile-modal-box" style="width:90%;max-width:480px;background:#fff;border-radius:12px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div style="font-weight:700;font-size:1.05rem">Cài đặt tài khoản</div>
-          <button id="profile-modal-close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">×</button>
-        </div>
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
-          <img id="profile-modal-avatar" src="img/avt.png" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid #eee">
-          <div style="flex:1">
-            <div style="font-weight:700" id="profile-modal-name-display"></div>
-            <div style="color:#666;font-size:0.9rem" id="profile-modal-email-display"></div>
-          </div>
-        </div>
-        <label style="display:block;font-size:0.9rem;margin-bottom:6px">Tên hiển thị</label>
-        <input id="profile-modal-name" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin-bottom:10px" />
-        <label style="display:block;font-size:0.9rem;margin-bottom:6px">Avatar (tải ảnh lên)</label>
-        <input id="profile-modal-file" type="file" accept="image/*" style="width:100%;margin-bottom:12px" />
-        <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button id="profile-modal-cancel" style="padding:8px 12px;border-radius:8px;background:#eee;border:none">Hủy</button>
-          <button id="profile-modal-save" style="padding:8px 12px;border-radius:8px;background:#00b59a;color:#fff;border:none">Lưu</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
+    // fallback avatar
+    const FALLBACK_AVATAR = 'https://www.gravatar.com/avatar/?d=mp&s=200';
 
-    // events
-
-    modal.querySelector('#profile-modal-close').addEventListener('click', () => modal.style.display = 'none');
-    modal.querySelector('#profile-modal-cancel').addEventListener('click', () => modal.style.display = 'none');
-
-    // Save handler: update localStorage and header UI (simplified)
-    modal.querySelector('#profile-modal-save').addEventListener('click', async () => {
-      const nameEl = document.getElementById('profile-modal-name');
-      const fileEl = document.getElementById('profile-modal-file');
-      let user = getUserSafe();
-
-      if (nameEl && nameEl.value.trim()) {
-        user.displayName = nameEl.value.trim();
+    // load profile into modal (localStorage first, then try server)
+    async function loadProfileIntoModal() {
+      let user = getUserSafe() || {};
+      // remove invalid blob URL left in localStorage (common cause ERR_FILE_NOT_FOUND)
+      if (user && typeof user.avatar === 'string' && user.avatar.startsWith('blob:')) {
+        delete user.avatar;
+        try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
       }
 
-      // If user uploaded avatar, try upload endpoint; otherwise accept local object URL
-      if (fileEl && fileEl.files && fileEl.files[0]) {
-        try {
-          const fd = new FormData();
-          fd.append('avatar', fileEl.files[0]);
-          const uname = user.username || user.displayName || user.name;
-          if (uname) fd.append('username', uname);
-
-          const token = localStorage.getItem('token');
-          const res = await fetch(`${BASE_API_URL}/api/user/upload-avatar`, {
-            method: 'POST',
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-            body: fd
-          });
-          if (res.ok) {
-            const j = await res.json();
-            if (j && j.ok && j.url) {
-              user.avatar = j.url;
-            } else {
-              // fallback to local preview
-              user.avatar = URL.createObjectURL(fileEl.files[0]);
-            }
-          } else {
-            // fallback to local preview
-            user.avatar = URL.createObjectURL(fileEl.files[0]);
-          }
-        } catch (err) {
-          console.warn('avatar upload failed, using local preview', err);
-          user.avatar = URL.createObjectURL(fileEl.files[0]);
+      // try fetch fresh data from server if we have identifier
+      if (user && (user.username || user._id)) {
+        const serverUser = await fetchUserFromServer(user.username || user._id).catch(() => null);
+        if (serverUser && typeof serverUser === 'object') {
+          user = Object.assign({}, user, serverUser);
+          try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
         }
       }
 
-      // Try to persist updated user to server (MongoDB)
-      const saved = await updateUserOnServer(user);
-      if (saved) {
-        user = saved; // use canonical server user
-      } else {
-        // if server update fails, still keep local copy (graceful fallback)
-        localStorage.setItem('user', JSON.stringify(user));
-      }
-
-      applyHeaderUser(user);
-      // update modal display names
-      const disp = document.getElementById('profile-modal-name-display');
-      const emailEl = document.getElementById('profile-modal-email-display');
-      const avatarEl = document.getElementById('profile-modal-avatar');
-      if (disp) disp.innerText = user.displayName || user.username || 'Khách';
-      if (emailEl) emailEl.innerText = user.email || '';
-      if (avatarEl && user.avatar) avatarEl.src = user.avatar;
-      modal.style.display = 'none';
-      alert('Cập nhật hồ sơ thành công');
-    });
-
-    return modal;
-  }
-
-  // Create centered profile popup (only info, no action buttons)
-  function createProfileCenterPopup() {
-    let pop = document.getElementById('profile-center-popup');
-    if (pop) return pop;
-
-    pop = document.createElement('div');
-    pop.id = 'profile-center-popup';
-    Object.assign(pop.style, {
-      position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, zIndex: 1500,
-      display: 'none', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(0,0,0,0.35)'
-    });
-    pop.innerHTML = `
-      <div id="profile-center-box" style="min-width:260px;max-width:420px;background:#fff;border-radius:12px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.32);text-align:center">
-        <button id="profile-center-close" style="position:absolute;right:18px;top:18px;background:none;border:none;font-size:1.2rem;cursor:pointer">×</button>
-        <img id="profile-center-avatar" src="img/avt.png" style="width:86px;height:86px;border-radius:50%;object-fit:cover;border:2px solid #eee;margin-bottom:10px">
-        <div id="profile-center-name" style="font-weight:700;font-size:1.05rem;margin-bottom:4px"></div>
-        <div id="profile-center-email" style="color:#666;margin-bottom:12px"></div>
-        <!-- no action buttons per request -->
-      </div>
-    `;
-    document.body.appendChild(pop);
-
-    pop.addEventListener('click', (e) => {
-      if (e.target === pop) pop.style.display = 'none';
-    });
-    pop.querySelector('#profile-center-close').addEventListener('click', () => pop.style.display = 'none');
-    return pop;
-  }
-
-  // Populate and show center popup
-  function showProfileCenter(show = true) {
-    const pop = createProfileCenterPopup();
-    const user = getUserSafe();
-    const avatar = user.avatar || user.picture || 'img/avt.png';
-    const name = user.displayName || user.username || user.name || 'Khách';
-    const email = user.email || '';
-    const aEl = document.getElementById('profile-center-avatar');
-    const nEl = document.getElementById('profile-center-name');
-    const eEl = document.getElementById('profile-center-email');
-    if (aEl) aEl.src = avatar;
-    if (nEl) nEl.innerText = name;
-    if (eEl) eEl.innerText = email;
-    pop.style.display = show ? 'flex' : 'none';
-  }
-
-  // Wire buttons
-  const settingsBtn = document.getElementById('settingsBtn');
-  if (settingsBtn) {
-    settingsBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const modal = createProfileModal();
       // populate fields
-      const user = getUserSafe();
-      const nameInput = document.getElementById('profile-modal-name');
-      const display = document.getElementById('profile-modal-name-display');
-      const emailDisplay = document.getElementById('profile-modal-email-display');
-      const avatarImg = document.getElementById('profile-modal-avatar');
-      if (nameInput) nameInput.value = user.displayName || user.name || user.username || '';
-      if (display) display.innerText = user.displayName || user.username || 'Khách';
-      if (emailDisplay) emailDisplay.innerText = user.email || '';
-      if (avatarImg) avatarImg.src = user.avatar || user.picture || 'img/avt.png';
-      modal.style.display = 'flex';
-    });
+      if (nameInput) nameInput.value = user.displayName || user.username || '';
+      if (avatarImg) {
+        const a = user.avatar;
+        const valid = typeof a === 'string' && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'));
+        avatarImg.src = valid ? a : FALLBACK_AVATAR;
+      }
+      // clear file input preview state
+      if (fileInput) {
+        fileInput.value = '';
+        if (modal._previewUrl) {
+          try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {}
+          modal._previewUrl = null;
+        }
+      }
+    }
+
+    // preview when selecting file
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        // revoke previous preview
+        if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; }
+        const url = URL.createObjectURL(f);
+        modal._previewUrl = url;
+        if (avatarImg) avatarImg.src = url;
+      });
+    }
+
+    // save handler: upload avatar if file chosen, then update user on server (PUT /api/user)
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        const token = localStorage.getItem('token') || '';
+        let user = getUserSafe() || {};
+        try {
+          if (nameInput && nameInput.value.trim()) user.displayName = nameInput.value.trim();
+
+          // upload avatar if file chosen
+          if (fileInput && fileInput.files && fileInput.files[0]) {
+            try {
+              const fd = new FormData();
+              fd.append('avatar', fileInput.files[0]);
+              // include username/_id so server can update record
+              if (user.username) fd.append('username', user.username);
+              else if (user._id) fd.append('username', user._id);
+
+              const res = await fetch(`${BASE_API_URL}/api/user/upload-avatar`, {
+                method: 'POST',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                body: fd
+              });
+              if (res.ok) {
+                const j = await res.json();
+                // server returns { ok:true, url, user }
+                user.avatar = j.url || (j.user && j.user.avatar) || user.avatar;
+              } else {
+                console.warn('avatar upload failed', res.status);
+              }
+            } catch (err) {
+              console.warn('avatar upload error', err && err.message);
+            }
+          }
+
+          // send update to user record (PUT)
+          try {
+            const payload = { username: user.username, _id: user._id, displayName: user.displayName, avatar: user.avatar };
+            const res2 = await fetch(`${BASE_API_URL}/api/user`, {
+              method: 'PUT',
+              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': `Bearer ${token}` } : {}),
+              body: JSON.stringify(payload)
+            });
+            if (!res2.ok) {
+              const txt = await res2.text().catch(() => '');
+              console.warn('update user failed', res2.status, txt);
+              alert('Cập nhật thất bại');
+              saveBtn.disabled = false;
+              return;
+            }
+            const j2 = await res2.json();
+            const serverUser = j2.user || j2;
+            // persist canonical user
+            try { localStorage.setItem('user', JSON.stringify(serverUser)); } catch (e) {}
+            // update header and modal
+            applyHeaderUser(serverUser);
+            if (avatarImg) avatarImg.src = serverUser.avatar || FALLBACK_AVATAR;
+            if (nameInput) nameInput.value = serverUser.displayName || '';
+            // cleanup preview
+            if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; fileInput.value = ''; }
+            modal.style.display = 'none';
+            alert('Cập nhật hồ sơ thành công');
+          } catch (err) {
+            console.error('update user error', err && err.message);
+            alert('Lỗi khi cập nhật hồ sơ');
+          }
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+
+    // cancel/close cleanup
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        if (modal._previewUrl) {
+          try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {}
+          modal._previewUrl = null;
+        }
+        modal.style.display = 'none';
+      });
+    }
+
+    // when modal shown, load profile
+    // assume some code shows the modal (e.g. button opens it) - ensure loadProfile called when shown:
+    // If modal is displayed by setting style.display='block' elsewhere, call loadProfileIntoModal() right away to populate.
+    loadProfileIntoModal();
   }
 
-  const profileBtn = document.getElementById('profileBtn');
-  if (profileBtn) {
-    profileBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      showProfileCenter(true);
-    });
-  }
-
-  // close any created UI when clicking outside
-  document.addEventListener('click', () => {
-    const pc = document.getElementById('profile-center-popup');
-    if (pc) pc.style.display = 'none';
-  });
+  // init
+  try { createProfileModal(); } catch (e) { console.warn('createProfileModal init failed', e && e.message); }
 })();
-
-// Hàm cập nhật thông tin người dùng lên server
-async function updateUserOnServer(user) {
-  try {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${BASE_API_URL}/api/user`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify(user)
-    });
-    if (!res.ok) {
-      console.warn('updateUserOnServer failed', res.status);
-      return null;
-    }
-    const data = await res.json();
-    if (data && data.user) {
-      // store canonical user returned by server
-      localStorage.setItem('user', JSON.stringify(data.user));
-      return data.user;
-    }
-    return null;
-  } catch (err) {
-    console.error('updateUserOnServer error', err);
-    return null;
-  }
-}
