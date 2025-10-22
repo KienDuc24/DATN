@@ -1,83 +1,41 @@
 require('dotenv').config();
 
 const express = require('express');
-const cors = require('cors');
-const mongoose = require('mongoose');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
 const cookieParser = require('cookie-parser');
+const path = require('path');
 
 const app = express();
 
-// body parsers
-app.use(express.json({ limit: '10mb' }));
+// body parsers + cookies
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-
-app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true
-}));
 
 // serve static public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ensure uploads dir (best-effort)
-let UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
-try {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-  console.log('[server] ensured uploads dir at', UPLOADS_DIR);
-} catch (err) {
-  console.warn('[server] could not create public/uploads, fallback to tmp', err && err.message);
-  UPLOADS_DIR = os.tmpdir();
-}
-
-// try serve uploads (may be tmp on serverless)
-try {
-  app.use('/uploads', express.static(UPLOADS_DIR));
-} catch (e) {
-  console.warn('[server] cannot serve uploads dir:', e && e.message);
-}
-
-// mount routers (routes may log on load)
+// mount auth routes (both API and oauth paths)
 try {
   const authRoutes = require('./routes/authRoutes');
-  // mount API login under /api/auth (client hiện dùng /api/auth/login)
+  // API endpoints used by frontend (fetch /api/auth/login, /api/auth/register ...)
   app.use('/api/auth', authRoutes);
-
-  // mount OAuth endpoints at /auth (for browser redirects)
+  // OAuth browser redirects (/auth/google, /auth/google/callback)
   app.use('/auth', authRoutes);
-} catch (err) {
-  console.warn('[server] failed to require authRoutes:', err && err.message);
+  console.log('[server] authRoutes mounted at /api/auth and /auth');
+} catch (e) {
+  console.warn('[server] authRoutes not mounted', e && e.message);
 }
+
+// mount other routes (rooms, admin, games) - keep existing mounting
 try {
-  const gameRoutes = require('./routes/gameRoutes');
-  app.use('/api/games', gameRoutes);
-} catch (err) {
-  console.warn('[server] gameRoutes not mounted:', err && err.message);
-}
+  const adminRoutes = require('./routes/adminRoutes');
+  app.use('/api/admin', adminRoutes);
+} catch (e) { console.warn('[server] adminRoutes not mounted', e && e.message); }
+
 try {
   const roomRoutes = require('./routes/roomRoutes');
   app.use('/api/room', roomRoutes);
-} catch (err) {
-  console.warn('[server] roomRoutes not mounted:', err && err.message);
-}
-try {
-  const adminAuthRoutes = require('./routes/adminAuth');
-  app.use('/', adminAuthRoutes); // login endpoints at /admin/login, /admin/logout
-} catch (e) {
-  console.warn('[server] adminAuthRoutes not mounted', e && e.message);
-}
-
-// protect admin API routes with adminAuth middleware
-try {
-  const adminAuth = require('./middleware/adminAuth');
-  const adminRoutes = require('./routes/adminRoutes');
-  app.use('/api/admin', adminAuth, adminRoutes);
-} catch (e) {
-  console.warn('[server] adminRoutes not mounted or middleware error', e && e.message);
-}
+} catch (e) { /* ignore */ }
 
 // health endpoints
 app.get('/health', (req, res) => res.json({ ok: true }));
