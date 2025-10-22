@@ -30,8 +30,9 @@ process.on('uncaughtException', (err) => {
   // keep logs flush then exit
   setTimeout(()=> process.exit(1), 200);
 });
-process.on('unhandledRejection', (reason) => {
-  console.error('[FATAL] unhandledRejection:', reason);
+process.on('unhandledRejection', (reason, p) => {
+  console.error('[FATAL] unhandledRejection at:', p, 'reason:', reason);
+  // optional: don't exit immediately to allow graceful logging
 });
 process.on('SIGTERM', () => {
   console.warn('[SIGTERM] received, shutting down gracefully');
@@ -39,7 +40,7 @@ process.on('SIGTERM', () => {
   setTimeout(()=> process.exit(0), 200);
 });
 process.on('SIGINT', () => {
-  console.warn('[SIGINT] received');
+  console.warn('[SIGINT] received, exiting');
   process.exit(0);
 });
 

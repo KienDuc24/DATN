@@ -139,16 +139,20 @@
   });
 
   // fallback cho ActionBtns nếu chưa có (ngăn ReferenceError)
+  // Fallback global ActionBtns / $actionBtns để tránh ReferenceError nếu chưa được định nghĩa
   if (typeof window.ActionBtns === 'undefined') {
     window.ActionBtns = {
-      enable() {
-        document.querySelectorAll('.action-btn').forEach(b => { b.disabled = false; });
+      disable(selector) {
+        document.querySelectorAll(selector || '.action-btn').forEach(b => { try { b.disabled = true; } catch(e){/*ignore*/} });
       },
-      disable() {
-        document.querySelectorAll('.action-btn').forEach(b => { b.disabled = true; });
+      enable(selector) {
+        document.querySelectorAll(selector || '.action-btn').forEach(b => { try { b.disabled = false; } catch(e){/*ignore*/} });
       },
-      // tiện ích thêm nếu code khác gọi
-      setDisabled(v) { return v ? this.disable() : this.enable(); }
+      setDisabled(disabled, selector) {
+        return disabled ? this.disable(selector) : this.enable(selector);
+      }
     };
   }
+  // alias (nếu code khác dùng $actionBtns)
+  if (typeof window.$actionBtns === 'undefined') window.$actionBtns = window.ActionBtns;
 })();
