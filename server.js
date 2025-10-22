@@ -6,12 +6,14 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
 // body parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
@@ -56,6 +58,21 @@ try {
   app.use('/api/room', roomRoutes);
 } catch (err) {
   console.warn('[server] roomRoutes not mounted:', err && err.message);
+}
+try {
+  const adminAuthRoutes = require('./routes/adminAuth');
+  app.use('/', adminAuthRoutes); // login endpoints at /admin/login, /admin/logout
+} catch (e) {
+  console.warn('[server] adminAuthRoutes not mounted', e && e.message);
+}
+
+// protect admin API routes with adminAuth middleware
+try {
+  const adminAuth = require('./middleware/adminAuth');
+  const adminRoutes = require('./routes/adminRoutes');
+  app.use('/api/admin', adminAuth, adminRoutes);
+} catch (e) {
+  console.warn('[server] adminRoutes not mounted or middleware error', e && e.message);
 }
 
 // health endpoints

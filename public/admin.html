@@ -134,10 +134,30 @@
         </tbody>
       </table>
     </section>
+    <!-- Quản lý người dùng -->
+    <section id="usersTab" class="admin-tab-content" style="display:none">
+      <div class="section-title-row">
+        <div class="section-title">Danh sách người dùng</div>
+      </div>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="adminUsersList">
+          <!-- Dữ liệu người dùng sẽ render bằng JS -->
+        </tbody>
+      </table>
+    </section>
   </main>
   <footer>
     &copy; 2025 Camping Game Admin.
   </footer>
+  <script src="admin.js"></script>
   <script>
     // Dữ liệu mẫu, thay bằng fetch từ server/games.json nếu cần
     let games = [
@@ -322,10 +342,79 @@
       }
     }
 
+    // Dữ liệu mẫu người dùng
+    let users = [
+      {id: 1, username: "admin", email: "admin@gmail.com", role: "Quản trị viên"},
+      {id: 2, username: "user1", email: "user1@gmail.com", role: "Người dùng"}
+    ];
+    // Render người dùng
+    function renderUsers() {
+      const tbody = document.getElementById('adminUsersList');
+      tbody.innerHTML = '';
+      users.forEach(user => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${user.username}</td>
+            <td>${user.email}</td>
+            <td>${user.role}</td>
+            <td>
+              <button onclick="editUser(${user.id})">Sửa</button>
+              <button onclick="deleteUser(${user.id})">Xóa</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+    function openUserForm(edit = false) {
+      document.getElementById('userFormPopup').style.display = 'flex';
+      document.getElementById('popupOverlay').style.display = 'block';
+      document.getElementById('userFormTitle').innerText = edit ? "Sửa người dùng" : "Thêm người dùng";
+      if (!edit) {
+        document.getElementById('userForm').reset();
+        document.getElementById('userId').value = '';
+      }
+    }
+    function closeUserForm() {
+      document.getElementById('userFormPopup').style.display = 'none';
+      document.getElementById('popupOverlay').style.display = 'none';
+    }
+    function saveUser(e) {
+      e.preventDefault();
+      const id = document.getElementById('userId').value;
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const role = document.getElementById('role').value;
+      if (id) {
+        const idx = users.findIndex(u => u.id == id);
+        users[idx] = {id: Number(id), username, email, role};
+      } else {
+        const newId = users.length ? Math.max(...users.map(u => u.id)) + 1 : 1;
+        users.push({id: newId, username, email, role});
+      }
+      renderUsers();
+      closeUserForm();
+      return false;
+    }
+    function editUser(id) {
+      const user = users.find(u => u.id == id);
+      openUserForm(true);
+      document.getElementById('userId').value = user.id;
+      document.getElementById('username').value = user.username;
+      document.getElementById('email').value = user.email;
+      document.getElementById('role').value = user.role;
+    }
+    function deleteUser(id) {
+      if (confirm("Bạn có chắc muốn xóa người dùng này?")) {
+        users = users.filter(u => u.id != id);
+        renderUsers();
+      }
+    }
+
     // Khởi tạo
     renderGames();
     renderRooms();
     renderPlayers();
+    renderUsers();
   </script>
 </body>
 </html>

@@ -672,7 +672,7 @@ function showUserInfo(user) {
     const dropdownEmail = document.getElementById('dropdownEmail');
     if (dropdownAvatar) dropdownAvatar.src = avatar;
     if (dropdownUsername) dropdownUsername.innerText = user.username || user.name || user.displayName || 'User';
-    if (dropdownEmail) dropdownEmail.innerText = user.email || '';
+    
   }
 }
 
@@ -1215,10 +1215,10 @@ if (settingsBtn) {
             <div style="color:#666;font-size:0.9rem" id="profile-modal-email-display"></div>
           </div>
         </div>
-        <label style="display:block;font-size:0.9rem;margin-bottom:6px">Tên hiển thị</label>
+
+        <label style="display:block;font-size:0.9rem;margin-bottom:6px">Tên tài khoản (username)</label>
         <input id="profile-modal-name" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin-bottom:10px" />
-        <label style="display:block;font-size:0.9rem;margin-bottom:6px">Avatar (tải ảnh lên)</label>
-        <input id="profile-modal-file" type="file" accept="image/*" style="width:100%;margin-bottom:12px" />
+
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button id="profile-modal-cancel" style="padding:8px 12px;border-radius:8px;background:#eee;border:none">Hủy</button>
           <button id="profile-modal-save" style="padding:8px 12px;border-radius:8px;background:#00b59a;color:#fff;border:none">Lưu</button>
@@ -1228,71 +1228,58 @@ if (settingsBtn) {
     document.body.appendChild(modal);
 
     // events
-
     modal.querySelector('#profile-modal-close').addEventListener('click', () => modal.style.display = 'none');
     modal.querySelector('#profile-modal-cancel').addEventListener('click', () => modal.style.display = 'none');
 
-    // Save handler: update localStorage and header UI (simplified)
+    // Save handler: only update username (no avatar upload)
     modal.querySelector('#profile-modal-save').addEventListener('click', async () => {
       const nameEl = document.getElementById('profile-modal-name');
-      const fileEl = document.getElementById('profile-modal-file');
-      let user = getUserSafe();
+      let user = (function(){ try { return JSON.parse(localStorage.getItem('user')||'{}'); } catch { return {}; } })();
+      const token = localStorage.getItem('token') || '';
 
-      if (nameEl && nameEl.value.trim()) {
-        user.displayName = nameEl.value.trim();
+      if (!user || !(user.username || user._id)) {
+        alert('Không tìm thấy user để cập nhật.');
+        return;
       }
 
-      // If user uploaded avatar, try upload endpoint; otherwise accept local object URL
-      if (fileEl && fileEl.files && fileEl.files[0]) {
-        try {
-          const fd = new FormData();
-          fd.append('avatar', fileEl.files[0]);
-          const uname = user.username || user.displayName || user.name;
-          if (uname) fd.append('username', uname);
+      const newUsername = nameEl && nameEl.value && nameEl.value.trim();
+      if (!newUsername) {
+        alert('Username mới không được để trống.');
+        return;
+      }
 
-          const token = localStorage.getItem('token');
-          const res = await fetch(`${BASE_API_URL}/api/user/upload-avatar`, {
-            method: 'POST',
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-            body: fd
-          });
-          if (res.ok) {
-            const j = await res.json();
-            if (j && j.ok && j.url) {
-              user.avatar = j.url;
-            } else {
-              // fallback to local preview
-              user.avatar = URL.createObjectURL(fileEl.files[0]);
-            }
-          } else {
-            // fallback to local preview
-            user.avatar = URL.createObjectURL(fileEl.files[0]);
-          }
-        } catch (err) {
-          console.warn('avatar upload failed, using local preview', err);
-          user.avatar = URL.createObjectURL(fileEl.files[0]);
+      // build payload: current identifier + newUsername
+      const payload = { username: user.username || user._id, newUsername: newUsername };
+
+      try {
+        const res = await fetch(`${BASE_API_URL}/api/user`, {
+          method: 'PUT',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': `Bearer ${token}` } : {}),
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const txt = await res.text().catch(()=> '');
+          alert('Cập nhật thất bại: ' + (txt || res.status));
+          return;
         }
+        const j = await res.json();
+        const serverUser = j.user || j;
+        if (serverUser) {
+          localStorage.setItem('user', JSON.stringify(serverUser));
+          // update header/modal UI
+          if (typeof applyHeaderUser === 'function') applyHeaderUser(serverUser);
+          document.getElementById('profile-modal-name-display').innerText = "Nhập tên mới" || '';
+          document.getElementById('profile-modal-email-display').innerText = serverUser.email || '';
+          document.getElementById('profile-modal-avatar').src = serverUser.avatar || 'img/avt.png';
+          modal.style.display = 'none';
+          alert('Cập nhật hồ sơ thành công');
+        } else {
+          alert('Cập nhật xong nhưng không nhận về user hợp lệ.');
+        }
+      } catch (err) {
+        console.error('profile save error', err);
+        alert('Lỗi khi cập nhật hồ sơ');
       }
-
-      // Try to persist updated user to server (MongoDB)
-      const saved = await updateUserOnServer(user);
-      if (saved) {
-        user = saved; // use canonical server user
-      } else {
-        // if server update fails, still keep local copy (graceful fallback)
-        localStorage.setItem('user', JSON.stringify(user));
-      }
-
-      applyHeaderUser(user);
-      // update modal display names
-      const disp = document.getElementById('profile-modal-name-display');
-      const emailEl = document.getElementById('profile-modal-email-display');
-      const avatarEl = document.getElementById('profile-modal-avatar');
-      if (disp) disp.innerText = user.displayName || user.username || 'Khách';
-      if (emailEl) emailEl.innerText = user.email || '';
-      if (avatarEl && user.avatar) avatarEl.src = user.avatar;
-      modal.style.display = 'none';
-      alert('Cập nhật hồ sơ thành công');
     });
 
     return modal;
@@ -1456,7 +1443,7 @@ async function updateUserOnServer(user) {
     const modal = document.getElementById('profile-modal');
     if (!modal) return;
 
-    const nameInput = modal.querySelector('#profile-modal-name');
+    const nameInput = modal.querySelector('#profile-modal-name'); // now acts as "new username"
     const fileInput = modal.querySelector('#profile-modal-file');
     const avatarImg = modal.querySelector('#profile-modal-avatar');
     const saveBtn = modal.querySelector('#profile-modal-save');
@@ -1466,7 +1453,7 @@ async function updateUserOnServer(user) {
 
     async function loadProfileIntoModal() {
       let user = getUserSafe() || {};
-      // remove blob URLs stored locally (they will 404 when reopened)
+      // remove blob avatar from local cache (will 404)
       if (user && typeof user.avatar === 'string' && user.avatar.startsWith('blob:')) {
         delete user.avatar;
         try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
@@ -1478,7 +1465,9 @@ async function updateUserOnServer(user) {
           try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
         }
       }
-      if (nameInput) nameInput.value = user.displayName || user.username || '';
+
+      // populate: show current username in input (editing this will change username)
+      if (nameInput) nameInput.value = user.username || '';
       if (avatarImg) {
         const a = user.avatar;
         const valid = typeof a === 'string' && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'));
@@ -1510,13 +1499,14 @@ async function updateUserOnServer(user) {
         const token = localStorage.getItem('token') || '';
         let user = getUserSafe() || {};
         try {
-          if (nameInput && nameInput.value.trim()) user.displayName = nameInput.value.trim();
-
-          // upload avatar if new file chosen
+          // prepare newUsername from input
+          const newUsernameVal = nameInput && nameInput.value ? nameInput.value.trim() : '';
+          // upload avatar first if selected
           if (fileInput && fileInput.files && fileInput.files[0]) {
             try {
               const fd = new FormData();
               fd.append('avatar', fileInput.files[0]);
+              // send current username so server can attach to right user (server expects username)
               if (user.username) fd.append('username', user.username);
               else if (user._id) fd.append('username', user._id);
 
@@ -1536,9 +1526,13 @@ async function updateUserOnServer(user) {
             }
           }
 
-          // update user record
+          // build update payload: include current username and newUsername (if changed)
+          const payload = { username: user.username || user._id };
+          if (newUsernameVal && newUsernameVal !== (user.username || '')) payload.newUsername = newUsernameVal;
+          if (user.avatar) payload.avatar = user.avatar;
+
+          // send PUT
           try {
-            const payload = { username: user.username, _id: user._id, displayName: user.displayName, avatar: user.avatar };
             const res2 = await fetch(`${BASE_API_URL}/api/user`, {
               method: 'PUT',
               headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -1547,16 +1541,18 @@ async function updateUserOnServer(user) {
             if (!res2.ok) {
               const txt = await res2.text().catch(() => '');
               console.warn('update user failed', res2.status, txt);
-              alert('Cập nhật thất bại');
+              alert('Cập nhật thất bại: ' + (txt || res2.status));
               saveBtn.disabled = false;
               return;
             }
             const j2 = await res2.json();
             const serverUser = j2.user || j2;
+            // persist canonical user
             try { localStorage.setItem('user', JSON.stringify(serverUser)); } catch (e) {}
+            // update header UI (header should use username as display)
             applyHeaderUser(serverUser);
             if (avatarImg) avatarImg.src = serverUser.avatar || FALLBACK_AVATAR;
-            if (nameInput) nameInput.value = serverUser.displayName || '';
+            if (nameInput) nameInput.value = serverUser.username || '';
             if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; fileInput.value = ''; }
             modal.style.display = 'none';
             alert('Cập nhật hồ sơ thành công');
@@ -1577,7 +1573,7 @@ async function updateUserOnServer(user) {
       });
     }
 
-    // populate on show
+    // populate on open
     loadProfileIntoModal();
   }
 

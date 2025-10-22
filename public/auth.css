@@ -208,6 +208,8 @@
   flex-direction: column;
   align-items: center;
   margin-bottom: 10px;
+  padding-bottom: 0;
+  padding-top: 0;
 }
 .user-avatar-large {
   width: 64px;

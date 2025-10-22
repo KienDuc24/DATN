@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Admin Login</title>
+  <style>
+    body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;background:#f6f7fb}
+    .card{background:#fff;padding:20px;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.08);width:320px}
+    .card input{width:100%;padding:8px;margin:8px 0;border:1px solid #ddd;border-radius:6px}
+    .card button{width:100%;padding:10px;border:none;background:#007bff;color:#fff;border-radius:6px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h3>Admin Login</h3>
+    <input id="u" placeholder="username" />
+    <input id="p" placeholder="password" type="password" />
+    <button id="login">Login</button>
+    <p id="msg" style="color:#c00;font-size:0.9rem"></p>
+  </div>
+  <script>
+    document.getElementById('login').addEventListener('click', async () => {
+      const u = document.getElementById('u').value.trim();
+      const p = document.getElementById('p').value;
+      const msg = document.getElementById('msg');
+      msg.textContent = '';
+      try {
+        const res = await fetch('/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+        const j = await res.json();
+        if (res.ok && j.ok) {
+          location.href = '/admin.html';
+        } else {
+          msg.textContent = j.message || 'Login failed';
+        }
+      } catch (e) {
+        msg.textContent = 'Network error';
+      }
+    });
+  </script>
+</body>
+</html>

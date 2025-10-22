@@ -121,7 +121,7 @@ router.post('/auth/login', async (req, res) => {
   }
 });
 
-// Update user (PUT /api/user) - debug-friendly
+// Update user (PUT /api/user) - replace displayName behavior with username change
 router.put('/user', async (req, res) => {
   console.log('[authRoutes] PUT /user body=', req.body);
   try {
@@ -133,18 +133,31 @@ router.put('/user', async (req, res) => {
     }
 
     const query = body._id ? { _id: body._id } : { username: identifier };
-    const allowed = {};
-    if (typeof body.displayName === 'string') allowed.displayName = body.displayName;
-    if (typeof body.email === 'string') allowed.email = body.email;
-    if (typeof body.avatar === 'string') allowed.avatar = body.avatar;
+    const updates = {};
 
-    if (Object.keys(allowed).length === 0) {
+    // avatar allowed
+    if (typeof body.avatar === 'string') updates.avatar = body.avatar;
+
+    // newUsername -> replace username in DB (ensure uniqueness)
+    if (typeof body.newUsername === 'string' && body.newUsername.trim() !== '') {
+      const newUsername = body.newUsername.trim();
+      if (newUsername !== identifier) {
+        const exists = await User.findOne({ username: newUsername });
+        if (exists) {
+          console.warn('[authRoutes] new username already exists', newUsername);
+          return res.status(400).json({ ok: false, message: 'username already exists' });
+        }
+        updates.username = newUsername;
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
       console.warn('[authRoutes] no updatable fields provided');
       return res.status(400).json({ ok: false, message: 'no updatable fields provided' });
     }
 
-    console.log('[authRoutes] updating user', { query, allowed });
-    const updated = await User.findOneAndUpdate(query, { $set: allowed }, { new: true, runValidators: true }).select('-password');
+    console.log('[authRoutes] updating user', { query, updates });
+    const updated = await User.findOneAndUpdate(query, { $set: updates }, { new: true, runValidators: true }).select('-password');
     if (!updated) {
       console.warn('[authRoutes] user not found for', query);
       return res.status(404).json({ ok: false, message: 'User not found' });
