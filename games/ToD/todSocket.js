@@ -91,30 +91,70 @@ module.exports = (socket, io) => {
 
       const playersArr = getPlayersFromRoom(room);
       const playersWithAvt = await attachAvatarsToPlayers(playersArr);
-      socket.emit('tod-joined', {
-        players: playersWithAvt,
-        host: room.host || (playersArr[0] && playersArr[0].name) || null,
-        lastQuestion: getRoomState(roomCode).lastQuestion,
-        lastChoice: getRoomState(roomCode).lastChoice
-      });
+      const state = getRoomState(roomCode);
+
+      // normalize room status
+      const roomStatus = room && (room.status || (room.isPlaying ? 'playing' : (room.isOpen ? 'open' : 'closed'))) || 'open';
+
+      const payload = {
+        data: {
+          roomCode: String(roomCode || (room && room.code || '')),
+          host: room && (room.host || (playersArr[0] && playersArr[0].name)) || null,
+          status: roomStatus,
+          participantsCount: Array.isArray(playersArr) ? playersArr.length : 0,
+          participants: playersWithAvt,
+          createdAt: room && (room.createdAt || null),
+          updatedAt: room && (room.updatedAt || null)
+        },
+        state: {
+          lastQuestion: state.lastQuestion,
+          lastChoice: state.lastChoice,
+          currentIndex: typeof state.currentIndex === 'number' ? state.currentIndex : 0,
+          votes: state.votes || []
+        }
+      };
+
+      // emit to current socket and broadcast to room
+      socket.emit('tod-joined', payload);
+      io.to(roomCode).emit('tod-joined', payload);
     } catch (e) { console.error('[ToD] tod-who error', e); }
   });
 
   socket.on('tod-join', async ({ roomCode, player }) => {
     try {
+      console.log('[ToD] tod-join received', { socketId: socket.id, roomCode, player });
       player = (player && String(player).trim()) ? String(player).trim() : `guest_${socket.id.slice(0,6)}`;
       const user = await User.findOne({ $or: [{ username: player }, { displayName: player }] }).lean();
+
       let room = await Room.findOne({ code: roomCode });
       if (!room) {
-        room = await Room.create({ code: roomCode, host: player, players: [{ name: player, avatar: user?.avatarUrl || null }], participants: [{ name: player, avatar: user?.avatarUrl || null }] });
+        console.log('[ToD] creating new room', roomCode, player);
+        room = await Room.create({
+          code: roomCode,
+          host: player,
+          players: [{ name: player, avatar: user?.avatarUrl || null }],
+          participants: [{ name: player, avatar: user?.avatarUrl || null }],
+          status: 'open'
+        });
       } else {
-        // ensure arrays exist on the mongoose doc (not lean)
+        console.log('[ToD] found room document', { id: room._id, code: room.code, players: Array.isArray(room.players) ? room.players.length : 0, participants: Array.isArray(room.participants) ? room.participants.length : 0 });
+        // ensure arrays exist and stay in sync
         await ensureRoomPlayersField(room);
+        if (!Array.isArray(room.players)) room.players = [];
         if (!room.players.some(p => p.name === player)) {
           room.players.push({ name: player, avatar: user?.avatarUrl || null });
-          room.participants = room.players; // sync
+          room.participants = room.players;
           if (!room.host) room.host = room.players[0]?.name || player;
           await room.save();
+          console.log('[ToD] appended player and saved room', { roomCode, player });
+        } else {
+          // still ensure participants in DB include this player
+          const existsInParticipants = Array.isArray(room.participants) && room.participants.some(p => p.name === player);
+          if (!existsInParticipants) {
+            room.participants = room.players;
+            await room.save();
+            console.log('[ToD] synced participants array for room', roomCode);
+          }
         }
       }
 
@@ -123,8 +163,30 @@ module.exports = (socket, io) => {
 
       const fresh = await Room.findOne({ code: roomCode }).lean();
       const playersWithAvt = await attachAvatarsToPlayers(Array.isArray(fresh.players) ? fresh.players : []);
-      const payload = { host: fresh && (fresh.host || (fresh.players && fresh.players[0] && fresh.players[0].name) ) || null, players: playersWithAvt };
+      const state = getRoomState(roomCode);
 
+      // normalize room status
+      const roomStatus = fresh && (fresh.status || (fresh.isPlaying ? 'playing' : (fresh.isOpen ? 'open' : 'closed'))) || 'open';
+
+      const payload = {
+        data: {
+          roomCode: String(roomCode || (fresh && fresh.code || '')),
+          host: fresh && (fresh.host || (fresh.players && fresh.players[0] && fresh.players[0].name)) || null,
+          status: roomStatus,
+          participantsCount: Array.isArray(fresh.players) ? fresh.players.length : 0,
+          participants: playersWithAvt,
+          createdAt: fresh && (fresh.createdAt || null),
+          updatedAt: fresh && (fresh.updatedAt || null)
+        },
+        state: {
+          lastQuestion: state.lastQuestion,
+          lastChoice: state.lastChoice,
+          currentIndex: typeof state.currentIndex === 'number' ? state.currentIndex : 0,
+          votes: state.votes || []
+        }
+      };
+
+      // emit to current socket and broadcast to room
       socket.emit('tod-joined', payload);
       io.to(roomCode).emit('tod-joined', payload);
     } catch (e) {

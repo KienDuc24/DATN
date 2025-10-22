@@ -37,6 +37,13 @@ try {
   app.use('/api/room', roomRoutes);
 } catch (e) { /* ignore */ }
 
+// mount debug routes
+try {
+  const debugRoutes = require('./routes/debugRoutes');
+  app.use('/api/debug', debugRoutes);
+  console.log('[server] debugRoutes mounted at /api/debug');
+} catch(e){ console.warn('debugRoutes not mounted', e && e.message); }
+
 // health endpoints
 app.get('/health', (req, res) => res.json({ ok: true }));
 app.get('/_status', (req, res) => res.json({ ok: true, env: process.env.NODE_ENV || 'dev' }));
