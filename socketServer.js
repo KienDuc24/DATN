@@ -1,17 +1,24 @@
-const { Server } = require("socket.io");
-const PORT = process.env.PORT || 3000;
-
-const io = new Server(PORT, {
+const http = require('http');
+const app = require('./server'); // hoặc express app nếu có
+const server = http.createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(server, {
   cors: {
     origin: ['https://datn-smoky.vercel.app'],
     methods: ['GET', 'POST']
   }
 });
 
+const todSocket = require('./games/ToD/todSocket');
+
 // Quản lý phòng theo roomCode duy nhất, lưu cả gameId
 let rooms = {}; // { [roomCode]: { gameId, players: [ { name, socketId } ] } }
 
 io.on("connection", (socket) => {
+  console.log('socket connected', socket.id);
+  // attach ToD handlers
+  try { todSocket(socket, io); } catch (e) { console.error('todSocket attach err', e); }
+
   socket.on("join-room", ({ gameId, roomCode, player }) => {
     // Nếu phòng chưa tồn tại, tạo mới với gameId
     if (!rooms[roomCode]) {
@@ -71,4 +78,5 @@ io.on("connection", (socket) => {
   });
 });
 
-console.log(`🚀 Socket.io server running on port ${PORT}`);
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => console.log(`Socket.io server running on port ${PORT}`));
