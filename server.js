@@ -22,7 +22,7 @@ app.use(cors({
 // Kết nối MongoDB
 (async () => {
   try {
-    const uri = process.env.MONGO_URI;
+    const uri = process.env.MONGODB_URI;
     if (!uri) {
       console.warn('MONGODB_URI not set in .env');
     } else {

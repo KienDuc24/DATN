@@ -12,7 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // connect mongodb (try both names)
 (async () => {
   try {
-    const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+    const uri = process.env.MONGODB_URI;
     if (!uri) {
       console.warn('MONGODB_URI / MONGODB_URI not set in .env');
     } else {
