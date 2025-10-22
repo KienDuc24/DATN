@@ -51,28 +51,29 @@ async function getRandomQuestion(type = 'truth') {
 module.exports = (socket, io) => {
   console.log(`[ToD] handler attached for socket ${socket.id}`);
 
-  // Client asks for current room state
+  // trả trạng thái khi client yêu cầu
   socket.on('tod-who', async ({ roomCode }) => {
     try {
+      console.log(`[ToD] tod-who from ${socket.id}`, { roomCode });
       const room = await Room.findOne({ code: roomCode });
-      if (!room) {
-        socket.emit('tod-joined', { players: [], host: null });
-        return;
-      }
-      socket.emit('tod-joined', {
-        players: room.players || [],
-        host: room.players && room.players[0] ? room.players[0].name : null
-      });
-      // if a question is already active, send it too
-      if (room.lastQuestion) {
+      const payload = {
+        players: (room && room.players) ? room.players : [],
+        host: room && room.players && room.players[0] ? room.players[0].name : null,
+        lastQuestion: room ? room.lastQuestion : null,
+        lastChoice: room ? room.lastChoice : null
+      };
+      console.log(`[ToD] replying tod-joined -> socket ${socket.id}`, payload);
+      socket.emit('tod-joined', payload);
+      // nếu có câu hỏi active, gửi luôn
+      if (payload.lastQuestion) {
         socket.emit('tod-question', {
-          player: room.players[room.currentIndex]?.name || null,
-          choice: room.lastChoice || 'truth',
-          question: room.lastQuestion
+          player: payload.host,
+          choice: payload.lastChoice || 'truth',
+          question: payload.lastQuestion
         });
       }
     } catch (e) {
-      console.error('tod-who error', e && e.stack ? e.stack : e);
+      console.error('[ToD] tod-who error', e && e.stack ? e.stack : e);
     }
   });
 
@@ -92,17 +93,27 @@ module.exports = (socket, io) => {
           await room.save();
         }
       }
+
+      // join socket vào room
       socket.join(roomCode);
 
-      // broadcast updated players to room
-      io.to(roomCode).emit("tod-joined", {
+      const payload = {
         host: room.players[0]?.name || null,
         players: room.players
-      });
+      };
 
-      // if there's an active question, broadcast it (so late joiners get it)
+      // emit trực tiếp cho socket (đảm bảo người join nhận được)
+      console.log(`[ToD] emit tod-joined -> socket ${socket.id}`, payload);
+      socket.emit('tod-joined', payload);
+
+      // emit cho tất cả trong room (cập nhật cho members)
+      console.log(`[ToD] broadcast tod-joined -> room ${roomCode}`, payload);
+      io.to(roomCode).emit('tod-joined', payload);
+
+      // nếu có câu hỏi active, gửi cho tất cả
       if (room.lastQuestion) {
-        io.to(roomCode).emit("tod-question", {
+        console.log(`[ToD] broadcasting existing question to room ${roomCode}`);
+        io.to(roomCode).emit('tod-question', {
           player: room.players[room.currentIndex]?.name,
           choice: room.lastChoice || 'truth',
           question: room.lastQuestion

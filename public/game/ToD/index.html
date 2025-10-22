@@ -400,15 +400,21 @@
     socket.on("connect", () => {
       console.log("✅ socket.connect - id:", socket.id);
       emitJoin();
+
       // request current room state in case we missed a broadcast
       console.log("➡ Requesting current room state (tod-who)", { roomCode });
       socket.emit('tod-who', { roomCode });
+
+      // bảo đảm: nếu server xử lý join lâu, request lại sau 200ms
+      setTimeout(() => {
+        console.log("➡ (delayed) Requesting current room state (tod-who) again", { roomCode });
+        socket.emit('tod-who', { roomCode });
+      }, 200);
     });
 
     socket.on("reconnect", () => {
       console.log("↻ socket.reconnect - re-emit join");
       emitJoin();
-      socket.emit('tod-who', { roomCode });
     });
 
     socket.on("disconnect", (reason) => {
