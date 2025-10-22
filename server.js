@@ -10,6 +10,7 @@ const path = require('path');
 const MongoStore = require('connect-mongo');
 const { v4: uuidv4 } = require('uuid'); // Thêm ở đầu file
 require('dotenv').config();
+const fs = require('fs');
 
 const app = express();
 app.use(express.json());
@@ -23,7 +24,7 @@ app.use(cors({
   try {
     const uri = process.env.MONGO_URI;
     if (!uri) {
-      console.warn('MONGO_URI not set in .env');
+      console.warn('MONGODB_URI not set in .env');
     } else {
       await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
       console.log('✅ MongoDB connected');
@@ -138,6 +139,15 @@ app.use('/api/room', roomRoutes);
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// ensure uploads directory exists (prevents runtime errors when multer saves files)
+try {
+  const uploadsDir = path.resolve(__dirname, 'public', 'uploads');
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('[server] ensured uploads dir exists at', uploadsDir);
+} catch (e) {
+  console.warn('[server] could not create uploads dir', e && e.message ? e.message : e);
+}
 
 // Export app cho Vercel
 module.exports = app;

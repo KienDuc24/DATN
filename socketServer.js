@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
   try {
     const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
     if (!uri) {
-      console.warn('MONGODB_URI / MONGO_URI not set in .env');
+      console.warn('MONGODB_URI / MONGODB_URI not set in .env');
     } else {
       await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
       console.log('✅ MongoDB connected');

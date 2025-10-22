@@ -1222,8 +1222,11 @@ function saveUserToLocal(user) {
     <div style="font-weight:800;margin-bottom:8px">Cài đặt tài khoản</div>
     <label style="font-size:0.9rem">Tên hiển thị</label>
     <input id="settingName" placeholder="Tên của bạn" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin:6px 0">
-    <label style="font-size:0.9rem">Avatar (URL)</label>
-    <input id="settingAvatar" placeholder="https://..." style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin:6px 0">
+    <label style="font-size:0.9rem">Avatar (tải ảnh lên)</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input id="settingAvatarFile" type="file" accept="image/*" style="flex:1" />
+      <img id="settingAvatarPreview" src="" alt="preview" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #ddd" />
+    </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
       <button id="cancelSettings" style="padding:8px 12px;border-radius:8px;border:none;background:#eee">Hủy</button>
       <button id="saveSettings" style="padding:8px 12px;border-radius:8px;border:none;background:linear-gradient(90deg,#00d4b4,#00b59a);color:#022">Lưu</button>
@@ -1287,53 +1290,66 @@ function saveUserToLocal(user) {
   document.getElementById('saveSettings').addEventListener('click', async (e) => {
     e.stopPropagation();
     const newName = document.getElementById('settingName').value.trim();
-    const newAvatar = document.getElementById('settingAvatar').value.trim() || null;
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const username = user.username || user.displayName || user.name;
-    if (!username) { alert('Không có user đăng nhập'); return; }
+    const fileInput = document.getElementById('settingAvatarFile');
+    let uploadedUrl = null;
 
     try {
-      const body = { username: username };
+      // if user selected a file, upload first
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        const fd = new FormData();
+        fd.append('avatar', fileInput.files[0]);
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const username = user.username || user.displayName || user.name;
+        if (username) fd.append('username', username);
+
+        const upRes = await fetch('/api/user/upload-avatar', { method: 'POST', body: fd });
+        const upJson = await upRes.json();
+        if (!upJson || !upJson.ok) {
+          alert('Upload avatar thất bại');
+          return;
+        }
+        uploadedUrl = upJson.url; // e.g. /uploads/XXXXX.jpg
+      }
+
+      // now call update profile to set displayName and avatarUrl (if needed)
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const username = user.username || user.displayName || user.name;
+      if (!username) { alert('Không có user đăng nhập'); return; }
+
+      const body = { username };
       if (newName) body.displayName = newName;
-      if (newAvatar !== null) body.avatarUrl = newAvatar;
+      if (uploadedUrl) body.avatarUrl = uploadedUrl;
+
       const res = await fetch('/api/user/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
       const j = await res.json();
-      if (!j || !j.ok) {
-        alert('Cập nhật thất bại');
-        return;
-      }
-      // update localStorage user
+      if (!j || !j.ok) { alert('Cập nhật thất bại'); return; }
+
+      // update local storage & UI
       const updatedUser = Object.assign({}, user, j.user || {});
-      // ensure fields
       if (body.displayName) updatedUser.displayName = body.displayName;
-      if (body.avatarUrl !== undefined) updatedUser.avatar = body.avatarUrl;
+      if (body.avatarUrl) updatedUser.avatar = body.avatarUrl;
       localStorage.setItem('user', JSON.stringify(updatedUser));
-      // update UI header
       if (document.getElementById('userAvatar')) document.getElementById('userAvatar').src = updatedUser.avatar || 'img/avt.png';
       if (document.getElementById('dropdownAvatar')) document.getElementById('dropdownAvatar').src = updatedUser.avatar || 'img/avt.png';
       if (document.getElementById('dropdownUsername')) document.getElementById('dropdownUsername').innerText = updatedUser.displayName || updatedUser.username || '';
 
-      // persist avatar to sessionStorage for ToD page usage
-      if (updatedUser.avatar) sessionStorage.setItem('avatarUrl', updatedUser.avatar);
-
-      // if inside a room, notify server to update Room.players (the server also updates DB)
-      // get room code from URL if any
+      // notify room if exists
       const urlParams = new URLSearchParams(window.location.search);
       const roomCode = urlParams.get('code');
-      if (roomCode) {
+      if (roomCode && window.socket) {
         try {
-          socket && socket.emit && socket.emit('profile-updated', { roomCode, oldName: username, newName: newName || username, avatar: updatedUser.avatar || null });
-        } catch (e) { console.warn('socket emit profile-updated failed', e); }
+          window.socket.emit('profile-updated', { roomCode, oldName: username, newName: newName || username, avatar: updatedUser.avatar || null });
+        } catch (e) { console.warn(e); }
       }
 
       showSettingsModal(false);
       alert('Cập nhật hồ sơ thành công');
     } catch (err) {
-      console.error('save profile error', err);
+      console.error(err);
       alert('Lỗi khi lưu hồ sơ');
     }
   });
