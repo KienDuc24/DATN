@@ -114,9 +114,10 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Ví dụ trong socketServer.js
-  socket.on("start-room", ({ gameId, roomCode, player }) => {
-    io.to(roomCode).emit("room-start", { gameId, roomCode, player });
+  // Host requests start: broadcast to room (NO player name)
+  socket.on('start-room', ({ gameFolder, roomCode }) => {
+    console.log('[socketServer] start-room from', socket.id, { gameFolder, roomCode });
+    io.to(roomCode).emit('room-start', { gameFolder, roomCode }); // NO player name
   });
 });
 

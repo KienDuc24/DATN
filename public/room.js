@@ -100,18 +100,28 @@ window.startGame = async function startGame() {
   }
 
   if (foundFolder) {
-    // Gửi sự kiện cho server để thông báo tất cả thành viên
-    socket.emit("start-room", { gameId: foundFolder, roomCode, player: playerName });
-    // Host cũng tự chuyển hướng (nếu muốn)
-    // window.location.href = ...
+    // Gửi sự kiện cho server để thông báo tất cả thành viên (không kèm tên host)
+    socket.emit("start-room", { gameFolder: foundFolder, roomCode });
+    // Host vẫn redirect bằng tên của chính host
+    const hostUrl = `game/${foundFolder}/index.html?code=${encodeURIComponent(roomCode)}&user=${encodeURIComponent(playerName)}&gameId=${encodeURIComponent(gameId)}`;
+    console.log("Host redirect ->", hostUrl);
+    window.location.href = hostUrl;
   } else {
     alert("Không tìm thấy game phù hợp!");
   }
 };
 
-socket.on("room-start", ({ gameId, roomCode, player }) => {
-  // Lấy tên người chơi hiện tại
-  let playerName = player || sessionStorage.getItem("playerName") || "Guest";
-  const url = `game/${gameId}/index.html?code=${encodeURIComponent(roomCode)}&user=${encodeURIComponent(playerName)}&gameId=${encodeURIComponent(gameId)}`;
-  window.location.href = url;
+// nhận signal từ server để tất cả member tự redirect (với tên riêng của họ)
+socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const userFromUrl = urlParams.get('user');
+    const user = sessionStorage.getItem('playerName') || userFromUrl || prompt('Nhập tên để tham gia:') || `guest_${Math.random().toString(36).slice(2,8)}`;
+    if (user) sessionStorage.setItem('playerName', user);
+    const url = `game/${gameFolder}/index.html?code=${encodeURIComponent(rc)}&user=${encodeURIComponent(user)}&gameId=${encodeURIComponent(gameId)}`;
+    console.log('Member redirect ->', url);
+    window.location.href = url;
+  } catch (e) {
+    console.error('room-start handler error', e);
+  }
 });
