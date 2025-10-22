@@ -8,7 +8,29 @@ const bcrypt = require('bcryptjs');
 
 console.log('[authRoutes] loaded');
 
-// ensure uploads dir or fallback to tmp
+// Cloudinary setup
+let cloudinary = null;
+try {
+  const cld = require('cloudinary');
+  cloudinary = cld.v2;
+  // prefer CLOUDINARY_URL if set, otherwise use individual vars
+  if (process.env.CLOUDINARY_URL) {
+    cloudinary.config({ secure: true });
+  } else {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
+      api_key: process.env.CLOUDINARY_API_KEY || '',
+      api_secret: process.env.CLOUDINARY_API_SECRET || '',
+      secure: true
+    });
+  }
+  console.log('[authRoutes] cloudinary configured');
+} catch (err) {
+  console.warn('[authRoutes] cloudinary not available or not configured:', err && err.message);
+  cloudinary = null;
+}
+
+// ensure uploads dir or fallback to tmp (only for temporary disk storage before upload)
 let uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
 try {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -23,7 +45,7 @@ try {
 let multerInstance = null;
 let useFormidable = false;
 try {
-  multerInstance = require('multer'); // may throw in ESM-only builds
+  multerInstance = require('multer');
   console.log('[authRoutes] multer loaded');
 } catch (err) {
   console.warn('[authRoutes] multer require failed, falling back to formidable:', err && err.message);
@@ -110,29 +132,54 @@ router.put('/user', async (req, res) => {
   }
 });
 
+// Helper: upload local file at filePath to Cloudinary (if configured)
+async function uploadToCloudinary(filePath) {
+  if (!cloudinary) throw new Error('Cloudinary not configured');
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.upload(filePath, { folder: 'avatars' }, (err, result) => {
+      if (err) return reject(err);
+      return resolve(result);
+    });
+  });
+}
+
 // Upload avatar (POST /api/user/upload-avatar)
-// Two modes:
-//  - if multer available: use multer.diskStorage to save under uploadsDir
-//  - otherwise: use formidable to parse and save to uploadsDir (fallback)
+// Supports both multer (disk) and formidable fallback; always uploads to Cloudinary if configured
 if (uploadHandler) {
   router.post('/user/upload-avatar', uploadHandler.single('avatar'), async (req, res) => {
     console.log('[authRoutes] POST /user/upload-avatar (multer) file=', req.file && req.file.filename, 'body=', req.body);
     try {
       if (!req.file) return res.status(400).json({ ok: false, message: 'No file uploaded' });
-      const savedName = req.file.filename || path.basename(req.file.path || '');
-      const host = req.get('host');
-      const proto = req.protocol;
-      const url = uploadsDir.includes(path.join(__dirname, '..', 'public')) ? `${proto}://${host}/uploads/${savedName}` : `${proto}://${host}/uploads/${savedName}`;
+      const localPath = req.file.path;
+      let finalUrl = '';
+      if (cloudinary) {
+        try {
+          const r = await uploadToCloudinary(localPath);
+          finalUrl = r.secure_url || r.url;
+        } catch (err) {
+          console.error('[authRoutes] cloudinary upload failed', err);
+          // fallback: try to serve local file (may not persist on serverless)
+          const savedName = req.file.filename || path.basename(localPath);
+          finalUrl = `${req.protocol}://${req.get('host')}/uploads/${savedName}`;
+        } finally {
+          // cleanup local file
+          fs.unlink(localPath, () => {});
+        }
+      } else {
+        const savedName = req.file.filename || path.basename(localPath);
+        finalUrl = `${req.protocol}://${req.get('host')}/uploads/${savedName}`;
+      }
+
       const username = req.body.username;
       if (username) {
         const updated = await User.findOneAndUpdate(
           { $or: [{ username }, { _id: username }] },
-          { $set: { avatar: url } },
+          { $set: { avatar: finalUrl } },
           { new: true }
         ).select('-password');
-        if (updated) return res.json({ ok: true, url, user: updated });
+        if (updated) return res.json({ ok: true, url: finalUrl, user: updated });
       }
-      return res.json({ ok: true, url });
+      return res.json({ ok: true, url: finalUrl });
     } catch (err) {
       console.error('[authRoutes] upload avatar error (multer)', err);
       return res.status(500).json({ ok: false, message: 'Upload failed' });
@@ -155,23 +202,37 @@ if (uploadHandler) {
       }
       const file = files.avatar || files.file || null;
       if (!file) return res.status(400).json({ ok: false, message: 'No file uploaded' });
+      const localPath = file.path;
       try {
-        const savedName = path.basename(file.path);
-        const host = req.get('host');
-        const proto = req.protocol;
-        const url = uploadsDir.includes(path.join(__dirname, '..', 'public')) ? `${proto}://${host}/uploads/${savedName}` : `${proto}://${host}/uploads/${savedName}`;
+        let finalUrl = '';
+        if (cloudinary) {
+          try {
+            const r = await uploadToCloudinary(localPath);
+            finalUrl = r.secure_url || r.url;
+          } catch (err2) {
+            console.error('[authRoutes] cloudinary upload failed (formidable)', err2);
+            const savedName = path.basename(localPath);
+            finalUrl = `${req.protocol}://${req.get('host')}/uploads/${savedName}`;
+          } finally {
+            fs.unlink(localPath, () => {});
+          }
+        } else {
+          const savedName = path.basename(localPath);
+          finalUrl = `${req.protocol}://${req.get('host')}/uploads/${savedName}`;
+        }
+
         const username = fields.username;
         if (username) {
           const updated = await User.findOneAndUpdate(
             { $or: [{ username }, { _id: username }] },
-            { $set: { avatar: url } },
+            { $set: { avatar: finalUrl } },
             { new: true }
           ).select('-password');
-          if (updated) return res.json({ ok: true, url, user: updated });
+          if (updated) return res.json({ ok: true, url: finalUrl, user: updated });
         }
-        return res.json({ ok: true, url });
-      } catch (err2) {
-        console.error('[authRoutes] upload avatar error (formidable)', err2);
+        return res.json({ ok: true, url: finalUrl });
+      } catch (err3) {
+        console.error('[authRoutes] upload avatar error (formidable)', err3);
         return res.status(500).json({ ok: false, message: 'Upload failed' });
       }
     });
