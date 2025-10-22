@@ -16,8 +16,11 @@
   --accent-contrast: #012429;
 }
 
+/* use Noto Sans (Vietnamese) with safe fallbacks */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap&subset=vietnamese');
+
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;background:linear-gradient(180deg,#051026 0%, #0b1720 70%);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#051026 0%, #0b1720 70%);font-family:"Noto Sans",system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
 .page{max-width:var(--max-width);margin:18px auto;padding:12px;display:flex;flex-direction:column;gap:16px}
 
 /* top bar */

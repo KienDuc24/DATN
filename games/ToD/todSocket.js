@@ -2,6 +2,7 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const Room = require('../../models/Room');
+const User = require('../../models/User'); // <-- require User
 // load questions from file in public (fallback to built-in if missing)
 let QUESTIONS = null;
 try {
@@ -32,6 +33,26 @@ function getRandomQuestion(type = 'truth') {
 module.exports = (socket, io) => {
   console.log(`[ToD] handler attached for socket ${socket.id}`);
 
+  async function attachAvatarsToPlayers(players) {
+    // players: array of { name, avatar? } -> ensure avatar filled from DB if missing
+    const names = players.map(p => p.name);
+    const users = await User.find({ $or: [{ username: { $in: names } }, { displayName: { $in: names } }, { name: { $in: names } }] }).lean();
+    const map = {};
+    users.forEach(u => {
+      if (u.username) map[u.username] = u;
+      if (u.displayName) map[u.displayName] = u;
+      if (u.name) map[u.name] = u;
+    });
+    return players.map(p => {
+      const existingAvatar = p.avatar || null;
+      const user = map[p.name];
+      return {
+        name: p.name,
+        avatar: existingAvatar || (user ? (user.avatarUrl || null) : null)
+      };
+    });
+  }
+
   socket.on('tod-who', async ({ roomCode }) => {
     try {
       const room = await Room.findOne({ code: roomCode });
@@ -39,50 +60,41 @@ module.exports = (socket, io) => {
         socket.emit('tod-joined', { players: [], host: null });
         return;
       }
-      const state = ROOM_STATE[roomCode];
+      const state = getRoomState(roomCode);
+      const playersWithAvt = await attachAvatarsToPlayers(room.players || []);
       socket.emit('tod-joined', {
-        players: room.players || [],
+        players: playersWithAvt,
         host: room.host || (room.players[0] && room.players[0].name) || null,
-        lastQuestion: state ? state.lastQuestion : null,
-        lastChoice: state ? state.lastChoice : null
+        lastQuestion: state.lastQuestion,
+        lastChoice: state.lastChoice
       });
-    } catch (e) {
-      console.error('[ToD] tod-who error', e);
-    }
+    } catch (e) { console.error('[ToD] tod-who error', e); }
   });
 
   socket.on('tod-join', async ({ roomCode, player }) => {
     try {
       player = (player && String(player).trim()) ? String(player).trim() : `guest_${socket.id.slice(0,6)}`;
-
+      // try to find user avatar
+      const user = await User.findOne({ $or: [{ username: player }, { displayName: player }, { name: player }] }).lean();
       let room = await Room.findOne({ code: roomCode });
       if (!room) {
-        room = await Room.create({ code: roomCode, host: player, players: [{ name: player }] });
+        room = await Room.create({ code: roomCode, host: player, players: [{ name: player, avatar: user?.avatarUrl || null }] });
       } else {
-        if (room.locked) {
-          socket.emit('tod-join-failed', { reason: 'Phòng đã bắt đầu, không thể vào thêm!' });
-          return;
-        }
+        if (room.locked) { socket.emit('tod-join-failed', { reason: 'Phòng đã bắt đầu, không thể vào thêm!' }); return; }
         if (!room.players.some(p => p.name === player)) {
-          room.players.push({ name: player });
-          // keep host as first player
+          room.players.push({ name: player, avatar: user?.avatarUrl || null });
           if (!room.host) room.host = room.players[0]?.name || player;
           await room.save();
         }
       }
 
       socket.join(roomCode);
-      // ensure in-memory state exists
       getRoomState(roomCode);
 
-      // fetch fresh room
       const fresh = await Room.findOne({ code: roomCode });
-      const payload = {
-        host: fresh.host || (fresh.players[0] && fresh.players[0].name) || null,
-        players: fresh.players || []
-      };
+      const playersWithAvt = await attachAvatarsToPlayers(fresh.players || []);
+      const payload = { host: fresh.host || (fresh.players[0] && fresh.players[0].name) || null, players: playersWithAvt };
 
-      // send directly to socket and broadcast
       socket.emit('tod-joined', payload);
       io.to(roomCode).emit('tod-joined', payload);
     } catch (e) {
@@ -171,6 +183,32 @@ module.exports = (socket, io) => {
       }
     } catch (e) {
       console.error('[ToD] tod-vote error', e);
+    }
+  });
+
+  // profile-updated from client: oldName -> newName, avatar
+  socket.on('profile-updated', async ({ roomCode, oldName, newName, avatar }) => {
+    try {
+      if (!roomCode || !oldName) return;
+      const room = await Room.findOne({ code: roomCode });
+      if (!room) return;
+      let changed = false;
+      room.players = (room.players || []).map(p => {
+        if (p.name === oldName) {
+          changed = true;
+          return { name: newName || oldName, avatar: avatar || p.avatar || null };
+        }
+        return p;
+      });
+      // update host if needed
+      if (room.host === oldName) room.host = newName || room.host;
+      if (changed) {
+        await room.save();
+        const playersWithAvt = await attachAvatarsToPlayers(room.players || []);
+        io.to(roomCode).emit('tod-joined', { host: room.host, players: playersWithAvt });
+      }
+    } catch (e) {
+      console.error('[ToD] profile-updated handler error', e);
     }
   });
 

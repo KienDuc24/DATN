@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 
 const PlayerSchema = new mongoose.Schema({
-  name: { type: String, required: true }
+  name: { type: String, required: true },
+  avatar: { type: String, default: null } // lưu avatar (nếu có)
 }, { _id: false });
 
 const RoomSchema = new mongoose.Schema({

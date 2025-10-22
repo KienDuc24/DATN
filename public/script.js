@@ -1183,3 +1183,159 @@ function saveUserToLocal(user) {
   };
   localStorage.setItem('user', JSON.stringify(userObj));
 }
+
+// --- PROFILE / ACCOUNT SETTINGS UI & logic ---
+// create profile popup (shows account info) and settings modal (change name / avatar)
+(function attachProfileUI() {
+  // create popup (hidden by default)
+  const profilePopup = document.createElement('div');
+  profilePopup.id = 'profilePopup';
+  Object.assign(profilePopup.style, {
+    position: 'fixed', right: '18px', top: '70px', zIndex: 1200,
+    background: '#fff', color: '#072026', borderRadius: '10px',
+    boxShadow: '0 8px 30px rgba(0,0,0,0.25)', padding: '12px', display: 'none', minWidth: '260px'
+  });
+  profilePopup.innerHTML = `
+    <div style="display:flex;gap:10px;align-items:center">
+      <img id="popupAvatar" src="img/avt.png" alt="avatar" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #eee">
+      <div style="flex:1">
+        <div id="popupName" style="font-weight:700"></div>
+        <div id="popupEmail" style="font-size:0.85rem;color:#666"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;justify-content:space-between">
+      <button id="btnViewProfile" style="flex:1;padding:8px;border-radius:8px;border:none;background:#f3f4f6;cursor:pointer">Hồ sơ</button>
+      <button id="btnAccountSettings" style="flex:1;padding:8px;border-radius:8px;border:none;background:linear-gradient(90deg,#00d4b4,#00b59a);color:#032">Cài đặt tài khoản</button>
+    </div>
+  `;
+  document.body.appendChild(profilePopup);
+
+  // settings modal (hidden)
+  const settingsModal = document.createElement('div');
+  settingsModal.id = 'accountSettingsModal';
+  Object.assign(settingsModal.style, {
+    position: 'fixed', right: '18px', top: '140px', zIndex: 1250,
+    background: '#fff', color: '#072026', borderRadius: '12px', padding: '14px',
+    boxShadow: '0 12px 40px rgba(0,0,0,0.35)', display: 'none', minWidth: '300px'
+  });
+  settingsModal.innerHTML = `
+    <div style="font-weight:800;margin-bottom:8px">Cài đặt tài khoản</div>
+    <label style="font-size:0.9rem">Tên hiển thị</label>
+    <input id="settingName" placeholder="Tên của bạn" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin:6px 0">
+    <label style="font-size:0.9rem">Avatar (URL)</label>
+    <input id="settingAvatar" placeholder="https://..." style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin:6px 0">
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+      <button id="cancelSettings" style="padding:8px 12px;border-radius:8px;border:none;background:#eee">Hủy</button>
+      <button id="saveSettings" style="padding:8px 12px;border-radius:8px;border:none;background:linear-gradient(90deg,#00d4b4,#00b59a);color:#022">Lưu</button>
+    </div>
+  `;
+  document.body.appendChild(settingsModal);
+
+  // helper to open/close popup
+  function showProfilePopup(show = true) {
+    profilePopup.style.display = show ? 'block' : 'none';
+  }
+  function showSettingsModal(show = true) {
+    settingsModal.style.display = show ? 'block' : 'none';
+  }
+
+  // wire header avatar click to toggle popup (header userInfo element should exist)
+  const headerUserInfo = document.getElementById('userInfo') || document.getElementById('headerUser') || null;
+  if (headerUserInfo) {
+    headerUserInfo.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const visible = profilePopup.style.display === 'block';
+      // hide any other modals
+      showSettingsModal(false);
+      showProfilePopup(!visible);
+      // populate data from localStorage user
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const avatar = user.avatar || user.picture || sessionStorage.getItem('avatarUrl') || 'img/avt.png';
+      const name = user.displayName || user.name || user.username || 'Khách';
+      const email = user.email || '';
+      const popupAvatar = document.getElementById('popupAvatar');
+      const popupName = document.getElementById('popupName');
+      const popupEmail = document.getElementById('popupEmail');
+      if (popupAvatar) popupAvatar.src = avatar;
+      if (popupName) popupName.innerText = name;
+      if (popupEmail) popupEmail.innerText = email;
+    });
+  }
+
+  // click outside to close
+  document.addEventListener('click', () => { showProfilePopup(false); showSettingsModal(false); });
+
+  // buttons
+  document.getElementById('btnViewProfile').addEventListener('click', (e) => {
+    e.stopPropagation();
+    // just re-use popup details - you may expand to a full profile modal if needed
+    alert('Hồ sơ:\n' + (document.getElementById('popupName').innerText || '') + '\n' + (document.getElementById('popupEmail').innerText || ''));
+  });
+
+  document.getElementById('btnAccountSettings').addEventListener('click', (e) => {
+    e.stopPropagation();
+    showProfilePopup(false);
+    // populate settings inputs
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    document.getElementById('settingName').value = user.displayName || user.name || user.username || '';
+    document.getElementById('settingAvatar').value = user.avatar || user.picture || sessionStorage.getItem('avatarUrl') || '';
+    showSettingsModal(true);
+  });
+
+  document.getElementById('cancelSettings').addEventListener('click', (e) => { e.stopPropagation(); showSettingsModal(false); });
+
+  document.getElementById('saveSettings').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const newName = document.getElementById('settingName').value.trim();
+    const newAvatar = document.getElementById('settingAvatar').value.trim() || null;
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const username = user.username || user.displayName || user.name;
+    if (!username) { alert('Không có user đăng nhập'); return; }
+
+    try {
+      const body = { username: username };
+      if (newName) body.displayName = newName;
+      if (newAvatar !== null) body.avatarUrl = newAvatar;
+      const res = await fetch('/api/user/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const j = await res.json();
+      if (!j || !j.ok) {
+        alert('Cập nhật thất bại');
+        return;
+      }
+      // update localStorage user
+      const updatedUser = Object.assign({}, user, j.user || {});
+      // ensure fields
+      if (body.displayName) updatedUser.displayName = body.displayName;
+      if (body.avatarUrl !== undefined) updatedUser.avatar = body.avatarUrl;
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      // update UI header
+      if (document.getElementById('userAvatar')) document.getElementById('userAvatar').src = updatedUser.avatar || 'img/avt.png';
+      if (document.getElementById('dropdownAvatar')) document.getElementById('dropdownAvatar').src = updatedUser.avatar || 'img/avt.png';
+      if (document.getElementById('dropdownUsername')) document.getElementById('dropdownUsername').innerText = updatedUser.displayName || updatedUser.username || '';
+
+      // persist avatar to sessionStorage for ToD page usage
+      if (updatedUser.avatar) sessionStorage.setItem('avatarUrl', updatedUser.avatar);
+
+      // if inside a room, notify server to update Room.players (the server also updates DB)
+      // get room code from URL if any
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomCode = urlParams.get('code');
+      if (roomCode) {
+        try {
+          socket && socket.emit && socket.emit('profile-updated', { roomCode, oldName: username, newName: newName || username, avatar: updatedUser.avatar || null });
+        } catch (e) { console.warn('socket emit profile-updated failed', e); }
+      }
+
+      showSettingsModal(false);
+      alert('Cập nhật hồ sơ thành công');
+    } catch (err) {
+      console.error('save profile error', err);
+      alert('Lỗi khi lưu hồ sơ');
+    }
+  });
+
+})();

@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const User = require('../models/User');
 const router = express.Router();
+const userController = require('../controllers/userController');
 
 // Đăng ký
 router.post('/register', async (req, res) => {
@@ -31,5 +32,8 @@ router.post('/login', async (req, res) => {
   if (!match) return res.json({ message: 'Sai tên đăng nhập hoặc mật khẩu' });
   res.json({ message: 'Đăng nhập thành công', user });
 });
+
+// Cập nhật thông tin người dùng
+router.post('/api/user/update', userController.updateProfile);
 
 module.exports = router;
