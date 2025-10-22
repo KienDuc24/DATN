@@ -378,6 +378,15 @@
       else { alert("Bạn phải nhập tên để tham gia trò chơi!"); window.location.href = "/"; throw new Error("Player name required"); }
     }
 
+    // --- trạng thái toàn cục (khai báo ở đây để tránh ReferenceError) ---
+    let voteAccept = 0, voteTotal = 0;
+    let askedResult = ""; // "", "accepted", "retry"
+    let currentHost = null;
+    let currentAsked = null;
+    let lastQuestion = "";
+    let lastType = ""; // "truth" | "dare"
+    let questionShrink = false;
+
     // --- ĐẢM BẢO emitJoin ĐƯỢC ĐỊNH NGHĨA TRƯỚC KHI GỌI ---
     function emitJoin() {
       if (!roomCode || !playerName) {
