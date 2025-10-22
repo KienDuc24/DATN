@@ -1,15 +1,51 @@
+require('dotenv').config();
 const http = require('http');
-const app = require('./server'); // hoặc express app nếu có
-const server = http.createServer(app);
+const path = require('path');
+const express = require('express');
+const mongoose = require('mongoose');
 const { Server } = require('socket.io');
-const io = new Server(server, {
-  cors: {
-    origin: ['https://datn-smoky.vercel.app'],
-    methods: ['GET', 'POST']
+
+const app = express();
+// serve public if needed
+app.use(express.static(path.join(__dirname, 'public')));
+
+// connect mongodb (try both names)
+(async () => {
+  try {
+    const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+    if (!uri) {
+      console.warn('MONGODB_URI / MONGO_URI not set in .env');
+    } else {
+      await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+      console.log('✅ MongoDB connected');
+    }
+  } catch (err) {
+    console.error('❌ MongoDB connection error', err && err.stack ? err.stack : err);
   }
+})();
+
+// safe globals
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err && err.stack ? err.stack : err);
+});
+process.on('unhandledRejection', (reason, p) => {
+  console.error('Unhandled Rejection at:', p, 'reason:', reason);
+});
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received - shutting down gracefully');
+  process.exit(0);
 });
 
-const todSocket = require('./games/ToD/todSocket');
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || '*',
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
 
 // Quản lý phòng theo roomCode duy nhất, lưu cả gameId
 let rooms = {}; // { [roomCode]: { gameId, players: [ { name, socketId } ] } }
@@ -17,7 +53,13 @@ let rooms = {}; // { [roomCode]: { gameId, players: [ { name, socketId } ] } }
 io.on("connection", (socket) => {
   console.log('socket connected', socket.id);
   // attach ToD handlers
-  try { todSocket(socket, io); } catch (e) { console.error('todSocket attach err', e); }
+  try {
+    const todHandler = require('./games/ToD/todSocket');
+    if (typeof todHandler === 'function') todHandler(socket, io);
+    else console.warn('todSocket did not export a function');
+  } catch (e) {
+    console.error('Error attaching todSocket handler:', e && e.stack ? e.stack : e);
+  }
 
   socket.on("join-room", ({ gameId, roomCode, player }) => {
     // Nếu phòng chưa tồn tại, tạo mới với gameId
@@ -79,4 +121,6 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => console.log(`Socket.io server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Socket.io server running on port ${PORT}`);
+});
