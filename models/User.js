@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, unique: true, sparse: true },
   displayName: { type: String },
   avatar: { type: String, default: '' },
-  avatarUrl: { type: String, default: null }, // <-- thêm trường avatarUrl
+  avatarUrl: { type: String, default: null }, 
   role: { type: String, default: 'user' },
   provider: { type: String, enum: ['local', 'google'], default: 'local' },
   googleId: { type: String, default: null },

@@ -510,25 +510,27 @@ function showAuthTab(tab) {
     registerTab.classList.add('active');
   }
 }
-// Đăng nhập
-document.getElementById('loginForm').onsubmit = async function(e) {
-  e.preventDefault();
-  const username = document.getElementById('login-username').value;
-  const password = document.getElementById('login-password').value;
-  const res = await fetch(`${BASE_API_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
-  });
-  const data = await res.json();
-  document.getElementById('login-message').innerText = data.message || '';
-  if (data.token && data.user) {
-    saveUserToLocal(data.user);
-    closeAuthModal();
-    showUserInfo(data.user); // Hiện avatar và info như Google
-    alert('Đăng nhập thành công!');
+
+
+/**
+ * Lưu user/token vào localStorage và cập nhật UI
+ * Gọi từ các handler đăng nhập (login/google/anonymous)
+ */
+function saveUserToLocal(user) {
+  try {
+    if (!user || typeof user !== 'object') return;
+    // lưu user đầy đủ
+    localStorage.setItem('user', JSON.stringify(user));
+    // nếu có token thì lưu
+    if (user.token) localStorage.setItem('token', user.token);
+    // cập nhật giao diện
+    if (typeof showUserInfo === 'function') {
+      showUserInfo(user);
+    }
+  } catch (err) {
+    console.error('saveUserToLocal error', err);
   }
-};
+}
 
 // Regex kiểm tra username và password
 function validateRegister(username, password, password2) {
@@ -719,67 +721,60 @@ if (logoutBtn) {
 }
 
   // Hồ sơ, lịch sử, cài đặt (demo)
-  const profileBtn = document.getElementById('profileBtn');
-  if (profileBtn) profileBtn.onclick = () => alert('Tính năng hồ sơ sẽ được bổ sung sau!');
+  // Hồ sơ/ Cài đặt được xử lý tập trung trong attachProfileUI()
+  // Giữ lại handler cho "Lịch sử" (nếu có)
   const historyBtn = document.getElementById('historyBtn');
   if (historyBtn) historyBtn.onclick = () => alert('Tính năng lịch sử chơi sẽ được bổ sung sau!');
-  const settingsBtn = document.getElementById('settingsBtn');
-  if (settingsBtn) settingsBtn.onclick = () => alert('Tính năng cài đặt tài khoản sẽ được bổ sung sau!');
 });
 
 // Đổi avatar và tên tài khoản (demo)
-document.addEventListener('DOMContentLoaded', function() {
-  // ...các code khác...
+// ---------------------------------------------------------
+// Block duplicate bị loại bỏ (xóa toàn bộ DOMContentLoaded xử lý profileModal)
+// ---------------------------------------------------------
+// Hiện popup khi ấn "Thay đổi hồ sơ"
+const profileBtn = document.getElementById('profileBtn');
+const profileModal = document.getElementById('profile-modal');
+const closeProfileModal = document.getElementById('closeProfileModal');
+const modalChangeAvatarBtn = document.getElementById('modalChangeAvatarBtn');
+const modalChangeNameBtn = document.getElementById('modalChangeNameBtn');
+const settingsBtn = document.getElementById('settingsBtn');
 
-  // Hiện popup khi ấn "Thay đổi hồ sơ"
-  const profileBtn = document.getElementById('profileBtn');
-  const profileModal = document.getElementById('profile-modal');
-  const closeProfileModal = document.getElementById('closeProfileModal');
-  const modalChangeAvatarBtn = document.getElementById('modalChangeAvatarBtn');
-  const modalChangeNameBtn = document.getElementById('modalChangeNameBtn');
+if (settingsBtn && profileModal) {
+  settingsBtn.onclick = function(e) {
+    e.stopPropagation();
+    profileModal.style.display = 'flex';
+  };
+}
+if (closeProfileModal && profileModal) {
+  closeProfileModal.onclick = function() {
+    profileModal.style.display = 'none';
+  };
+}
+// Đổi avatar (demo)
+if (modalChangeAvatarBtn) {
+  modalChangeAvatarBtn.onclick = function() {
+    alert('Tính năng đổi avatar sẽ được bổ sung sau!');
+    profileModal.style.display = 'none';
+  };
+}
+// Đổi tên tài khoản
+if (modalChangeNameBtn) {
+  modalChangeNameBtn.onclick = function() {
+    const userStr = localStorage.getItem('user');
+    let user = userStr ? JSON.parse(userStr) : {};
+    const newName = prompt('Nhập tên tài khoản mới:', user.name || user.username || '');
+    if (newName && newName.trim()) {
+      user.name = newName.trim();
+      user.displayName = newName.trim();
+      user.username = newName.trim(); 
+      saveUserToLocal(user);
+      showUserInfo(user);
+      alert('Đổi tên thành công!');
+    }
+    profileModal.style.display = 'none';
+  };
+}
 
-  if (profileBtn && profileModal) {
-    profileBtn.onclick = function(e) {
-      e.stopPropagation();
-      profileModal.style.display = 'flex';
-    };
-  }
-  if (closeProfileModal && profileModal) {
-    closeProfileModal.onclick = function() {
-      profileModal.style.display = 'none';
-    };
-  }
-  // Đổi avatar (demo)
-  if (modalChangeAvatarBtn) {
-    modalChangeAvatarBtn.onclick = function() {
-      alert('Tính năng đổi avatar sẽ được bổ sung sau!');
-      profileModal.style.display = 'none';
-    };
-  }
-  // Đổi tên tài khoản
-  if (modalChangeNameBtn) {
-    modalChangeNameBtn.onclick = function() {
-      const userStr = localStorage.getItem('user');
-      let user = userStr ? JSON.parse(userStr) : {};
-      const newName = prompt('Nhập tên tài khoản mới:', user.name || user.username || '');
-      if (newName && newName.trim()) {
-        user.name = newName.trim();
-        user.displayName = newName.trim();
-        user.username = newName.trim(); // <-- Đảm bảo đồng bộ username
-        saveUserToLocal(user);
-        showUserInfo(user);
-        alert('Đổi tên thành công!');
-      }
-      profileModal.style.display = 'none';
-    };
-  }
-  // Đóng popup khi click ra ngoài
-  if (profileModal) {
-    profileModal.addEventListener('click', function(e) {
-      if (e.target === profileModal) profileModal.style.display = 'none';
-    });
-  }
-});
 
 // Hiện thị mật khẩu đăng nhập
 document.addEventListener('DOMContentLoaded', function() {
@@ -970,12 +965,9 @@ function closeAuthModal() {
   // Ẩn modal đăng nhập/đăng ký
   const modal = document.querySelector('.auth-form-modal, .auth-modal, .modal');
   if (modal) modal.style.display = 'none';
-  // Hoặc nếu bạn dùng class để ẩn:
-  // if (modal) modal.classList.remove('show');
 }
 
 // Hàm sinh mã phòng kiểu A111
-// function generateRoomCode() {
 //   const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26)); // A-Z
 //   const number = Math.floor(100 + Math.random() * 900); // 100-999
 //   return letter + number;
@@ -1165,193 +1157,251 @@ function onGoogleLoginSuccess(googleUser) {
   document.getElementById('user-name').innerText = username;
 }
 
-// Sau khi đăng nhập ẩn danh
-document.getElementById('anonymousLoginBtn').onclick = function() {
-  const username = 'guest_' + Math.random().toString(36).substring(2, 10);
-  const user = { username };
-  saveUserToLocal(user);
-  closeAuthModal();
-  showUserInfo(user);
-  alert('Bạn đã đăng nhập ẩn danh với tên: ' + username);
-}
+// --- Remove legacy inline profile-modal and wire settingsBtn to new settings modal ---
 
-function saveUserToLocal(user) {
-  const username = user.username || user.displayName || user.name || 'Guest';
-  const userObj = {
-    ...user,
-    username: username
+// If an old DOM node with id "profile-modal" exists, remove it so it won't show.
+const legacyProfileModal = document.getElementById('profile-modal');
+if (legacyProfileModal) legacyProfileModal.remove();
+
+// Wire settings button to open the centralized accountSettingsModal created by attachProfileUI()
+if (settingsBtn) {
+  settingsBtn.onclick = function(e) {
+    e.stopPropagation();
+    const acct = document.getElementById('accountSettingsModal');
+    if (acct) acct.style.display = 'block';
   };
-  localStorage.setItem('user', JSON.stringify(userObj));
 }
 
-// --- PROFILE / ACCOUNT SETTINGS UI & logic ---
-// create profile popup (shows account info) and settings modal (change name / avatar)
-(function attachProfileUI() {
-  // create popup (hidden by default)
-  const profilePopup = document.createElement('div');
-  profilePopup.id = 'profilePopup';
-  Object.assign(profilePopup.style, {
-    position: 'fixed', right: '18px', top: '70px', zIndex: 1200,
-    background: '#fff', color: '#072026', borderRadius: '10px',
-    boxShadow: '0 8px 30px rgba(0,0,0,0.25)', padding: '12px', display: 'none', minWidth: '260px'
-  });
-  profilePopup.innerHTML = `
-    <div style="display:flex;gap:10px;align-items:center">
-      <img id="popupAvatar" src="img/avt.png" alt="avatar" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #eee">
-      <div style="flex:1">
-        <div id="popupName" style="font-weight:700"></div>
-        <div id="popupEmail" style="font-size:0.85rem;color:#666"></div>
+// Tạo / hiển thị modal "profile-modal" (Cài đặt tài khoản) và popup giữa màn hình (Hồ sơ)
+(function profileAndSettingsUI() {
+  // helpers
+  function getUserSafe() {
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+  }
+  function applyHeaderUser(updated) {
+    const ua = document.getElementById('userAvatar');
+    const da = document.getElementById('dropdownAvatar');
+    const du = document.getElementById('dropdownUsername');
+    if (ua && updated.avatar) ua.src = updated.avatar;
+    if (da && updated.avatar) da.src = updated.avatar;
+    if (du && (updated.displayName || updated.username)) du.innerText = updated.displayName || updated.username;
+  }
+
+  // Create profile-modal (settings) if not exists
+  function createProfileModal() {
+    let modal = document.getElementById('profile-modal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.id = 'profile-modal';
+    Object.assign(modal.style, {
+      position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, zIndex: 1400,
+      display: 'none', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.45)'
+    });
+
+    modal.innerHTML = `
+      <div id="profile-modal-box" style="width:90%;max-width:480px;background:#fff;border-radius:12px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-weight:700;font-size:1.05rem">Cài đặt tài khoản</div>
+          <button id="profile-modal-close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">×</button>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+          <img id="profile-modal-avatar" src="img/avt.png" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid #eee">
+          <div style="flex:1">
+            <div style="font-weight:700" id="profile-modal-name-display"></div>
+            <div style="color:#666;font-size:0.9rem" id="profile-modal-email-display"></div>
+          </div>
+        </div>
+        <label style="display:block;font-size:0.9rem;margin-bottom:6px">Tên hiển thị</label>
+        <input id="profile-modal-name" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin-bottom:10px" />
+        <label style="display:block;font-size:0.9rem;margin-bottom:6px">Avatar (tải ảnh lên)</label>
+        <input id="profile-modal-file" type="file" accept="image/*" style="width:100%;margin-bottom:12px" />
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="profile-modal-cancel" style="padding:8px 12px;border-radius:8px;background:#eee;border:none">Hủy</button>
+          <button id="profile-modal-save" style="padding:8px 12px;border-radius:8px;background:#00b59a;color:#fff;border:none">Lưu</button>
+        </div>
       </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:10px;justify-content:space-between">
-      <button id="btnViewProfile" style="flex:1;padding:8px;border-radius:8px;border:none;background:#f3f4f6;cursor:pointer">Hồ sơ</button>
-      <button id="btnAccountSettings" style="flex:1;padding:8px;border-radius:8px;border:none;background:linear-gradient(90deg,#00d4b4,#00b59a);color:#032">Cài đặt tài khoản</button>
-    </div>
-  `;
-  document.body.appendChild(profilePopup);
+    `;
+    document.body.appendChild(modal);
 
-  // settings modal (hidden)
-  const settingsModal = document.createElement('div');
-  settingsModal.id = 'accountSettingsModal';
-  Object.assign(settingsModal.style, {
-    position: 'fixed', right: '18px', top: '140px', zIndex: 1250,
-    background: '#fff', color: '#072026', borderRadius: '12px', padding: '14px',
-    boxShadow: '0 12px 40px rgba(0,0,0,0.35)', display: 'none', minWidth: '300px'
-  });
-  settingsModal.innerHTML = `
-    <div style="font-weight:800;margin-bottom:8px">Cài đặt tài khoản</div>
-    <label style="font-size:0.9rem">Tên hiển thị</label>
-    <input id="settingName" placeholder="Tên của bạn" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;margin:6px 0">
-    <label style="font-size:0.9rem">Avatar (tải ảnh lên)</label>
-    <div style="display:flex;gap:8px;align-items:center">
-      <input id="settingAvatarFile" type="file" accept="image/*" style="flex:1" />
-      <img id="settingAvatarPreview" src="" alt="preview" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #ddd" />
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-      <button id="cancelSettings" style="padding:8px 12px;border-radius:8px;border:none;background:#eee">Hủy</button>
-      <button id="saveSettings" style="padding:8px 12px;border-radius:8px;border:none;background:linear-gradient(90deg,#00d4b4,#00b59a);color:#022">Lưu</button>
-    </div>
-  `;
-  document.body.appendChild(settingsModal);
+    // events
 
-  // helper to open/close popup
-  function showProfilePopup(show = true) {
-    profilePopup.style.display = show ? 'block' : 'none';
+    modal.querySelector('#profile-modal-close').addEventListener('click', () => modal.style.display = 'none');
+    modal.querySelector('#profile-modal-cancel').addEventListener('click', () => modal.style.display = 'none');
+
+    // Save handler: update localStorage and header UI (simplified)
+    modal.querySelector('#profile-modal-save').addEventListener('click', async () => {
+      const nameEl = document.getElementById('profile-modal-name');
+      const fileEl = document.getElementById('profile-modal-file');
+      let user = getUserSafe();
+
+      if (nameEl && nameEl.value.trim()) {
+        user.displayName = nameEl.value.trim();
+      }
+
+      // If user uploaded avatar, try upload endpoint; otherwise accept local object URL
+      if (fileEl && fileEl.files && fileEl.files[0]) {
+        try {
+          const fd = new FormData();
+          fd.append('avatar', fileEl.files[0]);
+          const uname = user.username || user.displayName || user.name;
+          if (uname) fd.append('username', uname);
+
+          const token = localStorage.getItem('token');
+          const res = await fetch(`${BASE_API_URL}/api/user/upload-avatar`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: fd
+          });
+          if (res.ok) {
+            const j = await res.json();
+            if (j && j.ok && j.url) {
+              user.avatar = j.url;
+            } else {
+              // fallback to local preview
+              user.avatar = URL.createObjectURL(fileEl.files[0]);
+            }
+          } else {
+            // fallback to local preview
+            user.avatar = URL.createObjectURL(fileEl.files[0]);
+          }
+        } catch (err) {
+          console.warn('avatar upload failed, using local preview', err);
+          user.avatar = URL.createObjectURL(fileEl.files[0]);
+        }
+      }
+
+      // Try to persist updated user to server (MongoDB)
+      const saved = await updateUserOnServer(user);
+      if (saved) {
+        user = saved; // use canonical server user
+      } else {
+        // if server update fails, still keep local copy (graceful fallback)
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+
+      applyHeaderUser(user);
+      // update modal display names
+      const disp = document.getElementById('profile-modal-name-display');
+      const emailEl = document.getElementById('profile-modal-email-display');
+      const avatarEl = document.getElementById('profile-modal-avatar');
+      if (disp) disp.innerText = user.displayName || user.username || 'Khách';
+      if (emailEl) emailEl.innerText = user.email || '';
+      if (avatarEl && user.avatar) avatarEl.src = user.avatar;
+      modal.style.display = 'none';
+      alert('Cập nhật hồ sơ thành công');
+    });
+
+    return modal;
   }
-  function showSettingsModal(show = true) {
-    settingsModal.style.display = show ? 'block' : 'none';
+
+  // Create centered profile popup (only info, no action buttons)
+  function createProfileCenterPopup() {
+    let pop = document.getElementById('profile-center-popup');
+    if (pop) return pop;
+
+    pop = document.createElement('div');
+    pop.id = 'profile-center-popup';
+    Object.assign(pop.style, {
+      position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, zIndex: 1500,
+      display: 'none', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.35)'
+    });
+    pop.innerHTML = `
+      <div id="profile-center-box" style="min-width:260px;max-width:420px;background:#fff;border-radius:12px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.32);text-align:center">
+        <button id="profile-center-close" style="position:absolute;right:18px;top:18px;background:none;border:none;font-size:1.2rem;cursor:pointer">×</button>
+        <img id="profile-center-avatar" src="img/avt.png" style="width:86px;height:86px;border-radius:50%;object-fit:cover;border:2px solid #eee;margin-bottom:10px">
+        <div id="profile-center-name" style="font-weight:700;font-size:1.05rem;margin-bottom:4px"></div>
+        <div id="profile-center-email" style="color:#666;margin-bottom:12px"></div>
+        <!-- no action buttons per request -->
+      </div>
+    `;
+    document.body.appendChild(pop);
+
+    pop.addEventListener('click', (e) => {
+      if (e.target === pop) pop.style.display = 'none';
+    });
+    pop.querySelector('#profile-center-close').addEventListener('click', () => pop.style.display = 'none');
+    return pop;
   }
 
-  // wire header avatar click to toggle popup (header userInfo element should exist)
-  const headerUserInfo = document.getElementById('userInfo') || document.getElementById('headerUser') || null;
-  if (headerUserInfo) {
-    headerUserInfo.addEventListener('click', (e) => {
+  // Populate and show center popup
+  function showProfileCenter(show = true) {
+    const pop = createProfileCenterPopup();
+    const user = getUserSafe();
+    const avatar = user.avatar || user.picture || 'img/avt.png';
+    const name = user.displayName || user.username || user.name || 'Khách';
+    const email = user.email || '';
+    const aEl = document.getElementById('profile-center-avatar');
+    const nEl = document.getElementById('profile-center-name');
+    const eEl = document.getElementById('profile-center-email');
+    if (aEl) aEl.src = avatar;
+    if (nEl) nEl.innerText = name;
+    if (eEl) eEl.innerText = email;
+    pop.style.display = show ? 'flex' : 'none';
+  }
+
+  // Wire buttons
+  const settingsBtn = document.getElementById('settingsBtn');
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const visible = profilePopup.style.display === 'block';
-      // hide any other modals
-      showSettingsModal(false);
-      showProfilePopup(!visible);
-      // populate data from localStorage user
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const avatar = user.avatar || user.picture || sessionStorage.getItem('avatarUrl') || 'img/avt.png';
-      const name = user.displayName || user.name || user.username || 'Khách';
-      const email = user.email || '';
-      const popupAvatar = document.getElementById('popupAvatar');
-      const popupName = document.getElementById('popupName');
-      const popupEmail = document.getElementById('popupEmail');
-      if (popupAvatar) popupAvatar.src = avatar;
-      if (popupName) popupName.innerText = name;
-      if (popupEmail) popupEmail.innerText = email;
+      const modal = createProfileModal();
+      // populate fields
+      const user = getUserSafe();
+      const nameInput = document.getElementById('profile-modal-name');
+      const display = document.getElementById('profile-modal-name-display');
+      const emailDisplay = document.getElementById('profile-modal-email-display');
+      const avatarImg = document.getElementById('profile-modal-avatar');
+      if (nameInput) nameInput.value = user.displayName || user.name || user.username || '';
+      if (display) display.innerText = user.displayName || user.username || 'Khách';
+      if (emailDisplay) emailDisplay.innerText = user.email || '';
+      if (avatarImg) avatarImg.src = user.avatar || user.picture || 'img/avt.png';
+      modal.style.display = 'flex';
     });
   }
 
-  // click outside to close
-  document.addEventListener('click', () => { showProfilePopup(false); showSettingsModal(false); });
+  const profileBtn = document.getElementById('profileBtn');
+  if (profileBtn) {
+    profileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showProfileCenter(true);
+    });
+  }
 
-  // buttons
-  document.getElementById('btnViewProfile').addEventListener('click', (e) => {
-    e.stopPropagation();
-    // just re-use popup details - you may expand to a full profile modal if needed
-    alert('Hồ sơ:\n' + (document.getElementById('popupName').innerText || '') + '\n' + (document.getElementById('popupEmail').innerText || ''));
+  // close any created UI when clicking outside
+  document.addEventListener('click', () => {
+    const pc = document.getElementById('profile-center-popup');
+    if (pc) pc.style.display = 'none';
   });
-
-  document.getElementById('btnAccountSettings').addEventListener('click', (e) => {
-    e.stopPropagation();
-    showProfilePopup(false);
-    // populate settings inputs
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    document.getElementById('settingName').value = user.displayName || user.name || user.username || '';
-    document.getElementById('settingAvatar').value = user.avatar || user.picture || sessionStorage.getItem('avatarUrl') || '';
-    showSettingsModal(true);
-  });
-
-  document.getElementById('cancelSettings').addEventListener('click', (e) => { e.stopPropagation(); showSettingsModal(false); });
-
-  document.getElementById('saveSettings').addEventListener('click', async (e) => {
-    e.stopPropagation();
-    const newName = document.getElementById('settingName').value.trim();
-    const fileInput = document.getElementById('settingAvatarFile');
-    let uploadedUrl = null;
-
-    try {
-      // if user selected a file, upload first
-      if (fileInput && fileInput.files && fileInput.files[0]) {
-        const fd = new FormData();
-        fd.append('avatar', fileInput.files[0]);
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const username = user.username || user.displayName || user.name;
-        if (username) fd.append('username', username);
-
-        const upRes = await fetch('/api/user/upload-avatar', { method: 'POST', body: fd });
-        const upJson = await upRes.json();
-        if (!upJson || !upJson.ok) {
-          alert('Upload avatar thất bại');
-          return;
-        }
-        uploadedUrl = upJson.url; // e.g. /uploads/XXXXX.jpg
-      }
-
-      // now call update profile to set displayName and avatarUrl (if needed)
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const username = user.username || user.displayName || user.name;
-      if (!username) { alert('Không có user đăng nhập'); return; }
-
-      const body = { username };
-      if (newName) body.displayName = newName;
-      if (uploadedUrl) body.avatarUrl = uploadedUrl;
-
-      const res = await fetch('/api/user/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const j = await res.json();
-      if (!j || !j.ok) { alert('Cập nhật thất bại'); return; }
-
-      // update local storage & UI
-      const updatedUser = Object.assign({}, user, j.user || {});
-      if (body.displayName) updatedUser.displayName = body.displayName;
-      if (body.avatarUrl) updatedUser.avatar = body.avatarUrl;
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      if (document.getElementById('userAvatar')) document.getElementById('userAvatar').src = updatedUser.avatar || 'img/avt.png';
-      if (document.getElementById('dropdownAvatar')) document.getElementById('dropdownAvatar').src = updatedUser.avatar || 'img/avt.png';
-      if (document.getElementById('dropdownUsername')) document.getElementById('dropdownUsername').innerText = updatedUser.displayName || updatedUser.username || '';
-
-      // notify room if exists
-      const urlParams = new URLSearchParams(window.location.search);
-      const roomCode = urlParams.get('code');
-      if (roomCode && window.socket) {
-        try {
-          window.socket.emit('profile-updated', { roomCode, oldName: username, newName: newName || username, avatar: updatedUser.avatar || null });
-        } catch (e) { console.warn(e); }
-      }
-
-      showSettingsModal(false);
-      alert('Cập nhật hồ sơ thành công');
-    } catch (err) {
-      console.error(err);
-      alert('Lỗi khi lưu hồ sơ');
-    }
-  });
-
 })();
+
+// Hàm cập nhật thông tin người dùng lên server
+async function updateUserOnServer(user) {
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${BASE_API_URL}/api/user`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(user)
+    });
+    if (!res.ok) {
+      console.warn('updateUserOnServer failed', res.status);
+      return null;
+    }
+    const data = await res.json();
+    if (data && data.user) {
+      // store canonical user returned by server
+      localStorage.setItem('user', JSON.stringify(data.user));
+      return data.user;
+    }
+    return null;
+  } catch (err) {
+    console.error('updateUserOnServer error', err);
+    return null;
+  }
+}

@@ -1,30 +1,31 @@
+require('dotenv').config();
+
 const express = require('express');
 const session = require('express-session');
 const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const cors = require('cors');
-const User = require('./models/User');
-const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const path = require('path');
-const MongoStore = require('connect-mongo');
-const { v4: uuidv4 } = require('uuid'); // Thêm ở đầu file
-require('dotenv').config();
 const fs = require('fs');
+const os = require('os');
 
 const app = express();
-app.use(express.json());
+
+// body parsers
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5500',
   credentials: true
 }));
 
-// Kết nối MongoDB
+// MongoDB connection
 (async () => {
   try {
-    const uri = process.env.MONGODB_URI;
+    const uri = process.env.MONGODB_URI || process.env.MONGO || process.env.MONGODB;
     if (!uri) {
-      console.warn('MONGODB_URI not set in .env');
+      console.warn('MONGODB_URI not set in env');
     } else {
       await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
       console.log('✅ MongoDB connected');
@@ -34,124 +35,83 @@ app.use(cors({
   }
 })();
 
-// Session cho passport
+// Session/passport (kept minimal)
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'secret',
+  secret: process.env.SESSION_SECRET || 'change_this_secret',
   resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI,
-    ttl: 14 * 24 * 60 * 60 // = 14 days. Default
-  })
+  saveUninitialized: false
 }));
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Serialize/deserialize user (demo, thực tế nên lưu vào DB)
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((obj, done) => done(null, obj));
+// serve public
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Cấu hình Google OAuth
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: process.env.GOOGLE_CALLBACK_URL
-}, (accessToken, refreshToken, profile, done) => {
-  // Ở đây bạn có thể lưu user vào DB nếu muốn
-  // profile chứa thông tin user Google
-  return done(null, {
-    id: profile.id,
-    name: profile.displayName,
-    email: profile.emails[0].value
-  });
-}));
+// Ensure uploads directory or fallback to tmp
+let UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
+try {
+  // try create public/uploads (may fail on serverless)
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  console.log('[server] ensured uploads dir at', UPLOADS_DIR);
+} catch (err) {
+  console.warn('[server] could not create public/uploads, fallback to tmp', err && err.message);
+  UPLOADS_DIR = os.tmpdir();
+  console.log('[server] using tmp uploads dir:', UPLOADS_DIR);
+}
 
-// Route bắt đầu đăng nhập Google
-app.get('/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-// Route callback sau khi xác thực Google
-app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/' }),
-  (req, res) => {
-    // Đăng nhập thành công, trả về user qua query (bạn nên trả về JWT thực tế)
-    const user = req.user;
-    // Chuyển về FE kèm thông tin user
-    res.redirect(`https://datn-smoky.vercel.app?user=${encodeURIComponent(JSON.stringify(user))}`);
-  }
-);
-
-// Route kiểm tra đăng nhập (FE có thể gọi để lấy user)
-app.get('/api/me', (req, res) => {
-  if (req.isAuthenticated()) {
-    res.json(req.user);
+// Serve uploads if it's inside public or if platform allows
+try {
+  // if UPLOADS_DIR is inside public, it will already be served by express.static above
+  if (!UPLOADS_DIR.includes(path.join(__dirname, 'public'))) {
+    // attempt to serve tmp dir at /uploads (may not be persistent on serverless platforms)
+    app.use('/uploads', express.static(UPLOADS_DIR));
+    console.log('[server] serving uploads from', UPLOADS_DIR);
   } else {
-    res.status(401).json({ error: 'Not authenticated' });
+    console.log('[server] uploads available under /uploads');
   }
-});
+} catch (err) {
+  console.warn('[server] unable to serve uploads dir:', err && err.message);
+}
 
-// Đăng ký
-app.post('/api/auth/register', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password)
-    return res.json({ message: 'Thiếu tên đăng nhập hoặc mật khẩu.' });
+// Mount routers (ensure routes files export routers)
+try {
+  const authRouter = require('./routes/authRoutes');
+  app.use('/api', authRouter);
+} catch (err) {
+  console.error('[server] failed to mount authRoutes', err && err.message);
+}
 
-  const existed = await User.findOne({ username });
-  if (existed)
-    return res.json({ message: 'Tên đăng nhập đã tồn tại.' });
+try {
+  const gameRoutes = require('./routes/gameRoutes');
+  app.use('/api/games', gameRoutes);
+} catch (err) {
+  console.warn('[server] gameRoutes not mounted:', err && err.message);
+}
 
-  const hash = await bcrypt.hash(password, 10);
-  const user = new User({
-    id: uuidv4(), // Tự tạo id
-    username,
-    password: hash,
-    email: `${username}@example.com`, // Tạo email giả nếu không có
-    provider: 'local'
-  });
-  await user.save();
-  res.json({ message: 'Đăng ký thành công!', user: { username: user.username } });
-});
+try {
+  const roomRoutes = require('./routes/roomRoutes');
+  app.use('/api/room', roomRoutes);
+} catch (err) {
+  console.warn('[server] roomRoutes not mounted:', err && err.message);
+}
 
-// Đăng nhập
-app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body;
-  const user = await User.findOne({ username });
-  if (!user)
-    return res.json({ message: 'Sai tên đăng nhập hoặc mật khẩu.' });
+// basic health check
+app.get('/health', (req, res) => res.json({ ok: true, env: process.env.NODE_ENV || 'dev' }));
 
-  const match = await bcrypt.compare(password, user.password);
-  if (!match)
-    return res.json({ message: 'Sai tên đăng nhập hoặc mật khẩu.' });
-
-  // Có thể trả về token ở đây nếu muốn
-  res.json({ message: 'Đăng nhập thành công!', token: 'dummy-token', user: { username: user.username } });
-});
-
-app.use('/public', express.static(path.join(__dirname, 'public')));
-
-const authRouter = require('./routes/authRoutes');
-app.use('/api/auth', authRouter);
-
-const roomRoutes = require('./routes/roomRoutes');
-app.use('/api/room', roomRoutes);
-
-app.get('/', (req, res) => {
+// fallback to index
+app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ensure uploads directory exists (prevents runtime errors when multer saves files)
-try {
-  const uploadsDir = path.resolve(__dirname, 'public', 'uploads');
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log('[server] ensured uploads dir exists at', uploadsDir);
-} catch (e) {
-  console.warn('[server] could not create uploads dir', e && e.message ? e.message : e);
-}
+// error handler (log)
+app.use((err, req, res, next) => {
+  console.error('[server] unhandled error', err && err.stack);
+  if (!res.headersSent) res.status(500).json({ ok: false, message: 'Internal server error' });
+});
 
-// Export app cho Vercel
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('Server listening on', PORT);
+});
+
 module.exports = app;
-if (require.main === module) {
-  app.listen(3001, () => console.log('Server running on http://localhost:3001'));
-}
-

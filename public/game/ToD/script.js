@@ -15,70 +15,7 @@
   const $avatars = document.getElementById('avatars');
 
   // create settings button + modal
-  function createProfileUI() {
-    const btn = document.createElement('button');
-    btn.id = 'profileBtn';
-    btn.title = 'Cài đặt hồ sơ';
-    btn.innerText = '⚙';
-    Object.assign(btn.style, { position:'fixed', right:'18px', bottom:'18px', zIndex:1200, padding:'10px', borderRadius:'10px', background:'#fff', color:'#062', border:'none', cursor:'pointer' });
-    document.body.appendChild(btn);
-
-    const modal = document.createElement('div');
-    modal.id = 'profileModal';
-    Object.assign(modal.style, { position:'fixed', right:'18px', bottom:'70px', zIndex:1200, background:'#fff', color:'#012', padding:'12px', borderRadius:'10px', boxShadow:'0 8px 30px rgba(0,0,0,0.3)', display:'none', minWidth:'260px' });
-    modal.innerHTML = `
-      <div style="font-weight:700;margin-bottom:8px">Cập nhật hồ sơ</div>
-      <label style="font-size:0.9rem">Tên hiển thị</label>
-      <input id="newName" style="width:100%;padding:8px;margin:6px 0;border-radius:6px;border:1px solid #ddd" value="${playerName}">
-      <label style="font-size:0.9rem">Avatar URL</label>
-      <input id="newAvatar" style="width:100%;padding:8px;margin:6px 0;border-radius:6px;border:1px solid #ddd" value="${avatarUrl || ''}">
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-        <button id="cancelProfile" style="padding:8px 10px;border-radius:6px;border:none;background:#eee">Hủy</button>
-        <button id="saveProfile" style="padding:8px 10px;border-radius:6px;border:none;background:linear-gradient(90deg,#00d4b4,#00b59a);color:#012">Lưu</button>
-      </div>
-    `;
-    document.body.appendChild(modal);
-
-    btn.addEventListener('click', ()=> { modal.style.display = modal.style.display === 'none' ? 'block' : 'none'; });
-    document.getElementById('cancelProfile').addEventListener('click', ()=> modal.style.display='none');
-
-    document.getElementById('saveProfile').addEventListener('click', async () => {
-      const newName = document.getElementById('newName').value.trim() || playerName;
-      const newAvatar = document.getElementById('newAvatar').value.trim() || null;
-      try {
-        const res = await fetch('/api/user/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: playerName, displayName: newName, avatarUrl: newAvatar })
-        });
-        const json = await res.json();
-        if (!json || !json.ok) {
-          alert('Lưu thất bại');
-          return;
-        }
-        // update local session
-        const oldName = playerName;
-        playerName = newName;
-        avatarUrl = newAvatar;
-        sessionStorage.setItem('playerName', playerName);
-        if (avatarUrl) sessionStorage.setItem('avatarUrl', avatarUrl);
-
-        // notify server via socket to update room players and broadcast
-        socket.emit('profile-updated', { roomCode, oldName, newName: playerName, avatar: avatarUrl });
-
-        // refresh players list
-        socket.emit('tod-who', { roomCode });
-
-        modal.style.display = 'none';
-      } catch (e) {
-        console.error('profile save error', e);
-        alert('Lỗi khi lưu');
-      }
-    });
-  }
-
-  // create UI on load
-  createProfileUI();
+  
 
   const socket = io("https://datn-socket.up.railway.app", { transports: ['websocket'], secure: true });
 
