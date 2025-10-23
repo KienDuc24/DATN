@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const mongoose = require('mongoose'); // <-- add this
 
 const app = express();
 
@@ -124,5 +125,15 @@ setTimeout(()=> {
     console.log('[server] registered routes:\n' + routes.join('\n'));
   } catch(e){ console.warn('list routes failed', e); }
 }, 500);
+
+// admin login route
+app.get('/admin/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin-login.html'));
+});
+
+// optional: serve admin dashboard
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
 
 module.exports = app;

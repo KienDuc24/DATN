@@ -25,8 +25,12 @@
       const msg = document.getElementById('msg');
       msg.textContent = '';
       try {
-        const base = (typeof window.BASE_API_URL === 'string' && window.BASE_API_URL.trim()) ? window.BASE_API_URL.replace(/\/+$/,'') : window.location.origin.replace(/\/+$/,'');
-        const url = `${base}/admin/login`;
+        // Nếu bạn đã set window.BASE_API_URL thì dùng, nếu không fallback về origin
+        const base = (typeof window.BASE_API_URL === 'string' && window.BASE_API_URL.trim())
+          ? window.BASE_API_URL.replace(/\/+$/,'')
+          : window.location.origin.replace(/\/+$/,'');
+        // server mounts admin routes at /api/admin -> use /api/admin/login
+        const url = `${base}/api/admin/login`;
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -34,7 +38,7 @@
           body: JSON.stringify({ username: u, password: p })
         });
         let j = {};
-        try { j = await res.json(); } catch(e){ /* ignore */ }
+        try { j = await res.json(); } catch(e){}
         if (res.ok && j.ok) {
           location.href = '/admin.html';
         } else {
