@@ -136,39 +136,56 @@ module.exports = (socket, io) => {
 
   socket.on('tod-who', async ({ roomCode }) => {
     try {
-      if (!roomCode) return socket.emit('tod-joined', { participants: [], host: null });
+      const state = getRoomState(roomCode || '');
+      if (!roomCode) {
+        const normalizedEmpty = {
+          roomCode: '',
+          host: null,
+          status: 'open',
+          participantsCount: 0,
+          players: [],
+          createdAt: null,
+          updatedAt: null,
+          state
+        };
+        return socket.emit('tod-joined', normalizedEmpty);
+      }
+
       const room = await Room.findOne({ code: roomCode }).lean();
       console.log('[ToD][debug] tod-who room lookup:', { roomCode, found: !!room, roomSnapshot: room && { players: room.players, participants: room.participants, host: room.host, code: room.code } });
-      if (!room) return socket.emit('tod-joined', { participants: [], host: null });
+      if (!room) {
+        const normalizedEmpty = {
+          roomCode: String(roomCode),
+          host: null,
+          status: 'open',
+          participantsCount: 0,
+          players: [],
+          createdAt: null,
+          updatedAt: null,
+          state
+        };
+        return socket.emit('tod-joined', normalizedEmpty);
+      }
 
       const playersArr = getPlayersFromRoom(room);
       const playersWithAvt = await attachAvatarsToPlayers(playersArr);
-      const state = getRoomState(roomCode);
 
       // normalize room status
       const roomStatus = room && (room.status || (room.isPlaying ? 'playing' : (room.isOpen ? 'open' : 'closed'))) || 'open';
 
       const payload = {
-        data: {
-          roomCode: String(roomCode || (room && room.code || '')),
-          host: room && (room.host || (playersArr[0] && playersArr[0].name)) || null,
-          status: roomStatus,
-          participantsCount: Array.isArray(playersArr) ? playersArr.length : 0,
-          participants: playersWithAvt,
-          createdAt: room && (room.createdAt || null),
-          updatedAt: room && (room.updatedAt || null)
-        },
-        state: {
-          lastQuestion: state.lastQuestion,
-          lastChoice: state.lastChoice,
-          currentIndex: typeof state.currentIndex === 'number' ? state.currentIndex : 0,
-          votes: state.votes || []
-        }
+        roomCode: String(roomCode || (room && room.code || '')),
+        host: room && (room.host || (playersArr[0] && playersArr[0].name)) || null,
+        status: roomStatus,
+        participantsCount: Array.isArray(playersArr) ? playersArr.length : 0,
+        players: playersWithAvt,
+        createdAt: room && (room.createdAt || null),
+        updatedAt: room && (room.updatedAt || null),
+        state
       };
 
-      // emit to current socket and broadcast to room
+      // emit single normalized payload
       socket.emit('tod-joined', payload);
-      socket.emit('tod-joined', { players: payload.data.participants, host: payload.data.host, state: payload.state });
       io.to(roomCode).emit('tod-joined', payload);
     } catch (e) { console.error('[ToD] tod-who error', e); }
   });
@@ -224,25 +241,17 @@ module.exports = (socket, io) => {
       const roomStatus = fresh && (fresh.status || (fresh.isPlaying ? 'playing' : (fresh.isOpen ? 'open' : 'closed'))) || 'open';
 
       const payload = {
-        data: {
-          roomCode: String(roomCode || (fresh && fresh.code || '')),
-          host: fresh && (fresh.host || (fresh.players && fresh.players[0] && (fresh.players[0].name || fresh.players[0].displayName))) || null,
-          status: roomStatus,
-          participantsCount: Array.isArray(fresh.players) ? fresh.players.length : 0,
-          participants: playersWithAvt,
-          createdAt: fresh && (fresh.createdAt || null),
-          updatedAt: fresh && (fresh.updatedAt || null)
-        },
-        state: {
-          lastQuestion: state.lastQuestion,
-          lastChoice: state.lastChoice,
-          currentIndex: typeof state.currentIndex === 'number' ? state.currentIndex : 0,
-          votes: state.votes || []
-        }
+        roomCode: String(roomCode || (fresh && fresh.code || '')),
+        host: fresh && (fresh.host || (fresh.players && fresh.players[0] && (fresh.players[0].name || fresh.players[0].displayName))) || null,
+        status: roomStatus,
+        participantsCount: Array.isArray(fresh.players) ? fresh.players.length : 0,
+        players: playersWithAvt,
+        createdAt: fresh && (fresh.createdAt || null),
+        updatedAt: fresh && (fresh.updatedAt || null),
+        state
       };
 
       socket.emit('tod-joined', payload);
-      socket.emit('tod-joined', { players: payload.data.participants, host: payload.data.host, state: payload.state });
       io.to(roomCode).emit('tod-joined', payload);
     } catch (e) {
       console.error('[ToD] tod-join error', e);
@@ -343,24 +352,28 @@ module.exports = (socket, io) => {
       }
       if (typeof avatar !== 'undefined') updates['players.$.avatar'] = avatar;
 
-      const res = await Room.updateOne({ code: roomCode, 'players.name': oldName }, { $set: updates }).catch(err => { console.warn('[ToD] profile update failed', err && err.message); return null; });
+      await Room.updateOne({ code: roomCode, 'players.name': oldName }, { $set: updates }).catch(err => { console.warn('[ToD] profile update failed', err && err.message); return null; });
       // if host matches oldName, update host field too
-      await Room.updateOne({ code: roomCode, host: oldName }, { $set: { host: newName || oldName } }).catch(()=>{});
+      await Room.updateOne({ code: roomCode, host: oldName }, { $set: { host: newName || oldName } }).catch(() => {});
 
-      // emit fresh players list
+      // emit fresh players list normalized
       const fresh = await Room.findOne({ code: roomCode }).lean();
       if (!fresh) return;
       const playersWithAvt = await attachAvatarsToPlayers(fresh.players || []);
-      io.to(roomCode).emit('tod-joined', {
-        data: {
-          roomCode: fresh.code,
-          host: fresh.host,
-          status: fresh.status,
-          participantsCount: Array.isArray(fresh.players) ? fresh.players.length : 0,
-          participants: playersWithAvt
-        },
-        state: getRoomState(roomCode)
-      });
+      const state = getRoomState(roomCode);
+
+      const payload = {
+        roomCode: fresh.code,
+        host: fresh.host,
+        status: fresh.status,
+        participantsCount: Array.isArray(fresh.players) ? fresh.players.length : 0,
+        players: playersWithAvt,
+        createdAt: fresh.createdAt || null,
+        updatedAt: fresh.updatedAt || null,
+        state
+      };
+
+      io.to(roomCode).emit('tod-joined', payload);
     } catch (e) {
       console.error('[ToD] profile-updated handler error', e);
     }
