@@ -1,5 +1,8 @@
 // Admin frontend: fetch data from /api/admin/*, edit modal UI, delete actions.
-const ADMIN_API = window.BASE_API_URL ;
+// Use configured BASE_API_URL if set, otherwise default to current origin (no trailing slash)
+const ADMIN_API = (typeof window.BASE_API_URL === 'string' && window.BASE_API_URL.trim())
+  ? String(window.BASE_API_URL).replace(/\/+$/,'')
+  : window.location.origin.replace(/\/+$/,'');
 
 function el(id){return document.getElementById(id);}
 function showOverlay(show){ el('popupOverlay').style.display = show ? 'block' : 'none'; }
