@@ -28,32 +28,6 @@
       socket.emit('tod-join', { roomCode, player: userParam });
     });
 
-    // show server response — useful to debug participantsCount 0
-    socket.on('tod-joined', (payload) => {
-      console.log('[ToD][client] evt tod-joined', payload);
-
-      // đảm bảo lấy roomCode từ đúng chỗ (server hiện trả payload.roomCode)
-      const rc = (payload && (payload.roomCode || (payload.data && payload.data.roomCode))) || roomCode || '';
-      const host = payload && (payload.host || (payload.data && payload.data.host));
-      const players = payload && (payload.players || (payload.data && payload.data.participants)) || [];
-
-      // update UI elements (safe guards)
-      const $room = document.getElementById('roomCode');
-      if ($room) $room.textContent = rc || '—';
-
-      const $playersCount = document.getElementById('playersCount');
-      if ($playersCount) $playersCount.textContent = 'Người chơi: ' + (payload.participantsCount || (payload.data && payload.data.participantsCount) || players.length || 0);
-
-      // optionally render avatars/names into #avatars
-      const avatars = document.getElementById('avatars');
-      if (avatars && Array.isArray(players)) {
-        avatars.innerHTML = players.map(p => {
-          const name = p.displayName || p.name || '';
-          return `<div class="avatar-item" title="${name}">${(name[0]||'?').toUpperCase()}</div>`;
-        }).join('');
-      }
-    });
-
     socket.on('connect_error', (err) => console.warn('[ToD][client] connect_error', err));
     socket.on('disconnect', (reason) => console.log('[ToD][client] disconnect', reason));
   }
@@ -62,19 +36,41 @@
   const url = new URL(window.location.href);
   const params = new URLSearchParams(url.search);
   const roomCode = params.get('code') || '';
-  let playerName = params.get('user') || sessionStorage.getItem('playerName') || `guest_${Math.random().toString(36).slice(2,6)}`;
+
+// Prefer URL param → localStorage → sessionStorage → guest
+  let playerName = params.get('user') || localStorage.getItem('playerName') || sessionStorage.getItem('playerName') || `guest_${Math.random().toString(36).slice(2,6)}`;
+
+// expose and persist to localStorage
+  window.playerName = playerName;
+  try { localStorage.setItem('playerName', playerName); } catch (e) { /* ignore */ }
 
   const avatarParam = params.get('avatar');
-  if (avatarParam) { try { sessionStorage.setItem('avatarUrl', avatarParam); } catch(e){} }
-  let avatarUrl = sessionStorage.getItem('avatarUrl') || null;
+  if (avatarParam) { try { localStorage.setItem('avatarUrl', avatarParam); } catch (e) { /* ignore */ } }
+  let avatarUrl = localStorage.getItem('avatarUrl') || sessionStorage.getItem('avatarUrl') || null;
   sessionStorage.setItem('playerName', playerName);
 
   const $room = document.getElementById('roomCode');
   const $playersCount = document.getElementById('playersCount');
   const $avatars = document.getElementById('avatars');
+  const $question = document.getElementById('questionCard');
+  const $voteInfo = document.getElementById('voteInfo');
 
-  // create settings button + modal
-  
+  // ensure controls + action btns + turnText exist
+  const controls = document.getElementById('controls');
+  let $actionBtns = document.getElementById('actionBtns');
+  if (! $actionBtns && controls) {
+    $actionBtns = document.createElement('div');
+    $actionBtns.id = 'actionBtns';
+    $actionBtns.className = 'action-btns';
+    controls.appendChild($actionBtns);
+  }
+  let $turnText = document.getElementById('turnText');
+  if (! $turnText && controls) {
+    $turnText = document.createElement('div');
+    $turnText.id = 'turnText';
+    $turnText.className = 'turn-text';
+    controls.insertBefore($turnText, $actionBtns || null);
+  }
 
   // use the same socket instance created above
   const socket = window.socket;
@@ -93,14 +89,10 @@
 
   // helper: choose avatar for a player
   function pickAvatarFor(playerObj) {
-    // playerObj may be string (name) or object { name, avatar }
     const name = typeof playerObj === 'string' ? playerObj : (playerObj && playerObj.name) ? playerObj.name : String(playerObj || '');
     const providedAvatar = (playerObj && playerObj.avatar) ? playerObj.avatar : null;
-
     if (providedAvatar) return providedAvatar;
-    // if it's current user and we have avatarUrl in sessionStorage, use it (ensure user avatar shown)
     if (name === playerName && avatarUrl) return avatarUrl;
-    // otherwise use dicebear seeded by name
     return `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`;
   }
 
@@ -110,13 +102,12 @@
     $avatars.innerHTML = '';
     if (!players.length) return;
     const area = document.getElementById('camp');
-    const w = area.clientWidth;
-    const h = area.clientHeight;
+    const w = area ? area.clientWidth : 600;
+    const h = area ? area.clientHeight : 400;
     const cx = w / 2;
     const cy = h * 0.46;
     const R = Math.min(w, h) * 0.30;
     players.forEach((p, i) => {
-      // allow p to be {name, avatar} or simple {name}
       const name = p && p.name ? p.name : String(p);
       const imgUrl = pickAvatarFor(p);
       const el = document.createElement('div');
@@ -131,94 +122,84 @@
     });
   }
 
-  socket.on('tod-joined', ({ players = [], host, lastQuestion=null, lastChoice=null }) => {
-    // players may be array of {name} from server; client uses pickAvatarFor to show avatar
-    renderPlayers(players, lastQuestion ? players[players.length-1] && players[players.length-1].name : null);
-    if (host === playerName) {
-      $actionBtns.innerHTML = `<button class="btn btn-primary" id="startRoundBtn">🚀 Bắt đầu</button>`;
-      const start = document.getElementById('startRoundBtn');
-      start && start.addEventListener('click', () => socket.emit('tod-start-round', { roomCode }));
-    } else {
-      $actionBtns.innerHTML = '';
-    }
-  });
+  // single normalized handler for tod-joined
+  socket.on('tod-joined', (payload) => {
+    console.log('[ToD][client] evt tod-joined', payload);
 
-  // inside your socket.on('tod-joined', (payload) => { ... }) handler,
-  // after you render players / update UI:
-  try {
-    console.log('[ToD][client] tod-joined payload', payload);
-    // playerName variable is defined earlier in this file
-    const current = (window.playerName || playerName || '').toString();
-    const hostName = (payload && payload.host) ? String(payload.host) : '';
+    // support both shapes (new: payload.roomCode / payload.players; old: payload.data.*)
+    const rc = (payload && (payload.roomCode || (payload.data && payload.data.roomCode))) || roomCode || '';
+    const host = (payload && (payload.host || (payload.data && payload.data.host))) || '';
+    const players = (payload && (payload.players || (payload.data && payload.data.participants))) || [];
+    const participantsCount = payload && (payload.participantsCount || (payload.data && payload.data.participantsCount)) || players.length || 0;
 
-    // ensure controls container exists
-    const controls = document.getElementById('controls');
+    if ($room) $room.textContent = rc || '—';
+    if ($playersCount) $playersCount.textContent = 'Người chơi: ' + participantsCount;
+
+    renderPlayers(players);
+
+    // start button only visible for host
     if (controls) {
-      let startBtn = document.getElementById('todStartBtn');
+      let startBtn = document.getElementById('startRoundBtn');
       if (!startBtn) {
         startBtn = document.createElement('button');
-        startBtn.id = 'todStartBtn';
-        startBtn.className = 'tod-start-btn';
-        startBtn.textContent = 'Bắt đầu';
+        startBtn.id = 'startRoundBtn';
+        startBtn.className = 'btn btn-primary';
+        startBtn.textContent = '🚀 Bắt đầu';
         startBtn.style.margin = '0.5rem';
-        controls.appendChild(startBtn);
         startBtn.addEventListener('click', () => {
-          console.log('[ToD][client] start clicked by', current);
-          socket.emit('tod-start-round', { roomCode });
+          console.log('[ToD][client] start clicked by', playerName);
+          socket.emit('tod-start-round', { roomCode: rc });
         });
+        controls.appendChild(startBtn);
       }
-      // show only for host
-      startBtn.style.display = (hostName && current && hostName === current) ? 'inline-block' : 'none';
-    }
-  } catch (e) { console.warn('[ToD][client] start-btn error', e && e.message); }
-
-  socket.on('tod-your-turn', ({ player }) => {
-    $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thử thách' : `⏳ ${player} đang chọn...`;
-    if (player === playerName) {
-      $actionBtns.innerHTML = '';
-      const btnT = document.createElement('button'); btnT.className='btn btn-accept'; btnT.textContent='Sự thật'; btnT.onclick = () => socket.emit('tod-choice', { roomCode, player: playerName, choice: 'truth' });
-      const btnD = document.createElement('button'); btnD.className='btn btn-reject'; btnD.textContent='Thử thách'; btnD.onclick = () => socket.emit('tod-choice', { roomCode, player: playerName, choice: 'dare' });
-      $actionBtns.appendChild(btnT); $actionBtns.appendChild(btnD);
+      startBtn.style.display = (host && playerName && String(host) === String(playerName)) ? 'inline-block' : 'none';
     }
   });
 
-  // Question display: default = FULL (no 'collapsed'). Toggle adds collapsed -> moves to bottom-right and hides text.
+  socket.on('tod-your-turn', ({ player }) => {
+    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thử thách' : `⏳ ${player} đang chọn...`;
+    if (player === playerName) {
+      if ($actionBtns) $actionBtns.innerHTML = '';
+      const btnT = document.createElement('button'); btnT.className='btn btn-accept'; btnT.textContent='Sự thật'; btnT.onclick = () => socket.emit('tod-choice', { roomCode, player: playerName, choice: 'truth' });
+      const btnD = document.createElement('button'); btnD.className='btn btn-reject'; btnD.textContent='Thử thách'; btnD.onclick = () => socket.emit('tod-choice', { roomCode, player: playerName, choice: 'dare' });
+      $actionBtns && $actionBtns.appendChild(btnT) && $actionBtns.appendChild(btnD);
+    }
+  });
+
   function toggleQuestionExpand() {
     if (!$question) return;
     $question.classList.toggle('collapsed');
     if (!$question.classList.contains('collapsed')) $question.focus();
   }
 
-  // hook toggle button and keyboard
   const toggleBtn = document.getElementById('toggleQuestion');
   toggleBtn && toggleBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleQuestionExpand(); });
 
-  // when server sends question, SHOW it full by default (remove collapsed)
   socket.on('tod-question', ({ player, choice, question }) => {
     if ($question) {
       $question.classList.remove('hidden');
-      $question.classList.remove('collapsed'); // show full
+      $question.classList.remove('collapsed');
       $question.classList.toggle('truth', choice === 'truth');
       $question.classList.toggle('dare', choice === 'dare');
       const qText = $question.querySelector('.q-text');
       if (qText) qText.textContent = `${player} chọn ${choice === 'truth' ? 'Sự thật' : 'Thử thách'}: ${question}`;
     }
-    $turnText.textContent = `${player} đang thực hiện`;
-    if (playerName === player) { $actionBtns.innerHTML = ''; }
+    if ($turnText) $turnText.textContent = `${player} đang thực hiện`;
+    if (playerName === player) { $actionBtns && ($actionBtns.innerHTML = ''); }
     else {
-      $actionBtns.innerHTML = `<button class="btn btn-accept" id="acceptBtn">Thông qua</button><button class="btn btn-reject" id="rejectBtn">Không thông qua</button>`;
-      const a = document.getElementById('acceptBtn'), r = document.getElementById('rejectBtn');
-      a && (a.onclick = () => { socket.emit('tod-vote', { roomCode, player: playerName, vote: 'accept' }); $actionBtns.innerHTML = ''; });
-      r && (r.onclick = () => { socket.emit('tod-vote', { roomCode, player: playerName, vote: 'reject' }); $actionBtns.innerHTML = ''; });
+      if ($actionBtns) {
+        $actionBtns.innerHTML = '';
+        const a = document.createElement('button'); a.className='btn btn-accept'; a.textContent='Thông qua'; a.onclick = () => { socket.emit('tod-vote', { roomCode, player: playerName, vote: 'accept' }); $actionBtns.innerHTML = ''; };
+        const r = document.createElement('button'); r.className='btn btn-reject'; r.textContent='Không thông qua'; r.onclick = () => { socket.emit('tod-vote', { roomCode, player: playerName, vote: 'reject' }); $actionBtns.innerHTML = ''; };
+        $actionBtns.appendChild(a); $actionBtns.appendChild(r);
+      }
     }
   });
 
-  // keep collapsed state after reject? we let server send new question and client shows it full by default.
   socket.on('tod-result', ({ result }) => {
     if ($voteInfo) $voteInfo.style.display = 'none';
-    $turnText.textContent = result === 'accepted' ? '✅ Đa số chấp nhận' : '❌ Không đủ, thử lại';
+    if ($turnText) $turnText.textContent = result === 'accepted' ? '✅ Đa số chấp nhận' : '❌ Không đủ, thử lại';
     if (result === 'accepted' && $question) $question.classList.add('hidden');
-    // if rejected, new question will come from server and be shown full
   });
 
   socket.onAny((ev,p) => console.debug('evt',ev,p));
@@ -227,21 +208,19 @@
     socket.emit('tod-who', { roomCode });
   });
 
-  // fallback cho ActionBtns nếu chưa có (ngăn ReferenceError)
-  // Fallback global ActionBtns / $actionBtns để tránh ReferenceError nếu chưa được định nghĩa
+  // fallback helper object (keeps compatibility)
   if (typeof window.ActionBtns === 'undefined') {
     window.ActionBtns = {
       disable(selector) {
-        document.querySelectorAll(selector || '.action-btn').forEach(b => { try { b.disabled = true; } catch(e){/*ignore*/} });
+        document.querySelectorAll(selector || '.action-btn').forEach(b => { try { b.disabled = true; } catch(e){} });
       },
       enable(selector) {
-        document.querySelectorAll(selector || '.action-btn').forEach(b => { try { b.disabled = false; } catch(e){/*ignore*/} });
+        document.querySelectorAll(selector || '.action-btn').forEach(b => { try { b.disabled = false; } catch(e){} });
       },
       setDisabled(disabled, selector) {
         return disabled ? this.disable(selector) : this.enable(selector);
       }
     };
   }
-  // alias (nếu code khác dùng $actionBtns)
   if (typeof window.$actionBtns === 'undefined') window.$actionBtns = window.ActionBtns;
 })();
