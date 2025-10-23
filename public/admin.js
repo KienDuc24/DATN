@@ -26,7 +26,7 @@ async function fetchUsers(q){
   return j.users || [];
 }
 async function fetchRooms(q){
-  const url = new URL(`${ADMIN_API}/api/rooms`);
+  const url = new URL(`${ADMIN_API}/api/room`);
   if (q) url.searchParams.set('q', q);
   const res = await fetch(url.toString(), { credentials: 'same-origin' });
   if (!res.ok) throw new Error('fetch rooms failed');
@@ -38,7 +38,7 @@ async function fetchRooms(q){
 
 // fetch games from server-managed file
 async function fetchGames(q){
-  const url = new URL(`${ADMIN_API}/api/games`);
+  const url = new URL(`${ADMIN_API}/api/game`);
   if (q) url.searchParams.set('q', q);
   const res = await fetch(url.toString(), { credentials: 'same-origin' });
   if (!res.ok) throw new Error('fetch games failed');
@@ -270,7 +270,7 @@ function renderGamesTable(games){
 // helper: update featured flag via API
 async function updateGameFeatured(id, featured){
   if (!id) throw new Error('missing id');
-  const res = await fetch(`${ADMIN_API}/api/games/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${ADMIN_API}/api/game/${encodeURIComponent(id)}`, {
     method: 'PUT',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
@@ -325,12 +325,12 @@ async function saveGame(e){
   try{
     let res;
     if (orig) {
-      res = await fetch(`${ADMIN_API}/api/games/${encodeURIComponent(orig)}`, {
+      res = await fetch(`${ADMIN_API}/api/game/${encodeURIComponent(orig)}`, {
         method: 'PUT', credentials:'same-origin',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
     } else {
-      res = await fetch(`${ADMIN_API}/api/games`, {
+      res = await fetch(`${ADMIN_API}/api/game`, {
         method: 'POST', credentials:'same-origin',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
@@ -349,7 +349,7 @@ async function onDeleteGame(e){
   const id = e.currentTarget.dataset.id;
   if (!confirm('Xác nhận xóa trò chơi này?')) return;
   try{
-    const res = await fetch(`${ADMIN_API}/api/games/${encodeURIComponent(id)}`, { method: 'DELETE', credentials:'same-origin' });
+    const res = await fetch(`${ADMIN_API}/api/game/${encodeURIComponent(id)}`, { method: 'DELETE', credentials:'same-origin' });
     if (!res.ok) throw new Error('delete failed');
     alert('Đã xóa trò chơi');
     loadData();
@@ -376,9 +376,9 @@ async function loadData(){
       return res.json().catch(()=>({}));
     }
 
-    const usersPromise = safeFetch(`${ADMIN_API}/api/users${usersQ?('?q='+encodeURIComponent(usersQ)) : ''}`);
-    const roomsPromise = safeFetch(`${ADMIN_API}/api/rooms${roomsQ?('?q='+encodeURIComponent(roomsQ)) : ''}`);
-    const gamesPromise = safeFetch(`${ADMIN_API}/api/games`);
+    const usersPromise = safeFetch(`${ADMIN_API}/api/user${usersQ?('?q='+encodeURIComponent(usersQ)) : ''}`);
+    const roomsPromise = safeFetch(`${ADMIN_API}/api/room${roomsQ?('?q='+encodeURIComponent(roomsQ)) : ''}`);
+    const gamesPromise = safeFetch(`${ADMIN_API}/api/game`);
 
     const [usersRes, roomsRes, gamesRes] = await Promise.all([usersPromise.catch(e=>({__err:e})), roomsPromise.catch(e=>({__err:e})), gamesPromise.catch(e=>({__err:e}))]);
 
