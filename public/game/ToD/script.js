@@ -31,22 +31,27 @@
     // show server response — useful to debug participantsCount 0
     socket.on('tod-joined', (payload) => {
       console.log('[ToD][client] evt tod-joined', payload);
-      try {
-        const countEl = document.getElementById('playersCount');
-        const codeEl = document.getElementById('roomCode');
-        if (payload && payload.data) {
-          if (codeEl) codeEl.textContent = payload.data.roomCode || roomCode || '—';
-          if (countEl) countEl.textContent = 'Người chơi: ' + (payload.data.participantsCount || (payload.data.participants && payload.data.participants.length) || 0);
-          // optionally render avatars/names into #avatars
-          const avatars = document.getElementById('avatars');
-          if (avatars && Array.isArray(payload.data.participants)) {
-            avatars.innerHTML = payload.data.participants.map(p => {
-              const name = p.displayName || p.name || '';
-              return `<div class="avatar-item" title="${name}">${(name[0]||'?').toUpperCase()}</div>`;
-            }).join('');
-          }
-        }
-      } catch (e) { /* ignore UI update error */ }
+
+      // đảm bảo lấy roomCode từ đúng chỗ (server hiện trả payload.roomCode)
+      const rc = (payload && (payload.roomCode || (payload.data && payload.data.roomCode))) || roomCode || '';
+      const host = payload && (payload.host || (payload.data && payload.data.host));
+      const players = payload && (payload.players || (payload.data && payload.data.participants)) || [];
+
+      // update UI elements (safe guards)
+      const $room = document.getElementById('roomCode');
+      if ($room) $room.textContent = rc || '—';
+
+      const $playersCount = document.getElementById('playersCount');
+      if ($playersCount) $playersCount.textContent = 'Người chơi: ' + (payload.participantsCount || (payload.data && payload.data.participantsCount) || players.length || 0);
+
+      // optionally render avatars/names into #avatars
+      const avatars = document.getElementById('avatars');
+      if (avatars && Array.isArray(players)) {
+        avatars.innerHTML = players.map(p => {
+          const name = p.displayName || p.name || '';
+          return `<div class="avatar-item" title="${name}">${(name[0]||'?').toUpperCase()}</div>`;
+        }).join('');
+      }
     });
 
     socket.on('connect_error', (err) => console.warn('[ToD][client] connect_error', err));
@@ -137,6 +142,35 @@
       $actionBtns.innerHTML = '';
     }
   });
+
+  // inside your socket.on('tod-joined', (payload) => { ... }) handler,
+  // after you render players / update UI:
+  try {
+    console.log('[ToD][client] tod-joined payload', payload);
+    // playerName variable is defined earlier in this file
+    const current = (window.playerName || playerName || '').toString();
+    const hostName = (payload && payload.host) ? String(payload.host) : '';
+
+    // ensure controls container exists
+    const controls = document.getElementById('controls');
+    if (controls) {
+      let startBtn = document.getElementById('todStartBtn');
+      if (!startBtn) {
+        startBtn = document.createElement('button');
+        startBtn.id = 'todStartBtn';
+        startBtn.className = 'tod-start-btn';
+        startBtn.textContent = 'Bắt đầu';
+        startBtn.style.margin = '0.5rem';
+        controls.appendChild(startBtn);
+        startBtn.addEventListener('click', () => {
+          console.log('[ToD][client] start clicked by', current);
+          socket.emit('tod-start-round', { roomCode });
+        });
+      }
+      // show only for host
+      startBtn.style.display = (hostName && current && hostName === current) ? 'inline-block' : 'none';
+    }
+  } catch (e) { console.warn('[ToD][client] start-btn error', e && e.message); }
 
   socket.on('tod-your-turn', ({ player }) => {
     $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thử thách' : `⏳ ${player} đang chọn...`;
