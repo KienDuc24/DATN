@@ -1,4 +1,4 @@
-// Admin frontend: fetch data from /api/admin/*, edit modal UI, delete actions.
+// Admin frontend: fetch data from /api/*, edit modal UI, delete actions.
 // Use configured BASE_API_URL if set, otherwise default to current origin (no trailing slash)
 const ADMIN_API = (typeof window.BASE_API_URL === 'string' && window.BASE_API_URL.trim())
   ? String(window.BASE_API_URL).replace(/\/+$/,'')
@@ -18,7 +18,7 @@ function showTab(tabId){
 
 // Fetch helpers
 async function fetchUsers(q){
-  const url = new URL(`${ADMIN_API}/api/admin/users`);
+  const url = new URL(`${ADMIN_API}/api/users`);
   if (q) url.searchParams.set('q', q);
   const res = await fetch(url.toString(), { credentials: 'same-origin' });
   if (!res.ok) throw new Error('fetch users failed');
@@ -26,7 +26,7 @@ async function fetchUsers(q){
   return j.users || [];
 }
 async function fetchRooms(q){
-  const url = new URL(`${ADMIN_API}/api/admin/rooms`);
+  const url = new URL(`${ADMIN_API}/api/rooms`);
   if (q) url.searchParams.set('q', q);
   const res = await fetch(url.toString(), { credentials: 'same-origin' });
   if (!res.ok) throw new Error('fetch rooms failed');
@@ -38,7 +38,7 @@ async function fetchRooms(q){
 
 // fetch games from server-managed file
 async function fetchGames(q){
-  const url = new URL(`${ADMIN_API}/api/admin/games`);
+  const url = new URL(`${ADMIN_API}/api/games`);
   if (q) url.searchParams.set('q', q);
   const res = await fetch(url.toString(), { credentials: 'same-origin' });
   if (!res.ok) throw new Error('fetch games failed');
@@ -128,7 +128,7 @@ if (typeof onDeleteUser !== 'function'){
     const id = e.currentTarget.dataset.id;
     if (!confirm('Xác nhận xóa user?')) return;
     try {
-      const res = await fetch(`${ADMIN_API}/api/admin/user/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'same-origin' });
+      const res = await fetch(`${ADMIN_API}/api/user/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'same-origin' });
       if (!res.ok) {
         const txt = await res.text().catch(()=>null);
         throw new Error(txt || res.status);
@@ -270,7 +270,7 @@ function renderGamesTable(games){
 // helper: update featured flag via API
 async function updateGameFeatured(id, featured){
   if (!id) throw new Error('missing id');
-  const res = await fetch(`${ADMIN_API}/api/admin/games/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${ADMIN_API}/api/games/${encodeURIComponent(id)}`, {
     method: 'PUT',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
@@ -325,12 +325,12 @@ async function saveGame(e){
   try{
     let res;
     if (orig) {
-      res = await fetch(`${ADMIN_API}/api/admin/games/${encodeURIComponent(orig)}`, {
+      res = await fetch(`${ADMIN_API}/api/games/${encodeURIComponent(orig)}`, {
         method: 'PUT', credentials:'same-origin',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
     } else {
-      res = await fetch(`${ADMIN_API}/api/admin/games`, {
+      res = await fetch(`${ADMIN_API}/api/games`, {
         method: 'POST', credentials:'same-origin',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
@@ -349,7 +349,7 @@ async function onDeleteGame(e){
   const id = e.currentTarget.dataset.id;
   if (!confirm('Xác nhận xóa trò chơi này?')) return;
   try{
-    const res = await fetch(`${ADMIN_API}/api/admin/games/${encodeURIComponent(id)}`, { method: 'DELETE', credentials:'same-origin' });
+    const res = await fetch(`${ADMIN_API}/api/games/${encodeURIComponent(id)}`, { method: 'DELETE', credentials:'same-origin' });
     if (!res.ok) throw new Error('delete failed');
     alert('Đã xóa trò chơi');
     loadData();
@@ -376,9 +376,9 @@ async function loadData(){
       return res.json().catch(()=>({}));
     }
 
-    const usersPromise = safeFetch(`${ADMIN_API}/api/admin/users${usersQ?('?q='+encodeURIComponent(usersQ)) : ''}`);
-    const roomsPromise = safeFetch(`${ADMIN_API}/api/admin/rooms${roomsQ?('?q='+encodeURIComponent(roomsQ)) : ''}`);
-    const gamesPromise = safeFetch(`${ADMIN_API}/api/admin/games`);
+    const usersPromise = safeFetch(`${ADMIN_API}/api/users${usersQ?('?q='+encodeURIComponent(usersQ)) : ''}`);
+    const roomsPromise = safeFetch(`${ADMIN_API}/api/rooms${roomsQ?('?q='+encodeURIComponent(roomsQ)) : ''}`);
+    const gamesPromise = safeFetch(`${ADMIN_API}/api/games`);
 
     const [usersRes, roomsRes, gamesRes] = await Promise.all([usersPromise.catch(e=>({__err:e})), roomsPromise.catch(e=>({__err:e})), gamesPromise.catch(e=>({__err:e}))]);
 
@@ -404,8 +404,8 @@ async function loadData(){
 function openUserForm(user){ showOverlay(true); el('userFormPopup').style.display = 'block'; el('userFormTitle').innerText = user ? 'Sửa người dùng' : 'Thêm người dùng'; el('userId').value = user? user._id : ''; el('userUsername').value = user? user.username : ''; el('userEmail').value = user? user.email : ''; el('userRole').value = user? user.role || 'user' : 'user'; }
 function closeUserForm(){ el('userFormPopup').style.display='none'; showOverlay(false); }
 async function onEditUser(e){ const id = e.currentTarget.dataset.id; try{ const users = await fetchUsers(); const u = users.find(x=>x._id===id); if(!u) return alert('User not found'); openUserForm(u); }catch(err){ console.error(err); alert('Lỗi'); } }
-async function saveUser(e){ e.preventDefault(); const id = el('userId').value; const payload = { username: el('userUsername').value.trim(), email: el('userEmail').value.trim(), role: el('userRole').value }; if(!payload.username) return alert('Username không được để trống'); try{ const res = await fetch(`${ADMIN_API}/api/admin/user/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) }); if(!res.ok){ const txt = await res.text(); throw new Error(txt||res.status); } alert('Cập nhật người dùng thành công'); closeUserForm(); loadData(); }catch(err){ console.error(err); alert('Cập nhật thất bại: '+ (err.message||err)); } }
-async function onDeleteUser(e){ const id = e.currentTarget.dataset.id; if(!confirm('Xác nhận xóa user?')) return; try{ const res = await fetch(`${ADMIN_API}/api/admin/user/${id}`, { method:'DELETE', credentials:'same-origin' }); if(!res.ok) throw new Error('delete failed'); alert('Đã xóa user'); loadData(); }catch(err){ console.error(err); alert('Xóa thất bại'); } }
+async function saveUser(e){ e.preventDefault(); const id = el('userId').value; const payload = { username: el('userUsername').value.trim(), email: el('userEmail').value.trim(), role: el('userRole').value }; if(!payload.username) return alert('Username không được để trống'); try{ const res = await fetch(`${ADMIN_API}/api/user/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) }); if(!res.ok){ const txt = await res.text(); throw new Error(txt||res.status); } alert('Cập nhật người dùng thành công'); closeUserForm(); loadData(); }catch(err){ console.error(err); alert('Cập nhật thất bại: '+ (err.message||err)); } }
+async function onDeleteUser(e){ const id = e.currentTarget.dataset.id; if(!confirm('Xác nhận xóa user?')) return; try{ const res = await fetch(`${ADMIN_API}/api/user/${id}`, { method:'DELETE', credentials:'same-origin' }); if(!res.ok) throw new Error('delete failed'); alert('Đã xóa user'); loadData(); }catch(err){ console.error(err); alert('Xóa thất bại'); } }
 
 function openRoomForm(room){ showOverlay(true); el('roomFormPopup').style.display = 'block'; el('roomFormTitle').innerText = room ? 'Sửa phòng' : 'Thêm phòng'; el('roomId').value = room? room._id : ''; el('roomName').value = room? room.name : ''; el('roomGame').value = room? room.game : ''; el('roomOwner').value = room? room.owner : ''; el('roomStatus').value = room? room.status : 'Đang mở'; }
 function closeRoomForm(){ el('roomFormPopup').style.display='none'; showOverlay(false); }
@@ -432,10 +432,10 @@ async function saveRoom(e){
   try{
     let res;
     if(id){
-      res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+      res = await fetch(`${ADMIN_API}/api/room/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
     } else {
       // if API supports create
-      res = await fetch(`${ADMIN_API}/api/admin/room`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+      res = await fetch(`${ADMIN_API}/api/room`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
     }
     if(!res.ok){
       const txt = await res.text().catch(()=>null);
@@ -449,7 +449,7 @@ async function saveRoom(e){
     alert('Cập nhật thất bại: ' + (err.message || err));
   }
 }
-async function onDeleteRoom(e){ const id = e.currentTarget.dataset.id; if(!confirm('Xác nhận xóa phòng?')) return; try{ const res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'DELETE', credentials:'same-origin' }); if(!res.ok) throw new Error('delete failed'); alert('Đã xóa phòng'); loadData(); }catch(err){ console.error(err); alert('Xóa thất bại'); } }
+async function onDeleteRoom(e){ const id = e.currentTarget.dataset.id; if(!confirm('Xác nhận xóa phòng?')) return; try{ const res = await fetch(`${ADMIN_API}/api/room/${id}`, { method:'DELETE', credentials:'same-origin' }); if(!res.ok) throw new Error('delete failed'); alert('Đã xóa phòng'); loadData(); }catch(err){ console.error(err); alert('Xóa thất bại'); } }
 
 function logoutAdmin(){ fetch('/admin/logout',{method:'POST', credentials:'same-origin'}).finally(()=> location.href='/admin-login.html'); }
 
@@ -545,10 +545,10 @@ async function saveRoom(e){
   try{
     let res;
     if(id){
-      res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+      res = await fetch(`${ADMIN_API}/api/room/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
     } else {
       // if API supports create
-      res = await fetch(`${ADMIN_API}/api/admin/room`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+      res = await fetch(`${ADMIN_API}/api/room`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
     }
     if(!res.ok){
       const txt = await res.text().catch(()=>null);
