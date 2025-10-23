@@ -25,22 +25,27 @@
       const msg = document.getElementById('msg');
       msg.textContent = '';
       try {
-        const res = await fetch('/admin/login', {
+        const base = (typeof window.BASE_API_URL === 'string' && window.BASE_API_URL.trim()) ? window.BASE_API_URL.replace(/\/+$/,'') : window.location.origin.replace(/\/+$/,'');
+        const url = `${base}/admin/login`;
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ username: u, password: p })
         });
-        const j = await res.json();
+        let j = {};
+        try { j = await res.json(); } catch(e){ /* ignore */ }
         if (res.ok && j.ok) {
           location.href = '/admin.html';
         } else {
-          msg.textContent = j.message || 'Login failed';
+          msg.textContent = (j && j.message) ? j.message : ('Lỗi: ' + (res.status || 'Unknown'));
         }
       } catch (e) {
         msg.textContent = 'Network error';
       }
     });
   </script>
+  <!-- optional: keep or set BASE_API_URL earlier if you have a known backend -->
   <script>window.BASE_API_URL = 'https://datn-socket.up.railway.app';</script>
   <!-- existing scripts (admin.js etc) come after -->
 </body>
