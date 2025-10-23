@@ -3,7 +3,9 @@ require('dotenv').config();
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const path = require('path');
-const mongoose = require('mongoose'); // <-- add this
+// require route modules
+const adminAuthRouter = require('./routes/adminAuth');    // handles POST /admin/login (router uses /admin/...)
+const adminApiRouter = require('./routes/adminRoutes');   // handles /users, /rooms, /games (expect mount at /api/admin)
 
 const app = express();
 
@@ -27,12 +29,23 @@ try {
   console.warn('[server] authRoutes not mounted', e && e.message);
 }
 
-// mount other routes (rooms, admin, games) - keep existing mounting
-try {
-  const adminRoutes = require('./routes/adminRoutes');
-  app.use('/api/admin', adminRoutes);
-} catch (e) { console.warn('[server] adminRoutes not mounted', e && e.message); }
+// mount admin auth under /api so POST goes to /api/admin/login
+app.use('/api', adminAuthRouter);
 
+// mount admin API under /api/admin -> endpoints become /api/admin/users, /api/admin/rooms, ...
+app.use('/api/admin', adminApiRouter);
+
+// serve admin-login page on GET /admin/login (optional)
+app.get('/admin/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin-login.html'));
+});
+
+// optionally serve admin dashboard at /admin
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// mount other routes (rooms, admin, games) - keep existing mounting
 try {
   const roomRoutes = require('./routes/roomRoutes');
   app.use('/api/room', roomRoutes);
