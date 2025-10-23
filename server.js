@@ -6,6 +6,7 @@ const path = require('path');
 // require route modules
 const adminAuthRouter = require('./routes/adminAuth');    // handles POST /admin/login (router uses /admin/...)
 const adminApiRouter = require('./routes/adminRoutes');   // handles /users, /rooms, /games (expect mount at /api/admin)
+const mongoose = require('mongoose'); // <-- ADDED: mongoose was referenced later but not required
 
 const app = express();
 
@@ -32,8 +33,8 @@ try {
 // mount admin auth under /api so POST goes to /api/admin/login
 app.use('/api', adminAuthRouter);
 
-// mount admin API under /api/admin -> endpoints become /api/admin/users, /api/admin/rooms, ...
-app.use('/api/admin', adminApiRouter);
+// mount admin API under /api -> endpoints become /api/users, /api/rooms, /api/games
+app.use('/api', adminApiRouter);
 
 // serve admin-login page on GET /admin/login (optional)
 app.get('/admin/login', (req, res) => {

@@ -18,7 +18,7 @@ function showTab(tabId){
 
 // Fetch helpers
 async function fetchUsers(q){
-  const url = new URL(`${ADMIN_API}/api/users`);
+  const url = new URL(`${ADMIN_API}/api/user`);
   if (q) url.searchParams.set('q', q);
   const res = await fetch(url.toString(), { credentials: 'same-origin' });
   if (!res.ok) throw new Error('fetch users failed');
