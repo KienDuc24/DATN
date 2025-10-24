@@ -37,17 +37,15 @@ async function tryFetchListVariants(endpointBase, q) {
   const qstr = q ? ('?q=' + encodeURIComponent(q)) : '';
   const candidates = [];
   const name = endpointBase.replace(/^\//,'');
-  // common variants: plural/singular
   const variants = [name, name.endsWith('s') ? name.slice(0,-1) : (name + 's')];
-  // build candidates using ADMIN_API, root origin and relative /api
   variants.forEach(v => {
     candidates.push(`${ADMIN_API}/api/${v}${qstr}`);
     candidates.push(`${ADMIN_API}/${v}${qstr}`);
     candidates.push(`/api/${v}${qstr}`);
     candidates.push(`/${v}${qstr}`);
   });
-  // de-duplicate
   const uniq = Array.from(new Set(candidates));
+  console.debug('tryFetchListVariants will try:', uniq); // <-- thêm dòng debug
   let lastErr = null;
   for (const url of uniq) {
     try {

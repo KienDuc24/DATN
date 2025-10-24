@@ -184,5 +184,9 @@
       });
     });
   </script>
+  <script>
+    // đảm bảo admin frontend gọi vào cùng origin (hoặc set to your API host)
+    window.BASE_API_URL = window.BASE_API_URL || window.location.origin.replace(/\/+$/,'');
+  </script>
 </body>
 </html>
