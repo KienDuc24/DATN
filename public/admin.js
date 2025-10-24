@@ -16,35 +16,47 @@ function showTab(tabId){
   document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.getAttribute('data-tab')===tabId) b.classList.add('active') });
 }
 
-// Fetch helpers
+// helper: try a list endpoint variants (plural then singular) and return parsed JSON
+async function tryFetchListVariants(basePaths) {
+  let lastErr = null;
+  for (const p of basePaths) {
+    try {
+      const res = await fetch(p, { credentials: 'same-origin' });
+      if (!res.ok) {
+        lastErr = new Error(`HTTP ${res.status} ${res.statusText} - ${p}`);
+        continue;
+      }
+      const j = await res.json().catch(()=>null);
+      return j || {};
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('No endpoints available: ' + basePaths.join(','));
+}
+
+// Fetch helpers (try plural then singular)
 async function fetchUsers(q){
-  const url = new URL(`${ADMIN_API}/api/user`);
-  if (q) url.searchParams.set('q', q);
-  const res = await fetch(url.toString(), { credentials: 'same-origin' });
-  if (!res.ok) throw new Error('fetch users failed');
-  const j = await res.json();
+  const base = `${ADMIN_API}/api`;
+  const urls = [ `${base}/users${q?('?q='+encodeURIComponent(q)) : ''}`, `${base}/user${q?('?q='+encodeURIComponent(q)) : ''}` ];
+  const j = await tryFetchListVariants(urls);
   return j.users || [];
 }
 async function fetchRooms(q){
-  const url = new URL(`${ADMIN_API}/api/room`);
-  if (q) url.searchParams.set('q', q);
-  const res = await fetch(url.toString(), { credentials: 'same-origin' });
-  if (!res.ok) throw new Error('fetch rooms failed');
-  const j = await res.json();
+  const base = `${ADMIN_API}/api`;
+  const urls = [ `${base}/rooms${q?('?q='+encodeURIComponent(q)) : ''}`, `${base}/room${q?('?q='+encodeURIComponent(q)) : ''}` ];
+  const j = await tryFetchListVariants(urls);
   return j.rooms || [];
+}
+async function fetchGames(q){
+  const base = `${ADMIN_API}/api`;
+  const urls = [ `${base}/games${q?('?q='+encodeURIComponent(q)) : ''}`, `${base}/game${q?('?q='+encodeURIComponent(q)) : ''}` ];
+  const j = await tryFetchListVariants(urls);
+  // some APIs return { games: [...] } or { items: [...] } or plain array
+  return Array.isArray(j) ? j : (j.games || j.items || []);
 }
 
 // Add/modify functions for games CRUD via server API
-
-// fetch games from server-managed file
-async function fetchGames(q){
-  const url = new URL(`${ADMIN_API}/api/game`);
-  if (q) url.searchParams.set('q', q);
-  const res = await fetch(url.toString(), { credentials: 'same-origin' });
-  if (!res.ok) throw new Error('fetch games failed');
-  const j = await res.json();
-  return j.games || [];
-}
 
 // ensure escape helper exists
 if (typeof escapeHtml === 'undefined') {
@@ -362,40 +374,18 @@ async function loadData(){
     const usersQ = el('usersSearch') && el('usersSearch').value.trim();
     const roomsQ = el('roomsSearch') && el('roomsSearch').value.trim();
 
-    // helper to fetch and show details on error
-    async function safeFetch(url){
-      const res = await fetch(url, { credentials: 'same-origin' });
-      if (!res.ok) {
-        let bodyText = '';
-        try { bodyText = await res.text(); } catch(e) { bodyText = '<no body>'; }
-        const err = new Error(`HTTP ${res.status} ${res.statusText} - ${url}\n${bodyText}`);
-        err.status = res.status;
-        err.body = bodyText;
-        throw err;
-      }
-      return res.json().catch(()=>({}));
-    }
+    // fetch in parallel using helpers that handle plural/singular
+    const usersPromise = fetchUsers(usersQ).catch(e=>{ throw e; });
+    const roomsPromise = fetchRooms(roomsQ).catch(e=>{ throw e; });
+    const gamesPromise = fetchGames().catch(e=>{ throw e; });
 
-    const usersPromise = safeFetch(`${ADMIN_API}/api/user${usersQ?('?q='+encodeURIComponent(usersQ)) : ''}`);
-    const roomsPromise = safeFetch(`${ADMIN_API}/api/room${roomsQ?('?q='+encodeURIComponent(roomsQ)) : ''}`);
-    const gamesPromise = safeFetch(`${ADMIN_API}/api/game`);
+    const [users, rooms, games] = await Promise.all([usersPromise, roomsPromise, gamesPromise]);
 
-    const [usersRes, roomsRes, gamesRes] = await Promise.all([usersPromise.catch(e=>({__err:e})), roomsPromise.catch(e=>({__err:e})), gamesPromise.catch(e=>({__err:e}))]);
-
-    if (usersRes && usersRes.__err) throw usersRes.__err;
-    if (roomsRes && roomsRes.__err) throw roomsRes.__err;
-    if (gamesRes && gamesRes.__err) throw gamesRes.__err;
-
-    const users = usersRes.users || [];
-    const rooms = roomsRes.rooms || [];
-    const games = gamesRes.games || [];
-
-    renderUsersTable(users);
-    renderRoomsTable(rooms);
-    renderGamesTable(games);
+    renderUsersTable(users || []);
+    renderRoomsTable(rooms || []);
+    renderGamesTable(games || []);
   } catch (err) {
     console.error('loadData error:', err);
-    // show detailed alert for debugging
     alert('Không thể tải dữ liệu admin. Kiểm tra logs server.\n\n' + (err && (err.message || err.toString())));
   }
 }
