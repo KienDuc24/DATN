@@ -42,6 +42,11 @@ app.use('/api', adminAuthRouter);
 // adminApiRouter defines routes like router.get('/users') etc. Mount under /api so endpoints become /api/users, /api/rooms, /api/games
 app.use('/api', adminApiRouter);
 
+// nếu routes/adminRoutes.js export router với các đường dẫn như '/users', '/game'...
+const adminRoutes = require('./routes/adminRoutes');
+// mount nó dưới /api để frontend admin (admin.js) gọi /api/...
+app.use('/api', adminRoutes);
+
 // other app routes
 app.use('/api', gameRoutes);
 app.use('/api', roomRoutes);
