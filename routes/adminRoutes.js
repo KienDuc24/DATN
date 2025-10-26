@@ -6,10 +6,27 @@ const fs = require('fs').promises;
 const path = require('path');
 const GAMES_PATH = path.join(__dirname, '..', 'public', 'games.json');
 
-// Basic admin endpoints (no auth). Add auth middleware if needed.
+// requireAdmin bây giờ kiểm tra cookie adminUser và xác thực role trong DB
+async function requireAdmin(req, res, next) {
+  try {
+    const adminUserId = req.cookies && req.cookies.adminUser;
+    if (!adminUserId) return res.status(403).json({ error: 'Forbidden: admin only' });
+
+    const user = await User.findById(adminUserId).select('role username');
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: admin only' });
+    }
+    // attach user cho handler nếu cần
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error('[adminRoutes] requireAdmin error', err && err.message);
+    return res.status(500).json({ ok: false, message: 'error' });
+  }
+}
 
 // GET /api/admin/users
-router.get('/users', async (req, res) => {
+router.get('/users', requireAdmin, async (req, res) => {
   try {
     const q = {};
     if (req.query.q) {
@@ -25,7 +42,7 @@ router.get('/users', async (req, res) => {
 });
 
 // PUT /api/admin/user/:id  (update user fields: username, email, avatar, role)
-router.put('/user/:id', async (req, res) => {
+router.put('/user/:id', requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const allowed = {};
@@ -52,7 +69,7 @@ router.put('/user/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/user/:id
-router.delete('/user/:id', async (req, res) => {
+router.delete('/user/:id', requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const removed = await User.findByIdAndDelete(id);
@@ -67,7 +84,7 @@ router.delete('/user/:id', async (req, res) => {
 // ROOMS
 
 // GET /api/admin/rooms
-router.get('/rooms', async (req, res) => {
+router.get('/rooms', requireAdmin, async (req, res) => {
   try {
     const q = {};
     if (req.query.q) q.name = new RegExp(req.query.q, 'i');
@@ -80,7 +97,7 @@ router.get('/rooms', async (req, res) => {
 });
 
 // PUT /api/admin/room/:id
-router.put('/room/:id', async (req, res) => {
+router.put('/room/:id', requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const allowed = {};
@@ -99,7 +116,7 @@ router.put('/room/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/room/:id
-router.delete('/room/:id', async (req, res) => {
+router.delete('/room/:id', requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const removed = await Room.findByIdAndDelete(id);
@@ -114,7 +131,7 @@ router.delete('/room/:id', async (req, res) => {
 // GAMES
 
 // GET /api/admin/games
-router.get('/games', async (req, res) => {
+router.get('/games', requireAdmin, async (req, res) => {
   try {
     const raw = await fs.readFile(GAMES_PATH, 'utf8');
     const list = JSON.parse(raw || '[]');
@@ -126,7 +143,7 @@ router.get('/games', async (req, res) => {
 });
 
 // POST /api/admin/games  -> add new game
-router.post('/games', async (req, res) => {
+router.post('/games', requireAdmin, async (req, res) => {
   try {
     const payload = req.body || {};
     if (!payload.id) return res.status(400).json({ ok: false, message: 'id required' });
@@ -155,7 +172,7 @@ router.post('/games', async (req, res) => {
 });
 
 // PUT /api/admin/games/:id  -> update by id
-router.put('/games/:id', async (req, res) => {
+router.put('/games/:id', requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const body = req.body || {};
@@ -195,7 +212,7 @@ router.put('/games/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/games/:id
-router.delete('/games/:id', async (req, res) => {
+router.delete('/games/:id', requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const raw = await fs.readFile(GAMES_PATH, 'utf8');
