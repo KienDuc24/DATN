@@ -7,24 +7,34 @@ const User = require('../models/User');
 router.post('/admin/login', async (req, res) => {
   try {
     const { username, password } = req.body || {};
-    if (!username || !password) return res.status(400).json({ ok: false, message: 'username/password required' });
+    if (!username || !password) {
+      return res.status(400).json({ ok: false, message: 'username and password required' });
+    }
 
     const user = await User.findOne({ username: username.trim() });
-    if (!user) return res.status(401).json({ ok: false, message: 'invalid credentials' });
+    if (!user) {
+      return res.status(401).json({ ok: false, message: 'invalid credentials' });
+    }
 
     const match = await bcrypt.compare(password, user.password || '');
-    if (!match) return res.status(401).json({ ok: false, message: 'invalid credentials' });
+    if (!match) {
+      return res.status(401).json({ ok: false, message: 'invalid credentials' });
+    }
 
-    if (user.role !== 'admin') return res.status(403).json({ ok: false, message: 'not admin' });
+    if (user.role !== 'admin') {
+      return res.status(403).json({ ok: false, message: 'not admin' });
+    }
 
     // set httpOnly cookie with user id for admin session
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('adminUser', String(user._id), {
       httpOnly: true,
-      sameSite: 'none',    // required for cross-site cookies
-      secure: isProd,      // must be true on HTTPS (production)
+      sameSite: 'none',   // required for cross-site cookies
+      secure: isProd,     // must be true on HTTPS (production)
       path: '/',
+      maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
     });
+
     return res.json({ ok: true, user: { _id: user._id, username: user.username, email: user.email } });
   } catch (err) {
     console.error('[adminAuth] login error', err && err.message);
@@ -40,7 +50,6 @@ router.post('/admin/logout', (req, res) => {
 });
 
 // POST /api/admin/create-first-admin
-// Dùng để tạo tài khoản admin đầu tiên. Yêu cầu body.secret === process.env.ADMIN_SECRET
 router.post('/admin/create-first-admin', async (req, res) => {
   try {
     const secret = req.body && req.body.secret;

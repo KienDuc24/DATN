@@ -481,8 +481,119 @@ async function saveRoom(e){
 }
 async function onDeleteRoom(e){ const id = e.currentTarget.dataset.id; if(!confirm('Xác nhận xóa phòng?')) return; try{ await fetchJson(`${ADMIN_API}/api/room/${encodeURIComponent(id)}`, { method:'DELETE', credentials:'same-origin' }); alert('Đã xóa phòng'); loadData(); }catch(err){ console.error('delete room failed', err); alert('Xóa thất bại: ' + (err.message || err)); } }
 
+async function onDeleteGame(e){ const id = e.currentTarget.dataset.id; if (!confirm('Xác nhận xóa trò chơi này?')) return; try{ await fetchJson(`${ADMIN_API}/api/game/${encodeURIComponent(id)}`, { method:'DELETE', credentials:'same-origin' }); alert('Đã xóa trò chơi'); loadData(); }catch(err){ console.error('delete game failed', err); alert('Xóa thất bại: ' + (err.message || err)); } }
+
+// Load data and render
+async function loadData(){
+  try{
+    const usersQ = el('usersSearch') && el('usersSearch').value.trim();
+    const roomsQ = el('roomsSearch') && el('roomsSearch').value.trim();
+
+    // fetch in parallel using helpers that handle plural/singular
+    const usersPromise = fetchUsers(usersQ).catch(e=>{ throw e; });
+    const roomsPromise = fetchRooms(roomsQ).catch(e=>{ throw e; });
+    const gamesPromise = fetchGames().catch(e=>{ throw e; });
+
+    const [users, rooms, games] = await Promise.all([usersPromise, roomsPromise, gamesPromise]);
+
+    renderUsersTable(users || []);
+    renderRoomsTable(rooms || []);
+    renderGamesTable(games || []);
+  } catch (err) {
+    console.error('loadData error:', err);
+    alert('Không thể tải dữ liệu admin. Kiểm tra logs server.\n\n' + (err && (err.message || err.toString())));
+  }
+}
+
+// modal handlers (unchanged from previous implementation)
+function openUserForm(user){ showOverlay(true); el('userFormPopup').style.display = 'block'; el('userFormTitle').innerText = user ? 'Sửa người dùng' : 'Thêm người dùng'; el('userId').value = user? user._id : ''; el('userUsername').value = user? user.username : ''; el('userEmail').value = user? user.email : ''; el('userRole').value = user? user.role || 'user' : 'user'; }
+function closeUserForm(){ el('userFormPopup').style.display='none'; showOverlay(false); }
+async function onEditUser(e){ const id = e.currentTarget.dataset.id; try{ const users = await fetchUsers(); const u = users.find(x=>x._id===id); if(!u) return alert('User not found'); openUserForm(u); }catch(err){ console.error(err); alert('Lỗi'); } }
+async function saveUser(e){ e.preventDefault(); const id = el('userId').value; const payload = { username: el('userUsername').value.trim(), email: el('userEmail').value.trim(), role: el('userRole').value }; if(!payload.username) return alert('Username không được để trống'); try{ await fetchJson(`${ADMIN_API}/api/user/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) }); alert('Cập nhật người dùng thành công'); closeUserForm(); loadData(); }catch(err){ console.error('saveUser failed', err); alert('Cập nhật thất bại: '+ (err.message||err)); } }
+async function onDeleteUser(e){ const id = e.currentTarget.dataset.id; if(!confirm('Xác nhận xóa user?')) return; try{ await fetchJson(`${ADMIN_API}/api/user/${encodeURIComponent(id)}`, { method:'DELETE', credentials:'same-origin' }); alert('Đã xóa user'); loadData(); }catch(err){ console.error('delete user failed', err); alert('Xóa thất bại: ' + (err.message || err)); } }
+
+function openRoomForm(room){ showOverlay(true); el('roomFormPopup').style.display = 'block'; el('roomFormTitle').innerText = room ? 'Sửa phòng' : 'Thêm phòng'; el('roomId').value = room? room._id : ''; el('roomName').value = room? room.name : ''; el('roomGame').value = room? room.game : ''; el('roomOwner').value = room? room.owner : ''; el('roomStatus').value = room? room.status : 'Đang mở'; }
+function closeRoomForm(){ el('roomFormPopup').style.display='none'; showOverlay(false); }
+async function onEditRoom(e){ const id = e.currentTarget.dataset.id; try{ const rooms = await fetchRooms(); const r = rooms.find(x=>x._id===id); if(!r) return alert('Room not found'); openRoomForm(r); }catch(err){ console.error(err); alert('Lỗi'); } }
+async function saveRoom(e){
+  e.preventDefault();
+  const id = el('roomId').value;
+  const payload = {
+    name: el('roomName').value.trim(),
+    owner: el('roomOwner').value.trim(),
+    status: el('roomStatus').value
+  };
+  const sel = el('roomGame');
+  if (sel) {
+    const selVal = sel.value;
+    if(!selVal) return alert('Vui lòng chọn trò chơi cho phòng.');
+    const selText = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : selVal;
+    payload.game = { id: selVal, name: selText };
+  } else {
+    payload.game = el('roomGame').value.trim();
+  }
+
+  if(!payload.name) return alert('Tên phòng không được để trống');
+  try{
+    if(id){
+      await fetchJson(`${ADMIN_API}/api/room/${encodeURIComponent(id)}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+    } else {
+      await fetchJson(`${ADMIN_API}/api/room`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+    }
+    alert('Phòng lưu thành công');
+    closeRoomForm();
+    loadData();
+  }catch(err){
+    console.error('saveRoom failed', err);
+    alert('Cập nhật thất bại: ' + (err.message || err));
+  }
+}
+async function onDeleteRoom(e){ const id = e.currentTarget.dataset.id; if(!confirm('Xác nhận xóa phòng?')) return; try{ await fetchJson(`${ADMIN_API}/api/room/${encodeURIComponent(id)}`, { method:'DELETE', credentials:'same-origin' }); alert('Đã xóa phòng'); loadData(); }catch(err){ console.error('delete room failed', err); alert('Xóa thất bại: ' + (err.message || err)); } }
+
 function logoutAdmin(){ fetch('/admin/logout',{method:'POST', credentials:'same-origin'}).finally(()=> location.href='/admin-login.html'); }
 
+// Update frontend admin login to send credentials (fetch example).
+// Replace existing login request code with this pattern.
+
+async function adminLogin(username, password) {
+  try {
+    const resp = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // << bắt buộc để nhận Set-Cookie từ server
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(data && data.message ? data.message : 'Login failed');
+    }
+    return data;
+  } catch (err) {
+    console.error('[admin.js] login error', err);
+    throw err;
+  }
+}
+
+// example usage: hookup with form submit
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('#admin-login-form');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = form.querySelector('input[name="username"]').value;
+    const password = form.querySelector('input[name="password"]').value;
+    try {
+      await adminLogin(username, password);
+      // redirect to admin page
+      window.location.href = '/admin';
+    } catch (err) {
+      // show error to user
+      const el = document.querySelector('#admin-error');
+      if (el) el.textContent = err.message || 'Network error';
+    }
+  });
+});
 document.addEventListener('DOMContentLoaded', ()=>{
   // wire tab buttons
   document.querySelectorAll('.tab-btn').forEach(b=> b.addEventListener('click', ()=> showTab(b.getAttribute('data-tab'))));
