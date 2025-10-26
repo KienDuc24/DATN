@@ -40,12 +40,25 @@ const BASE_API_URL = process.env.BASE_API_URL || process.env.BASE_URL || '';
 const EXTRA = process.env.ADDITIONAL_ALLOWED_ORIGINS ? process.env.ADDITIONAL_ALLOWED_ORIGINS.split(',') : [];
 const allowedOrigins = [FRONTEND_ORIGIN, BASE_API_URL, ...EXTRA].filter(Boolean);
 
+// debug log để kiểm tra env/runtime
+console.log('[server] FRONTEND_ORIGIN=', FRONTEND_ORIGIN);
+console.log('[server] BASE_API_URL=', BASE_API_URL);
+console.log('[server] allowedOrigins=', allowedOrigins);
+
+// log origin của từng request (giúp thấy request từ browser)
+app.use((req, res, next) => {
+  if (req.headers && req.headers.origin) {
+    console.log('[CORS] incoming origin:', req.headers.origin, req.method, req.path);
+  }
+  next();
+});
+
 // dynamic origin check so credentials work
 app.use(cors({
   origin: function(origin, callback) {
-    // allow requests with no origin (e.g. server-to-server, mobile tools)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
+    console.warn('[CORS] blocked origin:', origin);
     return callback(new Error('CORS not allowed by server'), false);
   },
   credentials: true,
@@ -95,3 +108,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`[server] listening on port ${PORT}`);
 });
+
+// Note: removed axios import and example client calls to avoid running HTTP requests from server process.
