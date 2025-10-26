@@ -67,3 +67,4 @@ games.forEach((game, index) => {
     : game.name;
   console.log(`  ${index + 1}. ${nameStr} - ${game.players} players`);
 });
+

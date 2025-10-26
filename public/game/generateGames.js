@@ -60,3 +60,4 @@ console.log(`\n🎮 Generated games.json with ${games.length} games:`);
 games.forEach((game, index) => {
   console.log(`  ${index + 1}. ${game.name} - ${game.players} players`);
 });
+

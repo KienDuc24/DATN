@@ -219,3 +219,4 @@ router.get('/google', (req, res, next) => { console.log('[authRoutes] GET /googl
 router.get('/google/callback', (req, res, next) => { console.log('[authRoutes] GET /google/callback'); next(); });
 
 module.exports = router;
+

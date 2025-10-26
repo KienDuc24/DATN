@@ -38,3 +38,4 @@ RoomSchema.pre('save', function(next){
 
 // export
 module.exports = mongoose.models.Room || mongoose.model('Room', RoomSchema);
+

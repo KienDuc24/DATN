@@ -49,3 +49,4 @@ userSchema.methods.comparePassword = async function (candidate) {
 };
 
 module.exports = mongoose.models.User || mongoose.model('User', userSchema);
+
