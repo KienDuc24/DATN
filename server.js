@@ -33,6 +33,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// --- quick preflight handler (debug/fallback) ---
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    const origin = req.headers.origin || '*';
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', req.headers['access-control-request-headers'] || 'Content-Type,Authorization');
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 // CORS config
 const FRONTEND_URL = process.env.FRONTEND_URL || process.env.FRONTEND_URL || process.env.FRONTEND || 'http://localhost:3000';
 const BASE_API_URL = process.env.BASE_API_URL || process.env.BASE_URL || '';
