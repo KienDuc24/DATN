@@ -1,15 +1,6 @@
 require('dotenv').config();
+const { server } = require('./server'); // reuse same server
 const { Server } = require('socket.io');
-
-// reuse the HTTP server exported by server.js
-const srvModule = require('./server'); // returns { app, server }
-const server = (srvModule && srvModule.server) ? srvModule.server : null;
-if (!server) {
-  console.error('[socketServer] no server available to attach Socket.IO to. Exiting.');
-  process.exit(1);
-}
-
-// initialize Socket.IO on the existing HTTP server
 const io = new Server(server, {
   cors: {
     origin: process.env.FRONTEND_URL || '*',
@@ -94,4 +85,4 @@ io.on("connection", (socket) => {
 });
 
 // export io if needed
-module.exports = io;
+module.exports = io; // allow graceful close from index.js

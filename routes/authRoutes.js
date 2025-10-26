@@ -11,23 +11,22 @@ const bcrypt = require('bcryptjs');
 console.log('[authRoutes] loaded');
 
 // cloudinary setup (optional)
-let cloudinary = null;
+let cloudinary;
 try {
-  const cld = require('cloudinary');
-  cloudinary = cld.v2;
-  if (process.env.CLOUDINARY_URL) {
-    cloudinary.config({ secure: true });
-  } else {
+  // attempt init cloudinary only if config present
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+    cloudinary = require('cloudinary').v2;
     cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
-      api_key: process.env.CLOUDINARY_API_KEY || '',
-      api_secret: process.env.CLOUDINARY_API_SECRET || '',
-      secure: true
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
     });
+  } else {
+    console.warn('[authRoutes] Cloudinary not configured (skipping).');
+    cloudinary = null;
   }
-  console.log('[authRoutes] cloudinary init (may be unconfigured)');
 } catch (err) {
-  console.warn('[authRoutes] cloudinary not available:', err && err.message);
+  console.warn('[authRoutes] cloudinary init failed:', err && err.message);
   cloudinary = null;
 }
 

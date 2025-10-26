@@ -1,7 +1,7 @@
 require('dotenv').config();
 
-const http = require('http');
 const express = require('express');
+const http = require('http');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
@@ -113,12 +113,8 @@ app.use((err, req, res, next) => {
 });
 
 // create HTTP server and listen
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 const server = http.createServer(app);
+server.listen(PORT, () => console.log(`[server] listening on port ${PORT}`));
 
-server.listen(PORT, () => {
-  console.log(`[server] listening on port ${PORT}`);
-});
-
-// export server so socketServer can attach to it (no duplicate listen)
 module.exports = { app, server };
