@@ -46,6 +46,40 @@ function gracefulShutdown() {
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
+/* diagnostic SIGTERM handler: prints active handles/requests and stack traces */
+process.on('beforeExit', (code) => {
+  console.log('[diag] beforeExit code=', code, 'mem=', process.memoryUsage());
+});
+process.on('exit', (code) => {
+  console.log('[diag] exit code=', code, 'mem=', process.memoryUsage());
+});
+process.on('warning', (w) => console.warn('[diag] warning', w && (w.stack || w)));
+
+function dumpHandles(tag) {
+  try {
+    // best-effort: list active handles/requests (node internals)
+    const handles = (process._getActiveHandles && process._getActiveHandles()) || [];
+    const requests = (process._getActiveRequests && process._getActiveRequests()) || [];
+    console.log(`[diag] ${tag} activeHandles=${handles.length} activeRequests=${requests.length}`);
+  } catch (e) {
+    console.warn('[diag] dumpHandles failed', e && e.message);
+  }
+}
+
+process.on('SIGTERM', () => {
+  console.log('[diag] SIGTERM received - mem snapshot', process.memoryUsage());
+  dumpHandles('SIGTERM');
+  // print stack traces of active handles (best-effort)
+  try {
+    console.trace('[diag] stack at SIGTERM');
+  } catch(e){}
+  // allow gracefulShutdown already implemented (or force a longer delay)
+  setTimeout(() => {
+    console.log('[diag] waiting 5s then exit');
+    process.exit(1);
+  }, 5000);
+});
+
 // require server + socket modules (server starts listening)
 try {
   require('./server');
