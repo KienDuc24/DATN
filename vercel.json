@@ -1,0 +1,11 @@
+{
+  "builds": [
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/admin/login", "dest": "/public/admin-login.html" },
+    { "src": "/admin", "dest": "/public/admin.html" },
+    { "src": "/(.*)", "dest": "/public/index.html" }
+  ]
+}
