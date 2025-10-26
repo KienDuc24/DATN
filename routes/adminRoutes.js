@@ -25,9 +25,21 @@ async function requireAdmin(req, res, next) {
   }
 }
 
-// GET /api/admin/users
-router.get('/users', requireAdmin, async (req, res) => {
+// helper: kiểm tra cookie + DB, trả user nếu là admin
+async function getAdminUser(req) {
+  const adminUserId = req.cookies && req.cookies.adminUser;
+  if (!adminUserId) return null;
+  const user = await User.findById(adminUserId).select('role username');
+  if (!user || user.role !== 'admin') return null;
+  return user;
+}
+
+// Ví dụ route GET /api/admin/users (không dùng middleware)
+router.get('/users', async (req, res) => {
   try {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ ok:false, message: 'Forbidden: admin only' });
+
     const q = {};
     if (req.query.q) {
       const re = new RegExp(req.query.q, 'i');
