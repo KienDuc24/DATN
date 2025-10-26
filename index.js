@@ -1,56 +1,62 @@
 /**
- * index.js - bootstrap both API and Socket servers, add global error handlers
+ * index.js - bootstrap API + Socket servers with global error handlers
  */
-
 process.on('uncaughtException', (err) => {
   console.error('[FATAL] uncaughtException:', err && (err.stack || err));
-  // allow logs to flush then exit so the platform restarts cleanly
   setTimeout(() => process.exit(1), 1000);
 });
-
 process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] unhandledRejection:', reason && (reason.stack || reason));
   setTimeout(() => process.exit(1), 1000);
 });
 
-// function to attempt graceful shutdown
-async function gracefulShutdown() {
-  console.log('[signal] starting graceful shutdown');
+let serverModule;
+let ioModule;
+
+async function start() {
   try {
-    // try to close http server and socket.io if available
-    const srv = require('./server');
-    if (srv && srv.server && typeof srv.server.close === 'function') {
-      srv.server.close(() => console.log('[signal] HTTP server closed'));
-    }
-    // if socketServer exports io, try close it
-    try {
-      const io = require('./socketServer');
-      if (io && typeof io.close === 'function') {
-        io.close();
-        console.log('[signal] Socket.IO closed');
-      }
-    } catch (err) {
-      // socket may be attached to server module; ignore if require fails
+    serverModule = require('./server'); // must export { app, server }
+    console.log('index.js: server module loaded');
+  } catch (err) {
+    console.error('index.js: failed to require server.js (API):', err && err.message);
+  }
+
+  try {
+    ioModule = require('./socketServer'); // should attach to exported server
+    console.log('index.js: socketServer loaded');
+  } catch (err) {
+    console.error('index.js: failed to require socketServer.js (socket):', err && err.message);
+  }
+}
+
+function gracefulShutdown() {
+  console.log('[signal] SIGTERM/SIGINT received - shutting down');
+  try {
+    if (ioModule && typeof ioModule.close === 'function') {
+      ioModule.close();
+      console.log('[signal] socket.io closed');
     }
   } catch (err) {
-    console.warn('[signal] shutdown error:', err && err.message);
-  } finally {
-    // force exit after short delay
-    setTimeout(() => process.exit(0), 3000);
+    console.warn('[signal] error closing socket.io:', err && err.message);
+  }
+  try {
+    if (serverModule && serverModule.server && typeof serverModule.server.close === 'function') {
+      serverModule.server.close(() => {
+        console.log('[signal] HTTP server closed');
+        process.exit(0);
+      });
+      // force exit after 5s
+      setTimeout(() => process.exit(0), 5000);
+    } else {
+      process.exit(0);
+    }
+  } catch (err) {
+    console.warn('[signal] error closing http server:', err && err.message);
+    process.exit(1);
   }
 }
 
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
-// Start servers (require order: server first so socketServer can reuse exported server)
-try {
-  require('./server');
-} catch (err) {
-  console.error('index.js: failed to start server.js (API):', err && err.message);
-}
-try {
-  require('./socketServer');
-} catch (err) {
-  console.error('index.js: failed to start socketServer.js (socket):', err && err.message);
-}
+start();
