@@ -96,6 +96,10 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// mount API routes
+const roomRoutes = require('./routes/roomRoutes');
+app.use('/api', roomRoutes);
+
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 const server = http.createServer(app);
 server.listen(PORT, () => {
