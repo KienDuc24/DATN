@@ -56,6 +56,33 @@ function gracefulShutdown() {
   }
 }
 
+/* added diagnostic logging to help find SIGTERM cause */
+process.on('beforeExit', (code) => {
+  console.log('[diag] process beforeExit code=', code, 'mem=', process.memoryUsage());
+});
+process.on('exit', (code) => {
+  console.log('[diag] process exit code=', code, 'mem=', process.memoryUsage());
+});
+process.on('warning', (warning) => {
+  console.warn('[diag] process warning:', warning && (warning.stack || warning));
+});
+
+// periodic memory snapshot to spot OOM growth
+const MEM_LOG_INTERVAL = 30 * 1000;
+const memInterval = setInterval(() => {
+  try {
+    console.log('[diag] memUsage', process.memoryUsage());
+  } catch (e) {
+    console.warn('[diag] mem log error', e && e.message);
+  }
+}, MEM_LOG_INTERVAL);
+
+process.on('SIGTERM', () => {
+  console.log('[diag] SIGTERM received - mem snapshot', process.memoryUsage());
+  clearInterval(memInterval);
+  // allow graceful shutdown already implemented below
+});
+
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
