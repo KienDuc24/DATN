@@ -5,6 +5,12 @@ const User = require('../models/User');
 
 // POST /api/admin/login
 router.post('/admin/login', async (req, res) => {
+  console.log('[adminAuth] login attempt', {
+    ip: req.ip,
+    origin: req.headers.origin,
+    username: req.body && req.body.username,
+    passwordPresent: !!(req.body && req.body.password)
+  });
   try {
     const { username, password } = req.body || {};
     if (!username || !password) return res.status(400).json({ ok: false, message: 'username and password required' });
