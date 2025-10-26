@@ -129,11 +129,11 @@ io.on("connection", (socket) => {
   });
 });
 
-// ensure HTTP API server also starts
+// start HTTP API server as well (so /api routes are available)
 try {
-  require('./server'); // start server.js (API + routes)
+  require('./server');
 } catch (err) {
-  console.warn('failed to start server.js:', err && err.message);
+  console.warn('Could not start server.js (API):', err && err.message);
 }
 
 const PORT = process.env.PORT || 8080;

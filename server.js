@@ -33,6 +33,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// JSON parse error handler (immediately after body parsers)
+app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.parse.failed') {
+    console.warn('[server] body parse failed:', err.message);
+    return res.status(400).json({ ok: false, message: 'Invalid JSON payload' });
+  }
+  // handle generic SyntaxError from bodyParser
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.warn('[server] JSON SyntaxError:', err.message);
+    return res.status(400).json({ ok: false, message: 'Invalid JSON syntax' });
+  }
+  next(err);
+});
+
 // --- quick preflight handler (debug/fallback) ---
 app.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
