@@ -38,6 +38,7 @@ app.use((err, req, res, next) => {
 });
 
 // CORS config
+// replace CORS origin check with allow for vercel previews
 const FRONTEND_ORIGIN = process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN || '';
 const BASE_API_URL = process.env.BASE_API_URL || '';
 const extra = process.env.ADDITIONAL_ALLOWED_ORIGINS ? process.env.ADDITIONAL_ALLOWED_ORIGINS.split(',') : [];
@@ -50,9 +51,10 @@ app.use((req, res, next) => {
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error('Not allowed by CORS'));
+    if (!origin) return cb(null, true); // non-browser tools
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    if (origin.includes('.vercel.app')) return cb(null, true); // allow vercel preview domains
+    return cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
   optionsSuccessStatus: 200
