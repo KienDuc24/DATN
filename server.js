@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const http = require('http');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
@@ -7,15 +8,6 @@ const path = require('path');
 const mongoose = require('mongoose');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// route modules
-const adminAuthRouter = require('./routes/adminAuth');
-const adminRoutes = require('./routes/adminRoutes');
-const authRoutes = require('./routes/authRoutes');
-const roomRoutes = require('./routes/roomRoutes');
-const gameRoutes = require('./routes/gameRoutes');
-const debugRoutes = require('./routes/debugRoutes');
 
 // connect to MongoDB
 (async () => {
@@ -47,26 +39,13 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// --- quick preflight handler (debug/fallback) ---
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    const origin = req.headers.origin || '*';
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', req.headers['access-control-request-headers'] || 'Content-Type,Authorization');
-    return res.sendStatus(200);
-  }
-  next();
-});
-
 // CORS config
-const FRONTEND_URL = process.env.FRONTEND_URL || process.env.FRONTEND_URL || process.env.FRONTEND || 'http://localhost:3000';
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || process.env.FRONTEND_URL || process.env.FRONTEND || 'http://localhost:3000';
 const BASE_API_URL = process.env.BASE_API_URL || process.env.BASE_URL || '';
 const EXTRA = process.env.ADDITIONAL_ALLOWED_ORIGINS ? process.env.ADDITIONAL_ALLOWED_ORIGINS.split(',') : [];
-const allowedOrigins = [FRONTEND_URL, BASE_API_URL, ...EXTRA].filter(Boolean);
+const allowedOrigins = [FRONTEND_ORIGIN, BASE_API_URL, ...EXTRA].filter(Boolean);
 
-console.log('[server] FRONTEND_URL=', FRONTEND_URL);
+console.log('[server] FRONTEND_URL=', FRONTEND_ORIGIN);
 console.log('[server] BASE_API_URL=', BASE_API_URL);
 console.log('[server] allowedOrigins=', allowedOrigins);
 
@@ -97,6 +76,14 @@ app.options('*', cors(corsOptions)); // preflight
 
 // static + routes
 app.use(express.static(path.join(__dirname, 'public')));
+
+const adminAuthRouter = require('./routes/adminAuth');
+const adminRoutes = require('./routes/adminRoutes');
+const authRoutes = require('./routes/authRoutes');
+const roomRoutes = require('./routes/roomRoutes');
+const gameRoutes = require('./routes/gameRoutes');
+const debugRoutes = require('./routes/debugRoutes');
+
 app.use('/api', adminAuthRouter); // /api/admin/login, logout, create-first-admin
 app.use('/api', adminRoutes);
 app.use('/api', gameRoutes);
@@ -125,6 +112,13 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-app.listen(PORT, () => console.log(`[server] listening on port ${PORT}`));
+// create HTTP server and listen
+const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
 
-// Note: removed axios import and example client calls to avoid running HTTP requests from server process.
+server.listen(PORT, () => {
+  console.log(`[server] listening on port ${PORT}`);
+});
+
+// export server so socketServer can attach to it (no duplicate listen)
+module.exports = { app, server };

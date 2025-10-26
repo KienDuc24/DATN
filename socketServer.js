@@ -1,51 +1,15 @@
 require('dotenv').config();
-const http = require('http');
-const path = require('path');
-const express = require('express');
-const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 
-const app = express();
-// serve public if needed
-app.use(express.static(path.join(__dirname, 'public')));
+// reuse the HTTP server exported by server.js
+const srvModule = require('./server'); // returns { app, server }
+const server = (srvModule && srvModule.server) ? srvModule.server : null;
+if (!server) {
+  console.error('[socketServer] no server available to attach Socket.IO to. Exiting.');
+  process.exit(1);
+}
 
-// connect mongodb (try both names)
-(async () => {
-  try {
-    const uri = process.env.MONGODB_URI;
-    if (!uri) {
-      console.warn('MONGODB_URI not set in .env');
-    } else {
-      await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-      console.log('✅ MongoDB connected');
-    }
-  } catch (err) {
-    console.error('❌ MongoDB connection error', err && err.stack ? err.stack : err);
-  }
-})();
-
-// Robust startup helpers (insert at very top)
-process.on('uncaughtException', (err) => {
-  console.error('[FATAL] uncaughtException:', err && (err.stack || err.message || err));
-  // keep logs flush then exit
-  setTimeout(()=> process.exit(1), 200);
-});
-process.on('unhandledRejection', (reason, p) => {
-  console.error('[FATAL] unhandledRejection at:', p, 'reason:', reason);
-  // optional: don't exit immediately to allow graceful logging
-});
-process.on('SIGTERM', () => {
-  console.warn('[SIGTERM] received, shutting down gracefully');
-  try { if (global.__server && typeof global.__server.close === 'function') global.__server.close(); } catch(e){ console.error('shutdown error', e); }
-  setTimeout(()=> process.exit(0), 200);
-});
-process.on('SIGINT', () => {
-  console.warn('[SIGINT] received, exiting');
-  process.exit(0);
-});
-
-const server = http.createServer(app);
-
+// initialize Socket.IO on the existing HTTP server
 const io = new Server(server, {
   cors: {
     origin: process.env.FRONTEND_URL || '*',
@@ -55,8 +19,8 @@ const io = new Server(server, {
   transports: ['websocket', 'polling']
 });
 
-// Quản lý phòng theo roomCode duy nhất, lưu cả gameId
-let rooms = {}; // { [roomCode]: { gameId, players: [ { name, socketId } ] } }
+// rooms management, handlers (reuse existing logic)
+let rooms = {};
 
 io.on("connection", (socket) => {
   console.log('socket connected', socket.id);
@@ -129,14 +93,5 @@ io.on("connection", (socket) => {
   });
 });
 
-// start HTTP API server as well (so /api routes are available)
-try {
-  require('./server');
-} catch (err) {
-  console.warn('Could not start server.js (API):', err && err.message);
-}
-
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
-  console.log(`Socket.io server running on port ${PORT}`);
-});
+// export io if needed
+module.exports = io;
