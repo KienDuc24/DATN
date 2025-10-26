@@ -18,7 +18,13 @@ router.post('/admin/login', async (req, res) => {
     if (user.role !== 'admin') return res.status(403).json({ ok: false, message: 'not admin' });
 
     // set httpOnly cookie with user id for admin session
-    res.cookie('adminUser', String(user._id), { httpOnly: true, sameSite: 'lax' });
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie('adminUser', String(user._id), {
+      httpOnly: true,
+      sameSite: 'none',    // required for cross-site cookies
+      secure: isProd,      // must be true on HTTPS (production)
+      path: '/',
+    });
     return res.json({ ok: true, user: { _id: user._id, username: user.username, email: user.email } });
   } catch (err) {
     console.error('[adminAuth] login error', err && err.message);
@@ -28,7 +34,8 @@ router.post('/admin/login', async (req, res) => {
 
 // POST /api/admin/logout
 router.post('/admin/logout', (req, res) => {
-  res.clearCookie('adminUser');
+  const isProd = process.env.NODE_ENV === 'production';
+  res.clearCookie('adminUser', { sameSite: 'none', secure: isProd, path: '/' });
   return res.json({ ok: true });
 });
 

@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const cors = require('cors'); // << added
 const path = require('path');
 const mongoose = require('mongoose');
 
@@ -27,14 +28,12 @@ const debugRoutes = require('./routes/debugRoutes');
   }
 })();
 
-// middlewares
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use((req,res,next)=>{
-  console.log('REQ', req.method, req.originalUrl);
-  next();
-});
+// CORS - cho phép frontend origin và credentials
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:3000';
+app.use(cors({
+  origin: FRONTEND_ORIGIN,
+  credentials: true,
+}));
 
 // serve static files from /public
 app.use(express.static(path.join(__dirname, 'public')));
