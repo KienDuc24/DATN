@@ -1045,18 +1045,20 @@ function handleGameClick(gameId, gameName) {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const username = user.username || user.displayName || 'Guest';
 
-    // Gửi request tạo phòng lên backend
-    const res = await fetch('/api/room', {
+    // Gửi request tạo phòng lên backend - dùng window.BASE_API_URL nếu có
+    const apiBase = (window.BASE_API_URL || window.location.origin).replace(/\/$/, '');
+    const res = await fetch(`${apiBase}/api/room`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         player: username,
         game: gameId
-      })
+      }),
+      credentials: 'include'
     });
-    const data = await res.json();
+    let data;
+    try { data = await res.json(); } catch (e) { data = {}; }
     if (data.roomCode) {
-      // Hiển thị mã phòng cho người dùng hoặc chuyển sang phòng luôn
       window.location.href = `/room.html?code=${data.roomCode}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
     } else {
       alert('Không thể tạo phòng. Vui lòng thử lại!');
@@ -1083,9 +1085,11 @@ function handleGameClick(gameId, gameName) {
       alert(LANGS[currentLang]?.room_invalid_code || 'Invalid room code! (e.g. A123)');
       return;
     }
-    // Kiểm tra mã phòng tồn tại qua API
-    const res = await fetch(`/api/room?code=${code}`);
-    const data = await res.json();
+    // Kiểm tra mã phòng tồn tại qua API (dùng full API base)
+    const apiBase = (window.BASE_API_URL || window.location.origin).replace(/\/$/, '');
+    const res = await fetch(`${apiBase}/api/room?code=${encodeURIComponent(code)}`, { credentials: 'include' });
+    let data;
+    try { data = await res.json(); } catch (e) { data = {}; }
     if (!data.found) {
       alert(LANGS[currentLang]?.room_not_found || 'Room code not found!');
       return;
