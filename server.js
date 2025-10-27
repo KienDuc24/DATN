@@ -64,21 +64,23 @@ app.options('*', cors());
 /* ----------------- Static + Routes ----------------- */
 app.use(express.static(path.join(__dirname, 'public')));
 
-// safe route requires (won't throw on missing files)
+// --- MOUNT API ROUTES HERE (ensure mounted BEFORE API 404) ---
 try { app.use('/api', require('./routes/authRoutes')); } catch (e) { console.warn('[server] authRoutes load failed:', e.message); }
 try { app.use('/api', require('./routes/adminAuth')); } catch (e) { console.warn('[server] adminAuth load failed:', e.message); }
-try { app.use('/api', require('./routes/gameRoutes')); } catch (e) { /* optional */ }
-try { app.use('/api', require('./routes/roomRoutes')); } catch (e) { /* optional */ }
-try { app.use('/auth', require('./routes/authRoutes')); } catch (e) { /* optional */ }
-try { app.use('/debug', require('./routes/debugRoutes')); } catch (e) { /* optional */ }
-try { app.use('/admin', require('./routes/adminRoutes')); } catch (e) { /* optional */ }
+try { app.use('/api', require('./routes/gameRoutes')); } catch (e) { console.warn('[server] gameRoutes load failed:', e.message); }
+try { app.use('/api', require('./routes/roomRoutes')); } catch (e) { console.warn('[server] roomRoutes load failed:', e.message); }
+
+// keep other mounts that are not under /api
+try { app.use('/auth', require('./routes/authRoutes')); } catch (e) { console.warn('[server] authRoutes load failed:', e.message); }
+try { app.use('/debug', require('./routes/debugRoutes')); } catch (e) { console.warn('[server] debugRoutes load failed:', e.message); }
+try { app.use('/admin', require('./routes/adminRoutes')); } catch (e) { console.warn('[server] adminRoutes load failed:', e.message); }
 
 // admin pages (static)
 app.get('/admin/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-login.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
 /* ----------------- 404 + Error handler ----------------- */
-// API 404
+// API 404 — stays after routes are mounted
 app.use('/api/*', (req, res) => res.status(404).json({ ok: false, message: 'Not Found' }));
 
 // global error handler
@@ -95,10 +97,6 @@ app.use((err, req, res, next) => {
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
-// mount API routes
-const roomRoutes = require('./routes/roomRoutes');
-app.use('/api', roomRoutes);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 const server = http.createServer(app);
