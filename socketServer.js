@@ -2,53 +2,107 @@
 require('dotenv').config();
 
 let io = null;
+
 try {
-  // require http server exported by server.js
   const srvModule = require('./server');
   const server = srvModule && srvModule.server;
   if (!server) {
     console.warn('[socketServer] no server export found in ./server — skipping socket attach');
-  } else {
-    // import Server class from socket.io
-    const { Server } = require('socket.io');
-
-    // allow frontend + vercel previews
-    const origins = [];
-    if (process.env.FRONTEND_URL) origins.push(process.env.FRONTEND_URL);
-    if (process.env.BASE_API_URL) origins.push(process.env.BASE_API_URL);
-
-    io = new Server(server, {
-      cors: {
-        origin: (origin, cb) => {
-          if (!origin) return cb(null, true);
-          if (origins.includes(origin)) return cb(null, true);
-          if (origin.includes('.vercel.app')) return cb(null, true);
-          return cb(new Error('Not allowed by CORS'));
-        },
-        methods: ['GET', 'POST'],
-        credentials: true,
-      },
-    });
-
-    // generic connection log
-    io.on('connection', (socket) => {
-      console.log('[socket] connected', socket.id);
-      socket.on('ping', (d) => socket.emit('pong', d));
-      socket.on('disconnect', (reason) => console.log('[socket] disconnected', socket.id, reason));
-    });
-
-    // load game sockets (pass io)
-    try {
-      const tod = require('./games/ToD/todSocket');
-      if (typeof tod === 'function') tod(io);
-      else if (tod && typeof tod.init === 'function') tod.init(io);
-      else console.debug('[socketServer] todSocket loaded but no init function');
-    } catch (e) {
-      console.debug('[socketServer] no ToD socket hook or failed to load:', e.message);
-    }
-
-    console.log('[socketServer] io attached');
+    module.exports = null;
+    return;
   }
+
+  const { Server } = require('socket.io');
+
+  // allowed origins from env (frontend + api)
+  const origins = [];
+  if (process.env.FRONTEND_URL) origins.push(process.env.FRONTEND_URL);
+  if (process.env.BASE_API_URL) origins.push(process.env.BASE_API_URL);
+
+  io = new Server(server, {
+    cors: {
+      origin: (origin, cb) => {
+        // allow non-browser clients (no origin) and vercel previews + configured origins
+        if (!origin) return cb(null, true);
+        if (origins.includes(origin)) return cb(null, true);
+        if (typeof origin === 'string' && origin.includes('.vercel.app')) return cb(null, true);
+        return cb(new Error('Not allowed by CORS'));
+      },
+      methods: ['GET', 'POST'],
+      credentials: true,
+    },
+  });
+
+  console.log('[socketServer] io created');
+
+  // simple room player tracking
+  const rooms = new Map(); // roomCode => { socketId: { name, joinedAt } }
+
+  io.on('connection', (socket) => {
+    console.log('[socket] connected', socket.id, 'origin=', socket.handshake.headers.origin || 'n/a');
+
+    // keep-alive test
+    socket.on('ping', (d) => socket.emit('pong', d));
+
+    socket.on('joinRoom', ({ code, username } = {}) => {
+      try {
+        if (!code) return socket.emit('error', { message: 'missing room code' });
+        const roomCode = String(code).toUpperCase();
+        socket.join(roomCode);
+        const r = rooms.get(roomCode) || {};
+        r[socket.id] = { name: username || `guest_${socket.id.slice(0,6)}`, joinedAt: Date.now() };
+        rooms.set(roomCode, r);
+
+        const players = Object.values(r).map(p => p.name);
+        io.to(roomCode).emit('room:players', { players });
+        console.log('[socket] joinRoom', socket.id, roomCode, username, 'players=', players);
+      } catch (e) { console.error('[socket] joinRoom err', e && e.message); }
+    });
+
+    socket.on('leaveRoom', ({ code } = {}) => {
+      try {
+        const roomCode = code && String(code).toUpperCase();
+        if (!roomCode) return;
+        socket.leave(roomCode);
+        const r = rooms.get(roomCode) || {};
+        delete r[socket.id];
+        if (Object.keys(r).length === 0) rooms.delete(roomCode); else rooms.set(roomCode, r);
+        io.to(roomCode).emit('room:players', { players: Object.values(r).map(p => p.name) });
+        console.log('[socket] leaveRoom', socket.id, roomCode);
+      } catch (e) { console.error('[socket] leaveRoom err', e && e.message); }
+    });
+
+    socket.on('room:getPlayers', ({ code } = {}) => {
+      const roomCode = code && String(code).toUpperCase();
+      const r = rooms.get(roomCode) || {};
+      socket.emit('room:players', { players: Object.values(r).map(p => p.name) });
+    });
+
+    socket.on('disconnect', (reason) => {
+      try {
+        rooms.forEach((r, code) => {
+          if (r[socket.id]) {
+            console.log('[socket] disconnect remove', socket.id, 'from', code, 'reason=', reason);
+            delete r[socket.id];
+            if (Object.keys(r).length === 0) rooms.delete(code); else rooms.set(code, r);
+            io.to(code).emit('room:players', { players: Object.values(r).map(p => p.name) });
+          }
+        });
+      } catch (e) { console.error('[socket] disconnect err', e && e.message); }
+    });
+  });
+
+  // load game-specific socket handlers (if any)
+  try {
+    const tod = require('./games/ToD/todSocket');
+    if (typeof tod === 'function') tod(io);
+    else if (tod && typeof tod.init === 'function') tod.init(io);
+    else console.debug('[socketServer] todSocket loaded but no init function');
+  } catch (e) {
+    console.debug('[socketServer] no ToD socket hook or failed to load:', e.message);
+  }
+
+  console.log('[socketServer] io attached');
 } catch (err) {
   console.error('[socketServer] failed to attach io:', err && (err.stack || err.message));
 }
