@@ -1417,6 +1417,4 @@ async function updateUserOnServer(user) {
   return null;
 }
 
-// Router for room actions
-router.post('/create', roomController.createRoom);
 
