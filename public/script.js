@@ -8,7 +8,7 @@ let gamesByCategory = {};
 
 
 // Use same origin API by default (safer). If you need cross-domain, set this env.
-const BASE_API_URL = window.API_BASE_URL || window.location.origin; // e.g. https://datn-smoky.vercel.app or http://localhost:3000
+const BASE_API_URL = window.location.origin; // e.g. https://datn-smoky.vercel.app or http://localhost:3000
 
 // Lưu vị trí trang hiện tại cho từng slider
 let sliderPage = {
@@ -1046,18 +1046,15 @@ function handleGameClick(gameId, gameName) {
     const username = user.username || user.displayName || 'Guest';
 
     // Gửi request tạo phòng lên backend
-    const res = await fetch(`${BASE_API_URL}/api/room/create`, {
+    const res = await fetch('/api/room', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ player: username, game: gameId })
+      body: JSON.stringify({
+        player: username,
+        game: gameId
+      })
     });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      console.error('[client] create room failed', res.status, text);
-      alert('Không thể tạo phòng. Vui lòng thử lại!');
-      return;
-    }
-    const data = await res.json().catch(() => ({}));
+    const data = await res.json();
     if (data.roomCode) {
       // Hiển thị mã phòng cho người dùng hoặc chuyển sang phòng luôn
       window.location.href = `/room.html?code=${data.roomCode}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
@@ -1075,7 +1072,7 @@ function handleGameClick(gameId, gameName) {
     const code = window.generatedRoomCode;
     const gameId = window.selectedGameId || '';
     const gameName = window.selectedGameName || '';
-    const user = JSON.parse(localStorage.getItem('user') || '{}');   
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
     const username = user.username || user.displayName || 'Guest';
     window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
   };
@@ -1087,14 +1084,8 @@ function handleGameClick(gameId, gameName) {
       return;
     }
     // Kiểm tra mã phòng tồn tại qua API
-    const res = await fetch(`${BASE_API_URL}/api/room?code=${code}`);
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      console.error('[client] join room check failed', res.status, text);
-      alert(LANGS[currentLang]?.room_not_found || 'Room code not found!');
-      return;
-    }
-    const data = await res.json().catch(() => ({}));
+    const res = await fetch(`/api/room?code=${code}`);
+    const data = await res.json();
     if (!data.found) {
       alert(LANGS[currentLang]?.room_not_found || 'Room code not found!');
       return;
@@ -1406,15 +1397,199 @@ async function updateUserOnServer(user) {
       return null;
     }
     const data = await res.json();
-    if (data.user) {
+    if (data && data.user) {
+      // store canonical user returned by server
       localStorage.setItem('user', JSON.stringify(data.user));
-      if (typeof showUserInfo === 'function') showUserInfo(data.user);
       return data.user;
     }
+    return null;
   } catch (err) {
     console.error('updateUserOnServer error', err);
+    return null;
   }
-  return null;
 }
 
+(function profileAndSettingsUI() {
+  // helper: read user from localStorage safely
+  function getUserSafe() {
+    try {
+      const u = localStorage.getItem('user');
+      return u ? JSON.parse(u) : null;
+    } catch (e) {
+      return null;
+    }
+  }
 
+  // Try fetch user from server by username (server supports GET /api/user?username=...)
+  async function fetchUserFromServer(identifier) {
+    if (!identifier) return null;
+    try {
+      const res = await fetch(`${BASE_API_URL}/api/user?username=${encodeURIComponent(identifier)}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) return null;
+      const j = await res.json();
+      return j && j.user ? j.user : j;
+    } catch (err) {
+      console.warn('fetchUserFromServer error', err && err.message);
+      return null;
+    }
+  }
+
+  // header update helper (ensure elements exist)
+  if (typeof window.applyHeaderUser !== 'function') {
+    window.applyHeaderUser = function(user) {
+      try {
+        const avatarEl = document.querySelector('#header-avatar');
+        const nameEl = document.querySelector('#header-username');
+        const FALLBACK_AVATAR = 'https://www.gravatar.com/avatar/?d=mp&s=200';
+        if (avatarEl) {
+          const a = user && user.avatar;
+          avatarEl.src = (a && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'))) ? a : FALLBACK_AVATAR;
+        }
+        if (nameEl) nameEl.textContent = user && (user.displayName || user.username) || 'Khách';
+      } catch (e) {}
+    };
+  }
+
+  function createProfileModal() {
+    const modal = document.getElementById('profile-modal');
+    if (!modal) return;
+
+    const nameInput = modal.querySelector('#profile-modal-name'); // now acts as "new username"
+    const fileInput = modal.querySelector('#profile-modal-file');
+    const avatarImg = modal.querySelector('#profile-modal-avatar');
+    const saveBtn = modal.querySelector('#profile-modal-save');
+    const cancelBtn = modal.querySelector('#profile-modal-cancel');
+
+    const FALLBACK_AVATAR = 'https://www.gravatar.com/avatar/?d=mp&s=200';
+
+    async function loadProfileIntoModal() {
+      let user = getUserSafe() || {};
+      // remove blob avatar from local cache (will 404)
+      if (user && typeof user.avatar === 'string' && user.avatar.startsWith('blob:')) {
+        delete user.avatar;
+        try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
+      }
+      if (user && (user.username || user._id)) {
+        const serverUser = await fetchUserFromServer(user.username || user._id).catch(() => null);
+        if (serverUser && typeof serverUser === 'object') {
+          user = Object.assign({}, user, serverUser);
+          try { localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
+        }
+      }
+
+      // populate: show current username in input (editing this will change username)
+      if (nameInput) nameInput.value = user.username || '';
+      if (avatarImg) {
+        const a = user.avatar;
+        const valid = typeof a === 'string' && (a.startsWith('http') || a.startsWith('data:') || a.startsWith('/uploads'));
+        avatarImg.src = valid ? a : FALLBACK_AVATAR;
+      }
+      if (fileInput) {
+        fileInput.value = '';
+        if (modal._previewUrl) {
+          try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {}
+          modal._previewUrl = null;
+        }
+      }
+    }
+
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; }
+        const url = URL.createObjectURL(f);
+        modal._previewUrl = url;
+        if (avatarImg) avatarImg.src = url;
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        const token = localStorage.getItem('token') || '';
+        let user = getUserSafe() || {};
+        try {
+          // prepare newUsername from input
+          const newUsernameVal = nameInput && nameInput.value ? nameInput.value.trim() : '';
+          // upload avatar first if selected
+          if (fileInput && fileInput.files && fileInput.files[0]) {
+            try {
+              const fd = new FormData();
+              fd.append('avatar', fileInput.files[0]);
+              // send current username so server can attach to right user (server expects username)
+              if (user.username) fd.append('username', user.username);
+              else if (user._id) fd.append('username', user._id);
+
+              const res = await fetch(`${BASE_API_URL}/api/user/upload-avatar`, {
+                method: 'POST',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                body: fd
+              });
+              if (res.ok) {
+                const j = await res.json();
+                user.avatar = j.url || (j.user && j.user.avatar) || user.avatar;
+              } else {
+                console.warn('avatar upload failed', res.status);
+              }
+            } catch (err) {
+              console.warn('avatar upload error', err && err.message);
+            }
+          }
+
+          // build update payload: include current username and newUsername (if changed)
+          const payload = { username: user.username || user._id };
+          if (newUsernameVal && newUsernameVal !== (user.username || '')) payload.newUsername = newUsernameVal;
+          if (user.avatar) payload.avatar = user.avatar;
+
+          // send PUT
+          try {
+            const res2 = await fetch(`${BASE_API_URL}/api/user`, {
+              method: 'PUT',
+              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': `Bearer ${token}` } : {}),
+              body: JSON.stringify(payload)
+            });
+            if (!res2.ok) {
+              const txt = await res2.text().catch(() => '');
+              console.warn('update user failed', res2.status, txt);
+              alert('Cập nhật thất bại: ' + (txt || res2.status));
+              saveBtn.disabled = false;
+              return;
+            }
+            const j2 = await res2.json();
+            const serverUser = j2.user || j2;
+            // persist canonical user
+            try { localStorage.setItem('user', JSON.stringify(serverUser)); } catch (e) {}
+            // update header UI (header should use username as display)
+            applyHeaderUser(serverUser);
+            if (avatarImg) avatarImg.src = serverUser.avatar || FALLBACK_AVATAR;
+            if (nameInput) nameInput.value = serverUser.username || '';
+            if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; fileInput.value = ''; }
+            modal.style.display = 'none';
+            alert('Cập nhật hồ sơ thành công');
+          } catch (err) {
+            console.error('update user error', err && err.message);
+            alert('Lỗi khi cập nhật hồ sơ');
+          }
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        if (modal._previewUrl) { try { URL.revokeObjectURL(modal._previewUrl); } catch (e) {} modal._previewUrl = null; }
+        modal.style.display = 'none';
+      });
+    }
+
+    // populate on open
+    loadProfileIntoModal();
+  }
+
+  try { createProfileModal(); } catch (e) { console.warn('createProfileModal init failed', e && e.message); }
+})();

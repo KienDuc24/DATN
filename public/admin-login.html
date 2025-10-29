@@ -25,32 +25,21 @@
       const msg = document.getElementById('msg');
       msg.textContent = '';
       try {
-        // Nếu bạn đã set window.BASE_API_URL thì dùng, nếu không fallback về origin
-        const base = (typeof window.BASE_API_URL === 'string' && window.BASE_API_URL.trim())
-          ? window.BASE_API_URL.replace(/\/+$/,'')
-          : window.location.origin.replace(/\/+$/,'');
-        // server mounts admin routes at /api/admin -> use /api/admin/login
-        const url = `${base}/api/admin/login`;
-        const res = await fetch(url, {
+        const res = await fetch('/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ username: u, password: p })
         });
-        let j = {};
-        try { j = await res.json(); } catch(e){}
+        const j = await res.json();
         if (res.ok && j.ok) {
           location.href = '/admin.html';
         } else {
-          msg.textContent = (j && j.message) ? j.message : ('Lỗi: ' + (res.status || 'Unknown'));
+          msg.textContent = j.message || 'Login failed';
         }
       } catch (e) {
         msg.textContent = 'Network error';
       }
     });
   </script>
-  <!-- optional: keep or set BASE_API_URL earlier if you have a known backend -->
-  <script>window.BASE_API_URL = 'https://datn-socket.up.railway.app';</script>
-  <!-- existing scripts (admin.js etc) come after -->
 </body>
 </html>

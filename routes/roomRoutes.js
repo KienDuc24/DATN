@@ -9,7 +9,7 @@ function generateRoomCode() {
 }
 
 // Tạo phòng hoặc tham gia phòng
-function createRoom(req, res) {
+router.post('/', (req, res) => {
   const { player, roomCode, game } = req.body;
   if (!roomCode) {
     const newCode = generateRoomCode();
@@ -27,10 +27,7 @@ function createRoom(req, res) {
       return res.status(200).json({ success: false, message: 'Room not found' });
     }
   }
-}
-
-router.post('/', createRoom);
-router.post('/create', roomController.createRoom);
+});
 
 // Rời phòng
 router.post('/leave', (req, res) => {
