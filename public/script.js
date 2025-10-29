@@ -1046,13 +1046,10 @@ function handleGameClick(gameId, gameName) {
     const username = user.username || user.displayName || 'Guest';
 
     // Gửi request tạo phòng lên backend
-    const res = await fetch('/api/room/create', {
+    const res = await fetch(`${BASE_API_URL}/api/room/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        player: username,
-        game: gameId
-      })
+      body: JSON.stringify({ player: username, game: gameId })
     });
     const data = await res.json();
     if (data.roomCode) {
@@ -1084,7 +1081,7 @@ function handleGameClick(gameId, gameName) {
       return;
     }
     // Kiểm tra mã phòng tồn tại qua API
-    const res = await fetch(`/api/room?code=${code}`);
+    const res = await fetch(`${BASE_API_URL}/api/room?code=${code}`);
     const data = await res.json();
     if (!data.found) {
       alert(LANGS[currentLang]?.room_not_found || 'Room code not found!');
