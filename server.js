@@ -1,113 +1,128 @@
 require('dotenv').config();
 
 const express = require('express');
-const http = require('http');
 const cookieParser = require('cookie-parser');
-const cors = require('cors');
 const path = require('path');
-const mongoose = require('mongoose');
 
 const app = express();
 
-/* ----------------- MongoDB ----------------- */
-(async () => {
-  const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/datn';
-  try {
-    await mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true });
-    console.log('[server] MongoDB connected');
-  } catch (err) {
-    console.error('[server] MongoDB connection error:', err && err.message);
-    // don't throw so server can still run (adjust if you prefer fail-fast)
-  }
-})();
-
-/* ----------------- Middleware ----------------- */
-// body parsers
+// body parsers + cookies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser()); // enable cookie parsing
+app.use(cookieParser());
 
-// JSON parse error handler — must be after body parsers
-app.use((err, req, res, next) => {
-  if (!err) return next();
-  if (err.type === 'entity.parse.failed' || (err instanceof SyntaxError && err.status === 400 && 'body' in err)) {
-    console.warn('[server] body parse failed:', err.message, 'from', req.ip, req.headers.origin);
-    return res.status(400).json({ ok: false, message: 'Invalid JSON payload' });
-  }
-  next(err);
-});
-
-// CORS config
-// replace CORS origin check with allow for vercel previews
-const FRONTEND_ORIGIN = process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN || '';
-const BASE_API_URL = process.env.BASE_API_URL || '';
-const extra = process.env.ADDITIONAL_ALLOWED_ORIGINS ? process.env.ADDITIONAL_ALLOWED_ORIGINS.split(',') : [];
-const allowedOrigins = [FRONTEND_ORIGIN, BASE_API_URL, ...extra].filter(Boolean);
-
-app.use((req, res, next) => {
-  if (req.headers && req.headers.origin) console.log('[CORS] incoming origin:', req.headers.origin, req.method, req.path);
-  next();
-});
-
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // non-browser tools
-    if (allowedOrigins.includes(origin)) return cb(null, true);
-    if (origin.includes('.vercel.app')) return cb(null, true); // allow vercel preview domains
-    return cb(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  optionsSuccessStatus: 200
-}));
-app.options('*', cors());
-
-/* ----------------- Static + Routes ----------------- */
+// serve static public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- MOUNT API ROUTES HERE (ensure mounted BEFORE API 404) ---
-try { app.use('/api', require('./routes/authRoutes')); } catch (e) { console.warn('[server] authRoutes load failed:', e.message); }
-try { app.use('/api', require('./routes/adminAuth')); } catch (e) { console.warn('[server] adminAuth load failed:', e.message); }
-try { app.use('/api', require('./routes/gameRoutes')); } catch (e) { console.warn('[server] gameRoutes load failed:', e.message); }
-try { app.use('/api', require('./routes/roomRoutes')); } catch (e) { console.warn('[server] roomRoutes load failed:', e.message); }
+// mount auth routes (both API and oauth paths)
+try {
+  const authRoutes = require('./routes/authRoutes');
+  // API endpoints used by frontend (fetch /api/auth/login, /api/auth/register ...)
+  app.use('/api/auth', authRoutes);
+  // OAuth browser redirects (/auth/google, /auth/google/callback)
+  app.use('/auth', authRoutes);
+  console.log('[server] authRoutes mounted at /api/auth and /auth');
+} catch (e) {
+  console.warn('[server] authRoutes not mounted', e && e.message);
+}
 
-// keep other mounts that are not under /api
-try { app.use('/auth', require('./routes/authRoutes')); } catch (e) { console.warn('[server] authRoutes load failed:', e.message); }
-try { app.use('/debug', require('./routes/debugRoutes')); } catch (e) { console.warn('[server] debugRoutes load failed:', e.message); }
-try { app.use('/admin', require('./routes/adminRoutes')); } catch (e) { console.warn('[server] adminRoutes load failed:', e.message); }
+// mount other routes (rooms, admin, games) - keep existing mounting
+try {
+  const adminRoutes = require('./routes/adminRoutes');
+  app.use('/api/admin', adminRoutes);
+} catch (e) { console.warn('[server] adminRoutes not mounted', e && e.message); }
 
-// admin pages (static)
-app.get('/admin/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-login.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+try {
+  const roomRoutes = require('./routes/roomRoutes');
+  app.use('/api/room', roomRoutes);
+} catch (e) { /* ignore */ }
 
-/* ----------------- 404 + Error handler ----------------- */
-// API 404 — stays after routes are mounted
-app.use('/api/*', (req, res) => res.status(404).json({ ok: false, message: 'Not Found' }));
+// mount debug routes
+try {
+  const debugRoutes = require('./routes/debugRoutes');
+  app.use('/api/debug', debugRoutes);
+  console.log('[server] debugRoutes mounted at /api/debug');
+} catch(e){ console.warn('debugRoutes not mounted', e && e.message); }
 
-// global error handler
+// health endpoints
+app.get('/health', (req, res) => res.json({ ok: true }));
+app.get('/_status', (req, res) => res.json({ ok: true, env: process.env.NODE_ENV || 'dev' }));
+
+// error handler
 app.use((err, req, res, next) => {
-  if (err && err.message && err.message.includes('CORS')) {
-    console.warn('[server] CORS error:', err.message);
-    return res.status(403).json({ ok: false, message: 'CORS blocked: origin not allowed' });
-  }
-  console.error('[server] unhandled error', err && (err.stack || err));
-  res.status(500).json({ ok: false, message: 'Internal Server Error' });
+  console.error('[server] unhandled error', err && err.stack);
+  if (!res.headersSent) res.status(500).json({ ok: false, message: 'Internal server error' });
 });
 
-app.use('/api/room', roomRoutes);
+// Mongoose connect + start server only after connect (with retries)
+const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO || process.env.MONGODB;
+const PORT = process.env.PORT || 3000;
 
-/* ----------------- SPA fallback + start ----------------- */
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+if (!MONGO_URI) {
+  console.error('[server] MONGODB_URI not set. Starting server in read-only mode.');
+  app.listen(PORT, () => {
+    console.warn('[server] started WITHOUT MongoDB (read-only). PORT=', PORT);
+  });
+} else {
+  const connectOptions = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000
+  };
+
+  let attempts = 0;
+  const maxAttempts = 6;
+
+  (async function connectWithRetry() {
+    attempts++;
+    console.log(`[server] connecting to MongoDB (attempt ${attempts}/${maxAttempts})...`);
+    try {
+      await mongoose.connect(MONGO_URI, connectOptions);
+      console.log('✅ MongoDB connected');
+      app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
+    } catch (err) {
+      console.error('[server] MongoDB connection error', err && err.message);
+      if (attempts < maxAttempts) {
+        const delay = Math.min(2000 * attempts, 20000);
+        console.log(`[server] retrying connection in ${delay}ms...`);
+        setTimeout(connectWithRetry, delay);
+      } else {
+        console.error('[server] failed to connect to MongoDB after multiple attempts. Exiting.');
+        process.exit(1);
+      }
+    }
+  })();
+}
+
+// handle uncaught errors
+process.on('unhandledRejection', (reason) => {
+  console.error('[process] unhandledRejection', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[process] uncaughtException', err && err.stack);
+  process.exit(1);
 });
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
-const server = http.createServer(app);
-server.listen(PORT, () => {
-  console.log('[server] FRONTEND_URL=', FRONTEND_ORIGIN);
-  console.log('[server] BASE_API_URL=', BASE_API_URL);
-  console.log('[server] allowedOrigins=', allowedOrigins);
-  console.log(`[server] listening on port ${PORT}`);
-});
+// after all app.use(...) calls add:
+setTimeout(()=> {
+  try {
+    const routes = [];
+    app._router.stack.forEach(m => {
+      if (m.route && m.route.path) {
+        const methods = Object.keys(m.route.methods).join(',').toUpperCase();
+        routes.push(`${methods} ${m.route.path}`);
+      } else if (m.name === 'router' && m.handle && m.handle.stack) {
+        m.handle.stack.forEach(r => {
+          if (r.route && r.route.path) {
+            const methods = Object.keys(r.route.methods).join(',').toUpperCase();
+            routes.push(`${methods} ${r.route.path}  (parent mount: ${m.regexp})`);
+          }
+        });
+      }
+    });
+    console.log('[server] registered routes:\n' + routes.join('\n'));
+  } catch(e){ console.warn('list routes failed', e); }
+}, 500);
 
-module.exports = { app, server };
-
+module.exports = app;

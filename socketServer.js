@@ -1,144 +1,135 @@
-// Attach Socket.IO to the exported HTTP server from server.js
 require('dotenv').config();
+const http = require('http');
+const path = require('path');
+const express = require('express');
+const mongoose = require('mongoose');
+const { Server } = require('socket.io');
 
-let io = null;
+const app = express();
+// serve public if needed
+app.use(express.static(path.join(__dirname, 'public')));
 
-try {
-  const srvModule = require('./server');
-  const server = srvModule && srvModule.server;
-  if (!server) {
-    console.warn('[socketServer] no server export found in ./server — skipping socket attach');
-    module.exports = null;
-    return;
-  }
-
-  const { Server } = require('socket.io');
-
-  // identify this process/instance for debugging
-  const SERVER_INSTANCE = process.env.INSTANCE_ID || `pid:${process.pid}`;
-
-  // allowed origins from env (frontend + api)
-  const origins = [];
-  if (process.env.FRONTEND_URL) origins.push(process.env.FRONTEND_URL);
-  if (process.env.BASE_API_URL) origins.push(process.env.BASE_API_URL);
-
-  io = new Server(server, {
-    cors: {
-      origin: (origin, cb) => {
-        if (!origin) return cb(null, true);
-        if (origins.includes(origin)) return cb(null, true);
-        if (typeof origin === 'string' && origin.includes('.vercel.app')) return cb(null, true);
-        return cb(new Error('Not allowed by CORS'));
-      },
-      methods: ['GET', 'POST'],
-      credentials: true,
-    },
-  });
-
-  console.log(`[socketServer:${SERVER_INSTANCE}] io created`);
-
-  // optionally attach Redis adapter if REDIS_URL present (for multi-instance)
-  if (process.env.REDIS_URL) {
-    (async () => {
-      try {
-        const { createAdapter } = require('@socket.io/redis-adapter');
-        const { createClient } = require('redis');
-        const pubClient = createClient({ url: process.env.REDIS_URL });
-        const subClient = pubClient.duplicate();
-        await pubClient.connect();
-        await subClient.connect();
-        io.adapter(createAdapter(pubClient, subClient));
-        console.log(`[socketServer:${SERVER_INSTANCE}] redis adapter attached`);
-      } catch (e) {
-        console.warn(`[socketServer:${SERVER_INSTANCE}] failed to attach redis adapter:`, e && e.message);
-      }
-    })();
-  } else {
-    console.log(`[socketServer:${SERVER_INSTANCE}] REDIS_URL not set — using in-memory rooms (not suitable for multi-instance)`);
-  }
-
-  // simple room player tracking
-  const rooms = new Map(); // roomCode => { socketId: { name, joinedAt } }
-
-  io.on('connection', (socket) => {
-    console.log(`[socket:${SERVER_INSTANCE}] connected`, socket.id, 'origin=', socket.handshake.headers.origin || 'n/a');
-
-    // reuseable handlers so we can accept multiple event names (compat)
-    function handleJoin({ code, username } = {}) {
-      try {
-        console.log(`[socket:${SERVER_INSTANCE}] handleJoin recv from ${socket.id}`, { code, username });
-        if (!code) return socket.emit('error', { message: 'missing room code' });
-        const roomCode = String(code).toUpperCase();
-        socket.join(roomCode);
-        const r = rooms.get(roomCode) || {};
-        r[socket.id] = { name: username || `guest_${socket.id.slice(0,6)}`, joinedAt: Date.now() };
-        rooms.set(roomCode, r);
-
-        const players = Object.values(r).map(p => p.name);
-        io.to(roomCode).emit('room:players', { players });
-
-        console.log(`[socket:${SERVER_INSTANCE}] joinRoom`, socket.id, roomCode, username, 'players=', players);
-        console.log(`[socket:${SERVER_INSTANCE}] rooms[${roomCode}] =`, Object.keys(r).length, Object.values(r).map(x=>x.name));
-
-        // NOTE: keep server-side responsibility to broadcast 'room:players' only.
-      } catch (e) { console.error('[socket] joinRoom err', e && e.message); }
-    }
-
-    function handleLeave({ code } = {}) {
-      try {
-        console.log(`[socket:${SERVER_INSTANCE}] handleLeave recv from ${socket.id}`, { code });
-        const roomCode = code && String(code).toUpperCase();
-        if (!roomCode) return;
-        socket.leave(roomCode);
-        const r = rooms.get(roomCode) || {};
-        delete r[socket.id];
-        if (Object.keys(r).length === 0) rooms.delete(roomCode); else rooms.set(roomCode, r);
-        io.to(roomCode).emit('room:players', { players: Object.values(r).map(p => p.name) });
-
-        console.log(`[socket:${SERVER_INSTANCE}] leaveRoom`, socket.id, roomCode, 'remaining=', Object.keys(r).length);
-        // no additional compatibility emits
-      } catch (e) { console.error('[socket] leaveRoom err', e && e.message); }
-    }
-
-    // register single canonical event names
-    socket.on('joinRoom', handleJoin);
-    socket.on('leaveRoom', handleLeave);
-
-    socket.on('room:getPlayers', ({ code } = {}) => {
-      const roomCode = code && String(code).toUpperCase();
-      const r = rooms.get(roomCode) || {};
-      socket.emit('room:players', { players: Object.values(r).map(p => p.name) });
-      console.log(`[socket:${SERVER_INSTANCE}] room:getPlayers ${socket.id} -> ${roomCode}`, Object.values(r).map(p=>p.name));
-    });
-
-    socket.on('disconnect', (reason) => {
-      try {
-        rooms.forEach((r, code) => {
-          if (r[socket.id]) {
-            console.log(`[socket:${SERVER_INSTANCE}] disconnect remove`, socket.id, 'from', code, 'reason=', reason);
-            delete r[socket.id];
-            if (Object.keys(r).length === 0) rooms.delete(code); else rooms.set(code, r);
-            io.to(code).emit('room:players', { players: Object.values(r).map(p => p.name) });
-          }
-        });
-      } catch (e) { console.error('[socket] disconnect err', e && e.message); }
-    });
-  });
-
-  // load game-specific socket handlers (if any)
+// connect mongodb (try both names)
+(async () => {
   try {
-    const tod = require('./games/ToD/todSocket');
-    if (typeof tod === 'function') tod(io);
-    else if (tod && typeof tod.init === 'function') tod.init(io);
-    else console.debug('[socketServer] todSocket loaded but no init function');
+    const uri = process.env.MONGODB_URI;
+    if (!uri) {
+      console.warn('MONGODB_URI not set in .env');
+    } else {
+      await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+      console.log('✅ MongoDB connected');
+    }
+  } catch (err) {
+    console.error('❌ MongoDB connection error', err && err.stack ? err.stack : err);
+  }
+})();
+
+// Robust startup helpers (insert at very top)
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] uncaughtException:', err && (err.stack || err.message || err));
+  // keep logs flush then exit
+  setTimeout(()=> process.exit(1), 200);
+});
+process.on('unhandledRejection', (reason, p) => {
+  console.error('[FATAL] unhandledRejection at:', p, 'reason:', reason);
+  // optional: don't exit immediately to allow graceful logging
+});
+process.on('SIGTERM', () => {
+  console.warn('[SIGTERM] received, shutting down gracefully');
+  try { if (global.__server && typeof global.__server.close === 'function') global.__server.close(); } catch(e){ console.error('shutdown error', e); }
+  setTimeout(()=> process.exit(0), 200);
+});
+process.on('SIGINT', () => {
+  console.warn('[SIGINT] received, exiting');
+  process.exit(0);
+});
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || '*',
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
+
+// Quản lý phòng theo roomCode duy nhất, lưu cả gameId
+let rooms = {}; // { [roomCode]: { gameId, players: [ { name, socketId } ] } }
+
+io.on("connection", (socket) => {
+  console.log('socket connected', socket.id);
+  // attach ToD handlers
+  try {
+    const todHandler = require('./games/ToD/todSocket');
+    if (typeof todHandler === 'function') todHandler(socket, io);
+    else console.warn('todSocket did not export a function');
   } catch (e) {
-    console.debug('[socketServer] no ToD socket hook or failed to load:', e.message);
+    console.error('Error attaching todSocket handler:', e && e.stack ? e.stack : e);
   }
 
-  console.log('[socketServer] io attached');
-} catch (err) {
-  console.error('[socketServer] failed to attach io:', err && (err.stack || err.message));
-}
+  socket.on("join-room", ({ gameId, roomCode, player }) => {
+    // Nếu phòng chưa tồn tại, tạo mới với gameId
+    if (!rooms[roomCode]) {
+      rooms[roomCode] = { gameId, players: [] };
+    }
+    // Nếu phòng đã tồn tại nhưng khác gameId, báo lỗi
+    if (rooms[roomCode].gameId !== gameId) {
+      socket.emit("room-error", { message: "Mã phòng không tồn tại hoặc không phải của game này!" });
+      return;
+    }
+    socket.join(roomCode);
+    if (!rooms[roomCode].players.some(p => p.socketId === socket.id)) {
+      rooms[roomCode].players.push({ name: player, socketId: socket.id });
+    }
+    io.to(roomCode).emit("update-players", {
+      list: rooms[roomCode].players.map(p => p.name),
+      host: rooms[roomCode].players[0]?.name
+    });
+  });
 
-module.exports = io;
+  socket.on("leave-room", ({ roomCode, player }) => {
+    if (rooms[roomCode]) {
+      rooms[roomCode].players = rooms[roomCode].players.filter(p => p.name !== player);
+      if (rooms[roomCode].players.length === 0) {
+        delete rooms[roomCode];
+      } else {
+        io.to(roomCode).emit("update-players", {
+          list: rooms[roomCode].players.map(p => p.name),
+          host: rooms[roomCode].players[0]?.name
+        });
+      }
+    }
+    socket.leave(roomCode);
+  });
 
+  socket.on("disconnect", () => {
+    for (const roomCode in rooms) {
+      const idx = rooms[roomCode].players.findIndex(p => p.socketId === socket.id);
+      if (idx !== -1) {
+        rooms[roomCode].players.splice(idx, 1);
+        if (rooms[roomCode].players.length === 0) {
+          delete rooms[roomCode];
+        } else {
+          io.to(roomCode).emit("update-players", {
+            list: rooms[roomCode].players.map(p => p.name),
+            host: rooms[roomCode].players[0]?.name
+          });
+        }
+        break;
+      }
+    }
+  });
+
+  // Host requests start: broadcast to room (NO player name)
+  socket.on('start-room', ({ gameFolder, roomCode }) => {
+    console.log('[socketServer] start-room from', socket.id, { gameFolder, roomCode });
+    io.to(roomCode).emit('room-start', { gameFolder, roomCode }); // NO player name
+  });
+});
+
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+  console.log(`Socket.io server running on port ${PORT}`);
+});

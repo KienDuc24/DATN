@@ -41,4 +41,3 @@ console.log('Đang theo dõi thay đổi trong thư mục game...');
 
 // Khởi tạo lần đầu
 updateGamesJson();
-

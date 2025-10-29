@@ -3,14 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node socketServer.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
     "chokidar": "^4.0.3",
     "cloudinary": "^2.8.0",
@@ -24,7 +23,7 @@
     "formidable": "^3.5.4",
     "get": "^1.4.0",
     "mongoose": "^7.8.7",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^3.0.0-alpha.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "registry": "^0.3.0",
@@ -32,4 +31,3 @@
     "uuid": "^9.0.1"
   }
 }
-
