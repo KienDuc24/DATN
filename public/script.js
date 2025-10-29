@@ -1046,7 +1046,7 @@ function handleGameClick(gameId, gameName) {
     const username = user.username || user.displayName || 'Guest';
 
     // Gửi request tạo phòng lên backend
-    const res = await fetch(`${BASE_API_URL}/api/room`, {
+    const res = await fetch(`${BASE_API_URL}/api/room/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ player: username, game: gameId })
@@ -1075,7 +1075,7 @@ function handleGameClick(gameId, gameName) {
     const code = window.generatedRoomCode;
     const gameId = window.selectedGameId || '';
     const gameName = window.selectedGameName || '';
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');   
     const username = user.username || user.displayName || 'Guest';
     window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
   };
@@ -1416,3 +1416,8 @@ async function updateUserOnServer(user) {
   }
   return null;
 }
+
+// Router for room actions
+router.post('/create', roomController.createRoom);
+
+app.use('/api/room', roomRoutes);
