@@ -1046,7 +1046,7 @@ function handleGameClick(gameId, gameName) {
     const username = user.username || user.displayName || 'Guest';
 
     // Gửi request tạo phòng lên backend
-    const res = await fetch('/api/room', {
+    const res = await fetch('/api/room/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
