@@ -1,3 +1,5 @@
+const socket = io('https://datn-socket.up.railway.app', { transports: ['websocket'] });
+
 const urlParams = new URLSearchParams(window.location.search);
 const roomCode = urlParams.get("code");
 const gameId = urlParams.get("gameId"); 
@@ -26,7 +28,7 @@ if (document.getElementById("gameName")) document.getElementById("gameName").inn
 if (document.getElementById("room-username")) document.getElementById("room-username").innerText = playerName;
 
 // Tham gia phòng qua socket
-socket.emit("joinroom", { gameId, roomCode, player: playerName });
+socket.emit("join-room", { gameId, roomCode, player: playerName });
 
 // Xử lý khi bị từ chối vào phòng do sai game
 socket.on("room-error", ({ message }) => {
@@ -62,14 +64,10 @@ window.addEventListener("beforeunload", () => {
   socket.emit("leave-room", { roomCode, player: playerName });
 });
 
-function copyCode() {
-  const code = document.querySelector('[data-room-code]')?.textContent?.trim();
-  if (code) {
-    navigator.clipboard.writeText(code);
-    alert("📋 Mã phòng đã được sao chép!");
-  }
-}
-window.copyCode = copyCode;
+window.copyCode = function copyCode() {
+  navigator.clipboard.writeText(roomCode);
+  alert("📋 Mã phòng đã được sao chép!");
+};
 
 window.startGame = async function startGame() {
   let gameFolders = [];
@@ -127,76 +125,3 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
     console.error('room-start handler error', e);
   }
 });
-
-document.addEventListener('DOMContentLoaded', function () {
-  // ensure SOCKET_URL is set (script.js sets window.SOCKET_URL)
-  const socketUrl = window.SOCKET_URL || window.location.origin;
-  const socket = io(window.SOCKET_SERVER_URL ?? window.location.origin, {
-    transports: ['websocket', 'polling'],
-  });
-
-  // parse room code from query param or page DOM
-  const params = new URLSearchParams(window.location.search);
-  const roomCode = (params.get('code') || document.getElementById('roomCode')?.textContent || '').toUpperCase();
-
-  // username from localStorage user object if present, otherwise guest_...
-  let username = (() => {
-    try {
-      const u = localStorage.getItem('user');
-      if (u) {
-        const parsed = JSON.parse(u);
-        return parsed.name || parsed.username || parsed.displayName || parsed.email || `guest_${Math.random().toString(36).slice(2,8)}`;
-      }
-    } catch (e) {}
-    return `guest_${Math.random().toString(36).slice(2,8)}`;
-  })();
-
-  const playersArea = document.getElementById('playersArea');
-  if (playersArea) playersArea.textContent = 'Đang tải...';
-
-  socket.on('connect', () => {
-    console.log('socket connected', socket.id, '-> joining', roomCode, username);
-    if (roomCode) socket.emit('joinRoom', { code: roomCode, username });
-  });
-
-  // update players list UI
-  socket.on('room:players', ({ players } = {}) => {
-    if (!playersArea) return;
-    if (!players || players.length === 0) {
-      playersArea.textContent = 'Chưa có người chơi';
-      return;
-    }
-    // build simple list
-    const ul = document.createElement('ul');
-    ul.className = 'players-list';
-    players.forEach(p => {
-      const li = document.createElement('li');
-      li.textContent = p;
-      ul.appendChild(li);
-    });
-    // replace content
-    playersArea.innerHTML = '';
-    playersArea.appendChild(ul);
-  });
-
-  socket.on('connect_error', (err) => {
-    console.error('socket connect_error', err);
-    if (playersArea) playersArea.textContent = 'Lỗi kết nối socket';
-  });
-
-  // emit leave when closing the page
-  window.addEventListener('beforeunload', () => {
-    if (roomCode) socket.emit('leaveRoom', { code: roomCode });
-  });
-
-  // optional: provide a "Thoát phòng" button handler if exists
-  const leaveBtn = document.getElementById('leaveRoomBtn');
-  if (leaveBtn) {
-    leaveBtn.addEventListener('click', () => {
-      if (roomCode) socket.emit('leaveRoom', { code: roomCode });
-      // immediate UI feedback
-      if (playersArea) playersArea.textContent = 'Đang tải...';
-    });
-  }
-});
-

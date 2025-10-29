@@ -16,4 +16,3 @@ router.get('/rooms', async (req, res) => {
 });
 
 module.exports = router;
-

@@ -8,7 +8,7 @@ let gamesByCategory = {};
 
 
 // Use same origin API by default (safer). If you need cross-domain, set this env.
-const BASE_API_URL = window.location.origin; // e.g. https://datn-socket.up.railway.app or http://localhost:3000
+const BASE_API_URL = window.location.origin; // e.g. https://datn-smoky.vercel.app or http://localhost:3000
 
 // Lưu vị trí trang hiện tại cho từng slider
 let sliderPage = {
@@ -1045,20 +1045,18 @@ function handleGameClick(gameId, gameName) {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const username = user.username || user.displayName || 'Guest';
 
-    // Gửi request tạo phòng lên backend - dùng window.BASE_API_URL nếu có
-    const apiBase = (window.BASE_API_URL || window.location.origin).replace(/\/$/, '');
-    const res = await fetch(`${apiBase}/api/room`, {
+    // Gửi request tạo phòng lên backend
+    const res = await fetch('/api/room', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         player: username,
         game: gameId
-      }),
-      credentials: 'include'
+      })
     });
-    let data;
-    try { data = await res.json(); } catch (e) { data = {}; }
+    const data = await res.json();
     if (data.roomCode) {
+      // Hiển thị mã phòng cho người dùng hoặc chuyển sang phòng luôn
       window.location.href = `/room.html?code=${data.roomCode}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
     } else {
       alert('Không thể tạo phòng. Vui lòng thử lại!');
@@ -1085,11 +1083,9 @@ function handleGameClick(gameId, gameName) {
       alert(LANGS[currentLang]?.room_invalid_code || 'Invalid room code! (e.g. A123)');
       return;
     }
-    // Kiểm tra mã phòng tồn tại qua API (dùng full API base)
-    const apiBase = (window.BASE_API_URL || window.location.origin).replace(/\/$/, '');
-    const res = await fetch(`${apiBase}/api/room?code=${encodeURIComponent(code)}`, { credentials: 'include' });
-    let data;
-    try { data = await res.json(); } catch (e) { data = {}; }
+    // Kiểm tra mã phòng tồn tại qua API
+    const res = await fetch(`/api/room?code=${code}`);
+    const data = await res.json();
     if (!data.found) {
       alert(LANGS[currentLang]?.room_not_found || 'Room code not found!');
       return;
@@ -1102,37 +1098,11 @@ function handleGameClick(gameId, gameName) {
   };
 }
 
-window.BASE_API_URL = window.BASE_API_URL || 'https://datn-socket.up.railway.app';
-window.SOCKET_URL = window.SOCKET_URL || 'https://datn-socket.up.railway.app';
+const socket = io('https://datn-socket.up.railway.app', {
+  transports: ['websocket']
+});
 
-// example socket init (use full URL and withCredentials)
-const socket = io(window.SOCKET_URL, { withCredentials: true });
-
-// replace any direct `io('datn-smoky.vercel.app')` with:
- // const socket = io(window.SOCKET_URL, { withCredentials: true });
-
-// when calling APIs, always use BASE_API_URL
-// example create room request:
-async function createRoom(payload) {
-  try {
-    const res = await fetch(`${window.BASE_API_URL}/api/room`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      credentials: 'include'
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(()=>null);
-      console.warn('[client] createRoom failed', res.status, text);
-      throw new Error(`Server responded ${res.status}`);
-    }
-    const data = await res.json();
-    return data;
-  } catch (err) {
-    console.error('[client] createRoom error', err && err.message);
-    throw err;
-  }
-}
+// Gửi payload này lên server hoặc socket
 
 function getMaxShow() {
   if (window.innerWidth <= 600) return 2;
@@ -1623,4 +1593,3 @@ async function updateUserOnServer(user) {
 
   try { createProfileModal(); } catch (e) { console.warn('createProfileModal init failed', e && e.message); }
 })();
-

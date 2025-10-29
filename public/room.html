@@ -6,8 +6,7 @@
   <title>Phòng Game</title>
   <link rel="stylesheet" href="room.css" />
   <link rel="icon" type="image/x-icon" href="fav.svg">
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" defer></script>
-  <script src="/room.js" defer></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -17,14 +16,15 @@
       Mã phòng: <span id="roomCodeDisplay"></span>
       <button class="copy-btn" onclick="copyCode()">📋 Sao chép</button>
     </div>
-    <div class="room-info">
-      <div id="playersArea">Đang tải...</div>
-    </div>
+    <ul id="playerList">
+      <li id="loadingPlayers">Đang tải...</li>
+    </ul>
     <div class="buttons">
       <button class="start-btn" onclick="startGame()">🚀 Bắt đầu</button>
       <button class="leave-btn" onclick="leaveRoom()">❌ Thoát phòng</button>
     </div>
   </div>
+
+  <script src="./room.js"></script>
 </body>
 </html>
-

@@ -1,56 +1,53 @@
 const express = require('express');
 const router = express.Router();
-const Room = require('../models/Room');
+let rooms = {};
 
-// helper sinh mã A111
-function genRoomCode() {
-  const letter = String.fromCharCode(65 + Math.floor(Math.random()*26));
-  const num = Math.floor(100 + Math.random()*900);
-  return `${letter}${num}`;
+function generateRoomCode() {
+  const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+  const number = Math.floor(100 + Math.random() * 900);
+  return letter + number;
 }
 
-// POST /api/room  -> tạo phòng
-router.post('/room', async (req, res) => {
-  try {
-    const { player, game } = req.body || {};
-    if (!player || !game) return res.status(400).json({ ok:false, message:'player and game required' });
-
-    // tạo code duy nhất (retry ngắn nếu trùng)
-    let code, exists, tries = 0;
-    do {
-      code = genRoomCode();
-      exists = await Room.findOne({ code });
-      tries++;
-    } while (exists && tries < 6);
-
-    const room = new Room({
-      code,
-      game,
-      players: [{ name: player }],
-      createdAt: new Date()
-    });
-    await room.save();
-
-    return res.json({ ok: true, roomCode: code, roomId: room._id });
-  } catch (err) {
-    console.error('[roomRoutes] create room error', err && err.message);
-    return res.status(500).json({ ok:false, message:'server error' });
+// Tạo phòng hoặc tham gia phòng
+router.post('/', (req, res) => {
+  const { player, roomCode, game } = req.body;
+  if (!roomCode) {
+    const newCode = generateRoomCode();
+    rooms[newCode] = { players: [{ name: player, active: true }], game };
+    return res.status(200).json({ roomCode: newCode, players: [player] });
+  } else {
+    if (rooms[roomCode]) {
+      rooms[roomCode].players.push({ name: player, active: true });
+      return res.status(200).json({
+        success: true,
+        players: rooms[roomCode].players.filter(p => p.active).map(p => p.name),
+        game: rooms[roomCode].game
+      });
+    } else {
+      return res.status(200).json({ success: false, message: 'Room not found' });
+    }
   }
 });
 
-// GET /api/room?code=A111  -> check tồn tại
-router.get('/room', async (req, res) => {
-  try {
-    const code = (req.query.code || '').toUpperCase();
-    if (!code) return res.status(400).json({ ok:false, message:'code required' });
-    const room = await Room.findOne({ code }).select('-__v');
-    if (!room) return res.json({ ok:true, found:false });
-    return res.json({ ok:true, found:true, room });
-  } catch (err) {
-    console.error('[roomRoutes] get room error', err && err.message);
-    return res.status(500).json({ ok:false, message:'server error' });
+// Rời phòng
+router.post('/leave', (req, res) => {
+  const { roomCode, player } = req.body;
+  if (rooms[roomCode]) {
+    const member = rooms[roomCode].players.find(p => p.name === player);
+    if (member) member.active = false;
+  }
+  return res.status(200).json({ left: true });
+});
+
+// Lấy danh sách người chơi trong phòng
+router.get('/', (req, res) => {
+  const { code } = req.query;
+  if (rooms[code]) {
+    const activePlayers = rooms[code].players.filter(p => p.active);
+    return res.status(200).json({ found: true, players: activePlayers.map(p => p.name) });
+  } else {
+    return res.status(200).json({ found: false });
   }
 });
 
 module.exports = router;
-
