@@ -62,10 +62,14 @@ window.addEventListener("beforeunload", () => {
   socket.emit("leave-room", { roomCode, player: playerName });
 });
 
-window.copyCode = function copyCode() {
-  navigator.clipboard.writeText(roomCode);
-  alert("📋 Mã phòng đã được sao chép!");
-};
+function copyCode() {
+  const code = document.querySelector('[data-room-code]')?.textContent?.trim();
+  if (code) {
+    navigator.clipboard.writeText(code);
+    alert("📋 Mã phòng đã được sao chép!");
+  }
+}
+window.copyCode = copyCode;
 
 window.startGame = async function startGame() {
   let gameFolders = [];
@@ -127,7 +131,9 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
 document.addEventListener('DOMContentLoaded', function () {
   // ensure SOCKET_URL is set (script.js sets window.SOCKET_URL)
   const socketUrl = window.SOCKET_URL || window.location.origin;
-  const socket = io(socketUrl, { withCredentials: true });
+  const socket = io(window.SOCKET_SERVER_URL ?? window.location.origin, {
+    transports: ['websocket', 'polling'],
+  });
 
   // parse room code from query param or page DOM
   const params = new URLSearchParams(window.location.search);
