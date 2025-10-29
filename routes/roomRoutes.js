@@ -30,6 +30,7 @@ function createRoom(req, res) {
 }
 
 router.post('/', createRoom);
+router.post('/create', roomController.createRoom);
 
 // Rời phòng
 router.post('/leave', (req, res) => {

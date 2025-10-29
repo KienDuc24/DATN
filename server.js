@@ -93,6 +93,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ ok: false, message: 'Internal Server Error' });
 });
 
+app.use('/api/room', roomRoutes);
+
 /* ----------------- SPA fallback + start ----------------- */
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

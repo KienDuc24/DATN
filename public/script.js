@@ -1420,4 +1420,3 @@ async function updateUserOnServer(user) {
 // Router for room actions
 router.post('/create', roomController.createRoom);
 
-app.use('/api/room', roomRoutes);
