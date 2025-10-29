@@ -41,10 +41,8 @@ try {
   io.on('connection', (socket) => {
     console.log('[socket] connected', socket.id, 'origin=', socket.handshake.headers.origin || 'n/a');
 
-    // keep-alive test
-    socket.on('ping', (d) => socket.emit('pong', d));
-
-    socket.on('joinRoom', ({ code, username } = {}) => {
+    // reuseable handlers so we can accept multiple event names (compat)
+    function handleJoin({ code, username } = {}) {
       try {
         if (!code) return socket.emit('error', { message: 'missing room code' });
         const roomCode = String(code).toUpperCase();
@@ -56,10 +54,15 @@ try {
         const players = Object.values(r).map(p => p.name);
         io.to(roomCode).emit('room:players', { players });
         console.log('[socket] joinRoom', socket.id, roomCode, username, 'players=', players);
-      } catch (e) { console.error('[socket] joinRoom err', e && e.message); }
-    });
 
-    socket.on('leaveRoom', ({ code } = {}) => {
+        // khi join
+        socket.emit('join-room', { code: roomCode, username });
+        // also emit camelCase for compatibility
+        socket.emit('joinRoom', { code: roomCode, username });
+      } catch (e) { console.error('[socket] joinRoom err', e && e.message); }
+    }
+
+    function handleLeave({ code } = {}) {
       try {
         const roomCode = code && String(code).toUpperCase();
         if (!roomCode) return;
@@ -69,8 +72,19 @@ try {
         if (Object.keys(r).length === 0) rooms.delete(roomCode); else rooms.set(roomCode, r);
         io.to(roomCode).emit('room:players', { players: Object.values(r).map(p => p.name) });
         console.log('[socket] leaveRoom', socket.id, roomCode);
+
+        // khi leave
+        socket.emit('leave-room', { code: roomCode });
+        // also
+        socket.emit('leaveRoom', { code: roomCode });
       } catch (e) { console.error('[socket] leaveRoom err', e && e.message); }
-    });
+    }
+
+    // register both styles for compat
+    socket.on('joinRoom', handleJoin);
+    socket.on('join-room', handleJoin);
+    socket.on('leaveRoom', handleLeave);
+    socket.on('leave-room', handleLeave);
 
     socket.on('room:getPlayers', ({ code } = {}) => {
       const roomCode = code && String(code).toUpperCase();
