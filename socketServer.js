@@ -31,10 +31,25 @@ module.exports = function attachSocket(server) {
         }
 
         socket.join(code);
-        io.to(code).emit('update-players', { list: room.players, host: room.host?.username || room.host });
+        io.to(code).emit('update-players', { list: room.players.map(p => p.name), host: room.host?.username || room.host });
       } catch (err) {
-        console.error('[socketServer] joinRoom error', err);
+        console.error('[socketServer] joinRoom error:', err.message);
         socket.emit('room-error', { message: 'Internal server error' });
+      }
+    });
+
+    socket.on('leaveRoom', async ({ code, player }) => {
+      try {
+        const room = await Room.findOne({ code }).exec();
+        if (!room) return;
+
+        room.players = room.players.filter(p => p.name !== player);
+        await room.save();
+
+        socket.leave(code);
+        io.to(code).emit('update-players', { list: room.players.map(p => p.name), host: room.host?.username || room.host });
+      } catch (err) {
+        console.error('[socketServer] leaveRoom error:', err.message);
       }
     });
 
