@@ -1,23 +1,18 @@
 require('dotenv').config();
 
 const express = require('express');
-const mongoose = require('mongoose');
-const cookieParser = require('cookie-parser');
-const path = require('path');
 const cors = require('cors');
-const app = express();
-const PORT = process.env.PORT || 3000;
+const path = require('path');
 
-// Middleware
+const app = express();
 const FRONTEND = process.env.FRONTEND_URL || '*';
 
-// enable CORS for Express routes + socket.io polling XHR
+// allow CORS for express routes and socket.io polling XHR
 app.use(cors({ origin: FRONTEND, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 
-// serve static public
+// static and routes (keep your existing mounts)
 app.use(express.static(path.join(__dirname, 'public')));
 
 console.log('[server] NODE_ENV=', process.env.NODE_ENV);

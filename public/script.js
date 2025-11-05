@@ -1150,7 +1150,6 @@ const socket = (typeof io === 'function') ? io(SOCKET_URL, {
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000
 }) : null;
-
 // Gửi payload này lên server hoặc socket
 
 function getMaxShow() {

@@ -1,18 +1,17 @@
 const mongoose = require('mongoose');
 const http = require('http');
-const app = require('./server'); // server.js phải export express app
-const socketServer = require('./socketServer');
+const app = require('./server');
+const attachSocket = require('./socketServer');
 const PORT = process.env.PORT || 8080;
 
 async function start() {
   try {
-    if (!process.env.MONGODB_URI) {
-      throw new Error('MONGODB_URI is not set in environment');
-    }
+    if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI not set');
 
-    // Fail fast if DB not ready
+    // Fail fast if DB down
     mongoose.set('bufferCommands', false);
-    // Recommended: remove deprecated options useNewUrlParser / useUnifiedTopology
+
+    // connect (remove deprecated options)
     await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 10000
     });
@@ -20,11 +19,9 @@ async function start() {
 
     const server = http.createServer(app);
 
-    // attach socket
-    if (typeof socketServer === 'function') {
-      socketServer(server);
-    } else if (socketServer && typeof socketServer.attach === 'function') {
-      socketServer.attach(server);
+    // attach socket server (socketServer exports a function)
+    if (typeof attachSocket === 'function') {
+      attachSocket(server);
     }
 
     server.listen(PORT, () => {
