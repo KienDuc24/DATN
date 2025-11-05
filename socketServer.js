@@ -26,12 +26,22 @@ function socketServer(httpServer) {
     return;
   }
 
+  // lấy origin frontend từ env (đã set trên Railway)
+  const FRONTEND = process.env.FRONTEND_URL || process.env.BASE_API_URL || '*';
+
   const io = new Server(httpServer, {
+    // path must match client (default '/socket.io')
+    path: '/socket.io',
+    // allow polling fallback and websocket
+    transports: ['websocket', 'polling'],
     cors: {
-      origin: process.env.FRONTEND_URL || '*',
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      credentials: true,
+      origin: Array.isArray(FRONTEND) ? FRONTEND : FRONTEND,
+      methods: ['GET', 'POST'],
+      credentials: true
     },
+    // optional: increase pingTimeout on platforms that may be slow
+    pingTimeout: 30000,
+    pingInterval: 25000
   });
 
   socketServer.io = io;

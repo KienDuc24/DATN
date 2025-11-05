@@ -1141,8 +1141,19 @@ function handleGameClick(gameId, gameName) {
   };
 }
 
-const SOCKET_URL = window.SOCKET_URL || 'https://datn-socket.up.railway.app';
-const socket = io(SOCKET_URL, { transports: ['websocket'] });
+// ...near where you create socket...
+const SOCKET_URL = window.SOCKET_URL || (window.API_BASE ? window.API_BASE.replace(/^http/, 'ws').replace(/^https/, 'wss') : '');
+const socket = (typeof io === 'function') ? io(SOCKET_URL, {
+  path: '/socket.io',
+  transports: ['websocket', 'polling'],
+  withCredentials: true,
+  // secure true when using wss
+  secure: true,
+  // allow reconnection attempts
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000
+}) : null;
 
 // Gửi payload này lên server hoặc socket
 
