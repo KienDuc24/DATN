@@ -1,9 +1,9 @@
 require('dotenv').config();
 const http = require('http');
 
-console.log('[index] NODE_ENV=', process.env.NODE_ENV, 'FRONTEND_URL=', !!process.env.FRONTEND_URL, 'MONGODB_URI=', !!process.env.MONGODB_URI);
+console.log('[index] starting - FRONTEND_URL=', !!process.env.FRONTEND_URL, 'MONGO_URI=', !!process.env.MONGO_URI);
 
-const app = require('./server');
+const app = require('./server'); // server.js should ONLY export express app
 const server = http.createServer(app);
 
 try {
@@ -17,5 +17,5 @@ try {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`[index] Server + Socket running on port ${PORT}`));
 
-process.on('uncaughtException', (err) => console.error('[FATAL] uncaughtException', err && err.stack || err));
-process.on('unhandledRejection', (reason) => console.error('[FATAL] unhandledRejection', reason));
+process.on('uncaughtException', (err) => console.error('[index][FATAL] uncaughtException', err && err.stack || err));
+process.on('unhandledRejection', (reason) => console.error('[index][FATAL] unhandledRejection', reason && reason.stack || reason));

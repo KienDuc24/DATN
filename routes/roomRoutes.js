@@ -2,9 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Room = require('../models/Room');
 const auth = require('../middleware/auth');
-const { getIO } = require('../socketServer'); // dùng getIO() khi cần
+const { getIO } = require('../socketServer');
 
-// tạo phòng
 router.post('/', auth, async (req, res) => {
   try {
     const { name, gameType, maxPlayers } = req.body;
@@ -14,23 +13,14 @@ router.post('/', auth, async (req, res) => {
     await room.save();
 
     const io = getIO();
-    if (io) {
-      io.emit('room_created', { roomId: room._id.toString(), name: room.name });
-    } else {
-      console.log('[roomRoutes] io not initialized yet - room_created not emitted');
-    }
+    if (io) io.emit('room_created', { roomId: room._id.toString(), name: room.name });
+    else console.log('[roomRoutes] io not initialized yet - room_created not emitted');
 
     return res.status(201).json(room);
   } catch (err) {
     console.error('[roomRoutes] create error', err && err.stack || err);
     return res.status(500).json({ error: 'Failed to create room' });
   }
-});
-
-// Optional: get rooms
-router.get('/', async (req, res) => {
-  const rooms = await Room.find().populate('host', 'username').populate('players', 'username');
-  res.json(rooms);
 });
 
 module.exports = router;

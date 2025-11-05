@@ -27,22 +27,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 console.log('[server] NODE_ENV=', process.env.NODE_ENV);
 console.log('[server] FRONTEND_URL=', process.env.FRONTEND_URL);
 
-const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
-  console.error('[server][FATAL] MONGODB_URI not set. Set env var before starting.');
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+  console.error('[server][FATAL] MONGO_URI not set. Set env var before starting.');
 } else {
   console.log('[server] connecting to MongoDB...');
-  mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true, maxPoolSize: 10 })
-    .then(() => console.log('[server] MongoDB connected'))
+  mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true, maxPoolSize: 10 })
+    .then(() => console.log('✅ MongoDB connected'))
     .catch(err => console.error('[server] MongoDB connection error:', err && err.stack || err));
 }
 
 // mount routes with try/catch and logs
-try { app.use('/api/auth', require('./routes/authRoutes')); console.log('[server] authRoutes mounted'); } catch (e) { console.error('[server] authRoutes not mounted', e && e.message || e); }
-try { app.use('/api/room', require('./routes/roomRoutes')); console.log('[server] roomRoutes mounted'); } catch (e) { console.error('[server] roomRoutes not mounted', e && e.message || e); }
-try { app.use('/api/debug', require('./routes/debugRoutes')); console.log('[server] debugRoutes mounted'); } catch (e) { console.error('[server] debugRoutes not mounted', e && e.message || e); }
+try { app.use('/api/auth', require('./routes/authRoutes')); console.log('[server] authRoutes mounted at /api/auth'); } catch (e) { console.error('[server] authRoutes not mounted', e && e.message || e); }
+try { app.use('/api/room', require('./routes/roomRoutes')); console.log('[server] roomRoutes mounted at /api/room'); } catch (e) { console.error('[server] roomRoutes not mounted', e && e.message || e); }
+try { app.use('/api/debug', require('./routes/debugRoutes')); console.log('[server] debugRoutes mounted at /api/debug'); } catch (e) { console.error('[server] debugRoutes not mounted', e && e.message || e); }
 
 // error handler
-app.use((err, req, res, next) => { console.error('[server][ERR]', err && err.stack || err); res.status(500).json({ error: 'Internal Server Error' }); });
+app.use((err, req, res, next) => { console.error('[server][ERR-MW]', err && err.stack || err); res.status(500).json({ error: 'Internal Server Error' }); });
 
 module.exports = app;

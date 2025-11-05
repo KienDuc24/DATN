@@ -27,7 +27,7 @@ function socketServer(httpServer) {
   console.log('[socketServer] initialized');
 
   io.on('connection', (socket) => {
-    console.log('[socket] connected', socket.id, 'handshake=', socket.handshake && socket.handshake.query);
+    console.log('[socket] connection', socket.id, 'handshake=', socket.handshake && socket.handshake.query);
 
     socket.on('authenticate', (token) => {
       if (!jwt) { socket.emit('authenticated_no_jwt'); return; }
@@ -47,7 +47,6 @@ function socketServer(httpServer) {
         const room = await Room.findById(roomId);
         if (!room) return socket.emit('error', 'Room not found');
         if (room.players.length >= room.maxPlayers) return socket.emit('error', 'Room full');
-
         if (!room.players.some(p => p.toString() === socket.userId)) {
           room.players.push(socket.userId);
           await room.save();
@@ -79,7 +78,6 @@ function socketServer(httpServer) {
     socket.on('disconnect', (reason) => {
       console.log('[socket] disconnect', socket.id, 'reason=', reason);
     });
-
   });
 
   return io;

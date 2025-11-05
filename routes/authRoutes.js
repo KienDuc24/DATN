@@ -59,7 +59,9 @@ if (multer && typeof multer.memoryStorage === 'function') {
   uploadMiddleware = multer({ storage });
   console.log('[authRoutes] uploadMiddleware configured (multer)');
 } else {
-  console.log('[authRoutes] uploadMiddleware not available, routes must use fallback uploader');
+  // fallback simple pass-through middleware (no file support)
+  uploadMiddleware = (req, res, next) => next();
+  console.log('[authRoutes] uploadMiddleware fallback configured (no multer)');
 }
 
 // Example: log incoming registration/login hits
@@ -68,7 +70,7 @@ router.post('/login', async (req, res) => {
   // ...existing login logic...
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', uploadMiddleware, async (req, res) => {
   console.log('[authRoutes] POST /api/auth/register body keys:', Object.keys(req.body));
   // ...existing register logic...
 });
