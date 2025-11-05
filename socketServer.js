@@ -4,29 +4,34 @@ const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
 const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
+let jwt;
+try {
+  jwt = require('jsonwebtoken');
+} catch (e) {
+  console.warn('[socketServer] jsonwebtoken not installed - socket auth disabled');
+  jwt = null;
+}
 const Room = require('./models/Room');
 
 let ioInstance = null;
-
-function socketServer(httpServer) {
-  const io = new Server(httpServer, {
-    path: '/socket.io',
-    cors: { origin: '*' }, // production: set to your domain
-    transports: ['websocket', 'polling']
-  });
+function socketServer(server) {
+  const io = require('socket.io')(server, { path: '/socket.io', cors: { origin: process.env.FRONTEND_URL || '*' } });
   ioInstance = io;
 
   io.on('connection', (socket) => {
     console.log('socket connected', socket.id);
 
     socket.on('authenticate', (token) => {
+      if (!jwt) {
+        socket.emit('auth_error', 'Auth module not available');
+        return;
+      }
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         socket.userId = decoded.id;
         socket.emit('authenticated');
-      } catch (e) {
-        socket.emit('auth_error');
+      } catch (err) {
+        socket.emit('auth_error', 'Invalid token');
         socket.disconnect();
       }
     });

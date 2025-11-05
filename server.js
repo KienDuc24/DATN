@@ -5,13 +5,18 @@ const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const cors = require('cors'); // Thêm để hỗ trợ CORS cho socket
-const socketServer = require('./socketServer');
+// const socketServer = require('./socketServer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors()); // Cho phép cross-origin cho socket
+const corsOptions = {
+    origin: process.env.FRONTEND_URL || '*', // production: set FRONTEND_URL = https://datn-smoky.vercel.app
+    credentials: true,
+    methods: ['GET','POST','PUT','DELETE','OPTIONS']
+};
+app.use(cors(corsOptions)); // Cho phép cross-origin cho socket
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -75,40 +80,5 @@ app.use((err, req, res, next) => {
   if (!res.headersSent) res.status(500).json({ ok: false, message: 'Internal server error' });
 });
 
-// Khởi tạo socket server (thay đổi: truyền app để tích hợp)
-const server = require('http').createServer(app);
-socketServer(server); // Gọi socketServer với server HTTP
-
-// handle uncaught errors
-process.on('unhandledRejection', (reason) => {
-  console.error('[process] unhandledRejection', reason);
-});
-process.on('uncaughtException', (err) => {
-  console.error('[process] uncaughtException', err && err.stack);
-  process.exit(1);
-});
-
-// after all app.use(...) calls add:
-setTimeout(()=> {
-  try {
-    const routes = [];
-    app._router.stack.forEach(m => {
-      if (m.route && m.route.path) {
-        const methods = Object.keys(m.route.methods).join(',').toUpperCase();
-        routes.push(`${methods} ${m.route.path}`);
-      } else if (m.name === 'router' && m.handle && m.handle.stack) {
-        m.handle.stack.forEach(r => {
-          if (r.route && r.route.path) {
-            const methods = Object.keys(r.route.methods).join(',').toUpperCase();
-            routes.push(`${methods} ${r.route.path}  (parent mount: ${m.regexp})`);
-          }
-        });
-      }
-    });
-    console.log('[server] registered routes:\n' + routes.join('\n'));
-  } catch(e){ console.warn('list routes failed', e); }
-}, 500);
-
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
+// <-- changed code: export only express app (remove server creation/listen)
 module.exports = app;

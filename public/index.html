@@ -208,5 +208,9 @@
   </footer>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="script.js"></script>
+  <script>
+    // production: set FRONTEND will inject correct backend in deploy pipeline or set here manually
+    window.__API_BASE__ = window.__API_BASE__ || 'https://datn-socket.up.railway.app';
+  </script>
 </body>
 </html>

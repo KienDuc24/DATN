@@ -1,3 +1,40 @@
+const API_BASE = window.__API_BASE__ || ''; // nếu bỏ trống -> relative
+
+async function createRoom(payload, token){
+  const url = (API_BASE || '') + '/api/room';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(payload)
+  });
+  const text = await res.text();
+  try {
+    const data = JSON.parse(text);
+    if (!res.ok) throw new Error(data.error || 'Create room failed');
+    return data;
+  } catch(e) {
+    console.error('Create room response is not JSON:', text);
+    throw e;
+  }
+}
+
+// Socket connect
+function initSocket(token){
+  const socketUrl = window.__API_BASE__ || undefined; // undefined => same origin
+  const socket = io(socketUrl, {
+    path: '/socket.io',
+    transports: ['websocket', 'polling']
+  });
+  socket.on('connect', () => {
+    if (token) socket.emit('authenticate', token);
+  });
+  socket.on('auth_error', () => { console.error('Socket auth failed'); });
+  return socket;
+}
+
 const socket = io('https://datn-socket.up.railway.app', { transports: ['websocket'] });
 
 const urlParams = new URLSearchParams(window.location.search);
