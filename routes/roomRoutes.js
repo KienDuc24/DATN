@@ -14,7 +14,7 @@ router.post('/', auth, async (req, res) => {
 
     const io = getIO();
     if (io) io.emit('room_created', { roomId: room._id.toString(), name: room.name });
-    else console.log('[roomRoutes] io not initialized yet - room_created not emitted');
+    else console.log('[roomRoutes] io not initialized - room_created not emitted');
 
     return res.status(201).json(room);
   } catch (err) {

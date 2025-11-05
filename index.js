@@ -1,9 +1,9 @@
 require('dotenv').config();
 const http = require('http');
 
-console.log('[index] starting - FRONTEND_URL=', !!process.env.FRONTEND_URL, 'MONGO_URI=', !!process.env.MONGO_URI);
+console.log('[index] starting - FRONTEND_URL=', !!process.env.FRONTEND_URL, 'MONGODB_URI=', !!process.env.MONGODB_URI);
 
-const app = require('./server'); // server.js should ONLY export express app
+const app = require('./server');
 const server = http.createServer(app);
 
 try {

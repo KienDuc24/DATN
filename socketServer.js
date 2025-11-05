@@ -27,7 +27,7 @@ function socketServer(httpServer) {
   console.log('[socketServer] initialized');
 
   io.on('connection', (socket) => {
-    console.log('[socket] connection', socket.id, 'handshake=', socket.handshake && socket.handshake.query);
+    console.log('[socket] connected', socket.id);
 
     socket.on('authenticate', (token) => {
       if (!jwt) { socket.emit('authenticated_no_jwt'); return; }

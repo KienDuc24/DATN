@@ -49,19 +49,24 @@ try {
   if (multer && multer.default) multer = multer.default;
   console.log('[authRoutes] multer loaded, memoryStorage=', typeof (multer && multer.memoryStorage));
 } catch (e) {
-  console.warn('[authRoutes] multer require failed, fallback will be used. Error:', e && e.message);
+  console.warn('[authRoutes] multer require failed, will use fallback. Error:', e && e.message);
   multer = null;
 }
 
-let uploadMiddleware = null;
+let upload; // guaranteed middleware function
 if (multer && typeof multer.memoryStorage === 'function') {
   const storage = multer.memoryStorage();
-  uploadMiddleware = multer({ storage });
-  console.log('[authRoutes] uploadMiddleware configured (multer)');
+  const uploader = multer({ storage });
+  // expose a helper to get a single-file middleware (use uploader.single('fieldname') in routes)
+  upload = (fieldName) => {
+    if (!uploader || typeof uploader.single !== 'function') return (req, res, next) => next();
+    return uploader.single(fieldName);
+  };
+  console.log('[authRoutes] upload helper configured (multer)');
 } else {
-  // fallback simple pass-through middleware (no file support)
-  uploadMiddleware = (req, res, next) => next();
-  console.log('[authRoutes] uploadMiddleware fallback configured (no multer)');
+  // fallback: no file handling
+  upload = () => (req, res, next) => next();
+  console.log('[authRoutes] upload helper fallback configured (no multer)');
 }
 
 // Example: log incoming registration/login hits
@@ -70,7 +75,7 @@ router.post('/login', async (req, res) => {
   // ...existing login logic...
 });
 
-router.post('/register', uploadMiddleware, async (req, res) => {
+router.post('/register', upload('avatar'), async (req, res) => {
   console.log('[authRoutes] POST /api/auth/register body keys:', Object.keys(req.body));
   // ...existing register logic...
 });
