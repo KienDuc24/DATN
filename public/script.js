@@ -8,7 +8,7 @@ let gamesByCategory = {};
 
 
 // Use same origin API by default (safer). If you need cross-domain, set this env.
-const BASE_API_URL = window.location.origin; // e.g. https://datn-smoky.vercel.app or http://localhost:3000
+const BASE_API_URL = window.API_BASE || window.location.origin; // e.g. https://your-backend.up.railway.app or http://localhost:3000
 
 // Lưu vị trí trang hiện tại cho từng slider
 let sliderPage = {
@@ -1046,7 +1046,7 @@ function handleGameClick(gameId, gameName) {
     const username = user.username || user.displayName || 'Guest';
 
     // Gửi request tạo phòng lên backend
-    const res = await fetch('/api/room', {
+    const res = await fetch(`${BASE_API_URL}/api/room`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1056,7 +1056,6 @@ function handleGameClick(gameId, gameName) {
     });
     const data = await res.json();
     if (data.roomCode) {
-      // Hiển thị mã phòng cho người dùng hoặc chuyển sang phòng luôn
       window.location.href = `/room.html?code=${data.roomCode}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
     } else {
       alert('Không thể tạo phòng. Vui lòng thử lại!');
@@ -1084,7 +1083,7 @@ function handleGameClick(gameId, gameName) {
       return;
     }
     // Kiểm tra mã phòng tồn tại qua API
-    const res = await fetch(`/api/room?code=${code}`);
+    const res = await fetch(`${BASE_API_URL}/api/room?code=${encodeURIComponent(code)}`);
     const data = await res.json();
     if (!data.found) {
       alert(LANGS[currentLang]?.room_not_found || 'Room code not found!');
@@ -1098,9 +1097,8 @@ function handleGameClick(gameId, gameName) {
   };
 }
 
-const socket = io('https://datn-socket.up.railway.app', {
-  transports: ['websocket']
-});
+const SOCKET_URL = window.SOCKET_URL || 'https://datn-socket.up.railway.app';
+const socket = io(SOCKET_URL, { transports: ['websocket'] });
 
 // Gửi payload này lên server hoặc socket
 

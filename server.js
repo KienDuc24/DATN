@@ -4,19 +4,12 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const path = require('path');
-const cors = require('cors'); // Thêm để hỗ trợ CORS cho socket
-// const socketServer = require('./socketServer');
-
+const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-const corsOptions = {
-    origin: process.env.FRONTEND_URL || '*', // production: set FRONTEND_URL = https://datn-smoky.vercel.app
-    credentials: true,
-    methods: ['GET','POST','PUT','DELETE','OPTIONS']
-};
-app.use(cors(corsOptions)); // Cho phép cross-origin cho socket
+app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
