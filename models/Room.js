@@ -1,16 +1,25 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const roomSchema = new mongoose.Schema({
-  host: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Chủ phòng
-  players: [{
-    name: { type: String, required: true }, // Tên của từng người chơi
-  }],
-  status: { type: String, enum: ['waiting', 'playing', 'finished'], default: 'waiting' }, // Trạng thái phòng
-  createdAt: { type: Date, default: Date.now }, // Thời gian tạo phòng
-  game: {
-    gameId: { type: String, required: true }, // ID của game
-    type: { type: String, required: true }, // Thể loại game
+const roomSchema = new Schema({
+  code: {
+    type: String,
+    required: true,
+    unique: true,
+    default: () => {
+      const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26)); // A-Z
+      const number = Math.floor(100 + Math.random() * 900); // 100-999
+      return letter + number;
+    }
   },
-}, { timestamps: true }); // Tự động thêm createdAt và updatedAt
+  host: { type: mongoose.Types.ObjectId, ref: 'User', required: true },
+  players: [{ name: String }],
+  game: {
+    gameId: { type: String, required: true },
+    type: { type: String }
+  },
+  status: { type: String, default: 'waiting' },
+  createdAt: { type: Date, default: Date.now }
+});
 
 module.exports = mongoose.model('Room', roomSchema);

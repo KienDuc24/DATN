@@ -162,3 +162,46 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
     console.error('room-start handler error', e);
   }
 });
+
+(async function initRoomPage() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const gameId = params.get('gameId');
+  const user = params.get('user') || JSON.parse(localStorage.getItem('user') || '{}').username || 'Guest';
+
+  const BASE_API = window.API_BASE || '';
+
+  function el(id) { return document.getElementById(id); }
+
+  if (!code || !gameId) {
+    if (el('roomError')) el('roomError').innerText = 'Missing room code or gameId';
+    return;
+  }
+
+  try {
+    const res = await fetch(`${BASE_API}/api/room?code=${encodeURIComponent(code)}&gameId=${encodeURIComponent(gameId)}`);
+    if (!res.ok) {
+      el('roomError') && (el('roomError').innerText = `Room not found (${res.status})`);
+      return;
+    }
+    const room = await res.json();
+
+    if (el('roomCode')) el('roomCode').innerText = room.room.code || '(unknown)';
+    if (el('roomGame')) el('roomGame').innerText = room.room.game?.type || '(unknown)';
+    if (el('roomPlayers')) {
+      el('roomPlayers').innerHTML = room.room.players.map(p => `<div>${p.name}</div>`).join('');
+    }
+
+    const socket = io(BASE_API, { path: '/socket.io', transports: ['websocket'], withCredentials: true });
+    socket.emit('joinRoom', { code, gameId, user });
+
+    socket.on('updatePlayers', players => {
+      if (el('roomPlayers')) {
+        el('roomPlayers').innerHTML = players.map(p => `<div>${p.name}</div>`).join('');
+      }
+    });
+  } catch (err) {
+    console.error('initRoomPage error', err);
+    el('roomError') && (el('roomError').innerText = 'Error loading room');
+  }
+})();
