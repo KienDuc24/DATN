@@ -165,7 +165,7 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
   }
 });
 
-async function initRoomPage() {
+(async function initRoomPage() {
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
   const gameId = params.get('gameId');
@@ -191,7 +191,7 @@ async function initRoomPage() {
     if (el('roomCode')) el('roomCode').innerText = room.room.code || '(unknown)';
     if (el('roomGame')) el('roomGame').innerText = room.room.game?.type || '(unknown)';
     if (el('roomPlayers')) {
-      el('roomPlayers').innerHTML = room.room.players.map(p => `<div>${p}</div>`).join('');
+      el('roomPlayers').innerHTML = room.room.players.map(p => `<div>${p.name}</div>`).join('');
     }
 
     const socket = io(BASE_API, { path: '/socket.io', transports: ['websocket'], withCredentials: true });
@@ -203,7 +203,7 @@ async function initRoomPage() {
       }
     });
   } catch (err) {
-    console.error('initRoomPage error', err);
+    console.error('initRoomPage error:', err);
     el('roomError') && (el('roomError').innerText = 'Error loading room');
   }
-};
+})();

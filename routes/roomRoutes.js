@@ -47,7 +47,13 @@ router.post('/', async (req, res) => {
 
     return res.status(201).json({
       roomCode: room.code,
-      room: { id: room._id, code: room.code, game: room.game, players: room.players, status: room.status }
+      room: {
+        id: room._id,
+        code: room.code,
+        game: room.game,
+        players: room.players,
+        status: room.status
+      }
     });
   } catch (err) {
     console.error('[roomRoutes] Unexpected error:', err.message);
@@ -56,35 +62,7 @@ router.post('/', async (req, res) => {
 });
 
 /**
- * Join room
- * Body: { player, code, gameId }
- */
-router.post('/join', async (req, res) => {
-  if (mongoose.connection.readyState !== 1) {
-    return res.status(503).json({ error: 'Database not ready' });
-  }
-
-  try {
-    const { player, code, gameId } = req.body || {};
-    if (!player || !code || !gameId) return res.status(400).json({ error: 'player, code, and gameId are required' });
-
-    const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
-    if (!room) return res.status(404).json({ error: 'Room not found or game mismatch' });
-
-    if (!room.players.includes(player)) {
-      room.players.push(player);
-      await room.save();
-    }
-
-    return res.json({ success: true, room: { id: room._id, code: room.code, players: room.players, game: room.game } });
-  } catch (err) {
-    console.error('[roomRoutes] join room error', err && (err.stack || err.message));
-    return res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
-
-/**
- * Get room info
+ * Check room by code and gameId
  * Query: ?code=...&gameId=...
  */
 router.get('/', async (req, res) => {
@@ -114,7 +92,39 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('[roomRoutes] get room error', err && (err.stack || err.message));
+    console.error('[roomRoutes] get room error:', err.message);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+/**
+ * Join room
+ * Body: { player, code, gameId }
+ */
+router.post('/join', async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ error: 'Database not ready' });
+  }
+
+  try {
+    const { player, code, gameId } = req.body || {};
+    if (!player || !code || !gameId) {
+      return res.status(400).json({ error: 'player, code, and gameId are required' });
+    }
+
+    const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found or game mismatch' });
+    }
+
+    if (!room.players.some(p => p.name === player)) {
+      room.players.push({ name: player });
+      await room.save();
+    }
+
+    return res.json({ success: true, room: { id: room._id, code: room.code, players: room.players, game: room.game } });
+  } catch (err) {
+    console.error('[roomRoutes] join room error:', err.message);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
