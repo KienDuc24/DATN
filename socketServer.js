@@ -3,100 +3,81 @@ const http = require('http');
 const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
-const { Server } = require('socket.io');
-let ioInstance = null;
-
-let jwt;
-try {
-  jwt = require('jsonwebtoken');
-} catch (e) {
-  console.warn('[socketServer] jsonwebtoken not installed - socket auth disabled');
-  jwt = null;
-}
-
 const Room = require('./models/Room');
 const User = require('./models/User');
 
+let ioInstance = null;
+let jwt;
+try { jwt = require('jsonwebtoken'); } catch (e) { jwt = null; console.warn('[socketServer] jsonwebtoken missing - auth disabled'); }
+
 function socketServer(httpServer) {
-  if (ioInstance) return ioInstance; // idempotent init
-  const io = new Server(httpServer, {
-    path: '/socket.io',
-    cors: { origin: process.env.FRONTEND_URL || '*' },
-    transports: ['websocket', 'polling']
-  });
+    if (ioInstance) return ioInstance;
 
-  ioInstance = io;
+    const { Server } = require('socket.io');
+    const io = new Server(httpServer, {
+        path: '/socket.io',
+        cors: { origin: process.env.FRONTEND_URL || '*' },
+        transports: ['websocket', 'polling']
+    });
+    ioInstance = io;
 
-  io.on('connection', (socket) => {
-    console.log('[socket] connected', socket.id);
+    console.log('[socketServer] initialized');
 
-    socket.on('authenticate', (token) => {
-      if (!jwt) {
-        socket.emit('auth_error', 'Auth module missing');
-        return;
-      }
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        socket.userId = decoded.id;
-        socket.emit('authenticated');
-      } catch (err) {
-        socket.emit('auth_error', 'Invalid token');
-        socket.disconnect();
-      }
+    io.on('connection', (socket) => {
+        console.log('[socket] connection', socket.id, 'from', socket.handshake.address);
+        socket.on('authenticate', (token) => {
+            if (!jwt) { socket.emit('authenticated_no_jwt'); return; }
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                socket.userId = decoded.id;
+                socket.emit('authenticated');
+            } catch (err) {
+                socket.emit('auth_error', 'Invalid token');
+                socket.disconnect();
+            }
+        });
+
+        socket.on('join_room', async (roomId) => {
+            try {
+                if (!socket.userId) return socket.emit('error', 'Not authenticated');
+                const room = await Room.findById(roomId);
+                if (!room) return socket.emit('error', 'Room not found');
+                if (room.players.length >= room.maxPlayers) return socket.emit('error', 'Room full');
+
+                if (!room.players.some(p => p.toString() === socket.userId)) {
+                    room.players.push(socket.userId);
+                    await room.save();
+                }
+                socket.join(roomId);
+                const players = room.players.map(p => p.toString());
+                io.to(roomId).emit('player_joined', { userId: socket.userId, players });
+                socket.emit('joined_room', { roomId, players });
+            } catch (err) {
+                console.error('[socket] join_room error', err && err.stack || err);
+                socket.emit('error', 'Failed to join room');
+            }
+        });
+
+        socket.on('leave_room', async (roomId) => {
+            try {
+                socket.leave(roomId);
+                const room = await Room.findById(roomId);
+                if (!room) return;
+                room.players = room.players.filter(id => id.toString() !== socket.userId);
+                if (room.host && room.host.toString() === socket.userId) room.host = room.players[0] || null;
+                await room.save();
+                io.to(roomId).emit('player_left', { userId: socket.userId, players: room.players.map(p => p.toString()), newHost: room.host });
+            } catch (err) {
+                console.error('[socket] leave_room error', err && err.stack || err);
+            }
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.log('[socket] disconnect', socket.id, 'reason=', reason);
+        });
     });
 
-    socket.on('join_room', async (roomId) => {
-      if (!socket.userId) return socket.emit('error', 'Not authenticated');
-      try {
-        const room = await Room.findById(roomId);
-        if (!room) return socket.emit('error', 'Room not found');
-        if (room.players.length >= room.maxPlayers) return socket.emit('error', 'Room full');
-
-        if (!room.players.some(p => p.toString() === socket.userId)) {
-          room.players.push(socket.userId);
-          await room.save();
-        }
-        socket.join(roomId);
-        io.to(roomId).emit('player_joined', { userId: socket.userId, players: room.players });
-        socket.emit('joined_room', room);
-      } catch (err) {
-        console.error('[socket] join_room error', err);
-        socket.emit('error', 'Failed to join room');
-      }
-    });
-
-    socket.on('leave_room', async (roomId) => {
-      try {
-        socket.leave(roomId);
-        const room = await Room.findById(roomId);
-        if (!room) return;
-        room.players = room.players.filter(id => id.toString() !== socket.userId);
-        if (room.host && room.host.toString() === socket.userId) {
-          room.host = room.players[0] || null;
-        }
-        await room.save();
-        io.to(roomId).emit('player_left', { userId: socket.userId, players: room.players, newHost: room.host });
-      } catch (err) {
-        console.error('[socket] leave_room error', err);
-      }
-    });
-
-    socket.on('send_game_data', async (data) => {
-      try {
-        await Room.findByIdAndUpdate(data.roomId, { gameData: data.gameData });
-        socket.to(data.roomId).emit('game_data_updated', data);
-      } catch (err) {
-        socket.emit('error', 'Failed to save game data');
-      }
-    });
-
-    socket.on('disconnect', () => {
-      console.log('[socket] disconnected', socket.id);
-    });
-  });
-
-  console.log('[socketServer] initialized');
-  return io;
+    return io;
 }
 
 function getIO() { return ioInstance; }

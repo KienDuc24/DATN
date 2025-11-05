@@ -45,32 +45,33 @@ try {
 // try multer; if ESM-only fails, fallback to formidable
 let multer;
 try {
-  multer = require('multer'); // nếu package là ESM, require sẽ ném => fallback sẽ chạy
+  multer = require('multer');
+  if (multer && multer.default) multer = multer.default;
+  console.log('[authRoutes] multer loaded, memoryStorage=', typeof (multer && multer.memoryStorage));
 } catch (e) {
-  console.warn('[authRoutes] multer require failed, falling back to formidable. To use multer, install multer@1.x or use dynamic import.');
+  console.warn('[authRoutes] multer require failed, fallback to formidable. Error:', e && e.message);
   multer = null;
 }
 
-// if multer available, init storage/middleware
 let uploadMiddleware = null;
-if (multer) {
+if (multer && typeof multer.memoryStorage === 'function') {
   const storage = multer.memoryStorage();
   uploadMiddleware = multer({ storage });
+  console.log('[authRoutes] uploadMiddleware configured (multer)');
 } else {
-  // keep existing formidable fallback logic here
+  console.log('[authRoutes] using fallback upload handling (no multer)');
 }
 
-let uploadHandler = null;
-if (!useFormidable && multerInstance) {
-  const storage = multerInstance.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadsDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname || '');
-      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2,8)}${ext}`);
-    }
-  });
-  uploadHandler = multerInstance({ storage });
-}
+// Example: log incoming registration/login hits
+router.post('/login', async (req, res) => {
+  console.log('[authRoutes] POST /api/auth/login body keys:', Object.keys(req.body));
+  // ...existing login logic...
+});
+
+router.post('/register', async (req, res) => {
+  console.log('[authRoutes] POST /api/auth/register body keys:', Object.keys(req.body));
+  // ...existing register logic...
+});
 
 // simple health
 router.get('/_status', (req, res) => res.json({ ok: true, uploadsDir }));

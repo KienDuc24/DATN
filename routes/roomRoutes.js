@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Room = require('../models/Room');
 const auth = require('../middleware/auth');
+const { getIO } = require('../socketServer');
 
 // Create room (POST /api/room/)
 router.post('/', auth, async (req, res) => {
@@ -17,9 +18,14 @@ router.post('/', auth, async (req, res) => {
       players: [req.user._id]
     });
     await room.save();
+
+    // emit to any listening admin/debug clients
+    const io = getIO();
+    if (io) io.emit('room_created', room);
+
     return res.status(201).json(room);
   } catch (err) {
-    console.error('Create room error:', err);
+    console.error('[roomRoutes] create error', err && err.stack || err);
     return res.status(500).json({ error: 'Failed to create room' });
   }
 });
