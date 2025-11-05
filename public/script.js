@@ -1039,9 +1039,9 @@ function handleGameClick(gameId, gameName) {
     modal.style.display = 'none';
   };
 
-  modal.querySelector('#createRoomBtn').onclick = async function() {
-    const gameId = window.selectedGameId || '';
-    const gameName = window.selectedGameName || '';
+    modal.querySelector('#createRoomBtn').onclick = async function() {
+    const gameIdLocal = gameId || window.selectedGameId || '';
+    const gameNameLocal = gameName || window.selectedGameName || '';
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const username = user.username || user.displayName || 'Guest';
 
@@ -1049,12 +1049,12 @@ function handleGameClick(gameId, gameName) {
       const res = await fetch(`${BASE_API_URL}/api/room`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player: username, game: gameId })
+        body: JSON.stringify({ player: username, game: gameIdLocal })
       });
 
       const text = await res.text().catch(()=>null);
       let data;
-      try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { raw: text }; }
+      try { data = text ? JSON.parse(text) : {}; } catch(e) { data = { raw: text }; }
 
       if (!res.ok) {
         console.error('[client] create room failed', res.status, data);
@@ -1062,17 +1062,67 @@ function handleGameClick(gameId, gameName) {
         return;
       }
 
-      const roomCode = data.roomCode || data.code || (data.room && data.room.code);
+      const roomCode = data.roomCode || data.code || (data.room && (data.room.id || data.room._id));
       if (!roomCode) {
         console.error('[client] create room no code', data);
-        alert('Server không trả về mã phòng. Kiểm tra log backend.');
+        alert('Server không trả về mã phòng.');
         return;
       }
 
-      window.location.href = `/room.html?code=${encodeURIComponent(roomCode)}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
+      // redirect to room.html with params
+      const qs = new URLSearchParams({
+        code: roomCode,
+        gameId: gameIdLocal,
+        game: gameNameLocal,
+        user: username
+      }).toString();
+
+      window.location.href = `/room.html?${qs}`;
     } catch (err) {
       console.error('[client] create room error', err);
       alert('Lỗi khi tạo phòng: ' + (err && err.message));
+    }
+  };
+
+  // join button handler (check code)
+  modal.querySelector('#confirmJoinRoomBtn').onclick = async function() {
+    const code = modal.querySelector('#inputJoinRoomCode').value.trim().toUpperCase();
+    if (!/^[A-Za-z0-9\-]+$/.test(code)) {
+      alert('Mã phòng không hợp lệ.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${BASE_API_URL}/api/room?code=${encodeURIComponent(code)}`);
+      if (res.status === 404) {
+        alert('Không tìm thấy phòng.');
+        return;
+      }
+      if (!res.ok) {
+        console.error('[client] check room failed', res.status);
+        alert('Lỗi khi kiểm tra phòng.');
+        return;
+      }
+      const data = await res.json();
+      if (!data.found) {
+        alert('Room not found');
+        return;
+      }
+
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const username = user.username || user.displayName || 'Guest';
+
+      const qs = new URLSearchParams({
+        code,
+        gameId: window.selectedGameId || '',
+        game: window.selectedGameName || '',
+        user: username
+      }).toString();
+
+      window.location.href = `/room.html?${qs}`;
+    } catch (err) {
+      console.error('[client] join room error', err);
+      alert('Lỗi khi tham gia phòng.');
     }
   };
 
@@ -1083,26 +1133,6 @@ function handleGameClick(gameId, gameName) {
 
   modal.querySelector('#goToRoomBtn').onclick = function() {
     const code = window.generatedRoomCode;
-    const gameId = window.selectedGameId || '';
-    const gameName = window.selectedGameName || '';
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const username = user.username || user.displayName || 'Guest';
-    window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
-  };
-
-  modal.querySelector('#confirmJoinRoomBtn').onclick = async function() {
-    const code = modal.querySelector('#inputJoinRoomCode').value.trim().toUpperCase();
-    if (!/^[A-Z]\d{3}$/.test(code)) {
-      alert(LANGS[currentLang]?.room_invalid_code || 'Invalid room code! (e.g. A123)');
-      return;
-    }
-    // Kiểm tra mã phòng tồn tại qua API
-    const res = await fetch(`${BASE_API_URL}/api/room?code=${encodeURIComponent(code)}`);
-    const data = await res.json();
-    if (!data.found) {
-      alert(LANGS[currentLang]?.room_not_found || 'Room code not found!');
-      return;
-    }
     const gameId = window.selectedGameId || '';
     const gameName = window.selectedGameName || '';
     const user = JSON.parse(localStorage.getItem('user') || '{}');

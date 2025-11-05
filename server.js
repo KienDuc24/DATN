@@ -32,7 +32,13 @@ try { app.use('/api/auth', require('./routes/authRoutes')); console.log('[server
 try { app.use('/api/room', require('./routes/roomRoutes')); console.log('[server] roomRoutes mounted at /api/room'); } catch (e) { console.error('[server] roomRoutes not mounted', e && e.message || e); }
 try { app.use('/api/debug', require('./routes/debugRoutes')); console.log('[server] debugRoutes mounted at /api/debug'); } catch (e) { console.error('[server] debugRoutes not mounted', e && e.message || e); }
 
-// error handler
-app.use((err, req, res, next) => { console.error('[server][ERR-MW]', err && err.stack || err); res.status(500).json({ error: 'Internal Server Error' }); });
+// global error handler - đặt sau routes
+app.use((err, req, res, next) => {
+  console.error('[server][ERROR]', err && (err.stack || err.message));
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
+    ...(process.env.NODE_ENV !== 'production' ? { stack: err.stack } : {})
+  });
+});
 
 module.exports = app;
