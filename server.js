@@ -32,9 +32,6 @@ if (!MONGODB_URI) {
   console.error('[server][FATAL] MONGODB_URI not set. Set env var before starting.');
 } else {
   console.log('[server] connecting to MongoDB...');
-  mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true, maxPoolSize: 10 })
-    .then(() => console.log('✅ MongoDB connected'))
-    .catch(err => console.error('[server] MongoDB connection error:', err && err.stack || err));
 }
 
 // mount routes with try/catch and logs
