@@ -195,9 +195,9 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
     const socket = io(BASE_API, { path: '/socket.io', transports: ['websocket'], withCredentials: true });
     socket.emit('joinRoom', { code, gameId, user });
 
-    socket.on('updatePlayers', players => {
+    socket.on('update-players', ({ list, host }) => {
       if (el('roomPlayers')) {
-        el('roomPlayers').innerHTML = players.map(p => `<div>${p.name}</div>`).join('');
+        el('roomPlayers').innerHTML = list.map(p => `<div>${p.name} ${p.name === host ? '(👑 Chủ phòng)' : ''}</div>`).join('');
       }
     });
   } catch (err) {

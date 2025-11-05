@@ -93,4 +93,42 @@ router.post('/join', async (req, res) => {
   }
 });
 
+/**
+ * Check room by code and gameId
+ * Query: ?code=...&gameId=...
+ */
+router.get('/', async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ error: 'Database not ready' });
+  }
+
+  try {
+    const { code, gameId } = req.query;
+    if (!code || !gameId) {
+      return res.status(400).json({ error: 'code and gameId are required' });
+    }
+
+    const room = await Room.findOne({ code, 'game.gameId': gameId }).populate('host', 'username displayName').exec();
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found or game mismatch' });
+    }
+
+    return res.json({
+      found: true,
+      room: {
+        id: room._id,
+        code: room.code,
+        host: room.host,
+        players: room.players,
+        game: room.game,
+        status: room.status,
+        createdAt: room.createdAt
+      }
+    });
+  } catch (err) {
+    console.error('[roomRoutes] get room error', err && (err.stack || err.message));
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 module.exports = router;

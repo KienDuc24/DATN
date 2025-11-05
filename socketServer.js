@@ -1,27 +1,61 @@
-require('dotenv').config();
-const path = require('path');
 const { Server } = require('socket.io');
+const Room = require('./models/Room');
 
 module.exports = function attachSocket(server) {
-  const FRONTEND = process.env.FRONTEND_URL || '*';
-
   const io = new Server(server, {
     path: '/socket.io',
-    transports: ['polling', 'websocket'], // allow XHR polling fallback
+    transports: ['polling', 'websocket'],
     cors: {
-      origin: FRONTEND,
+      origin: process.env.FRONTEND_URL || '*',
       methods: ['GET', 'POST'],
       credentials: true
-    },
-    pingTimeout: 30000,
-    pingInterval: 25000
+    }
   });
 
-  io.on('connection', socket => {
-    console.log('[socketServer] client connected', socket.id, 'origin=', socket.handshake?.headers?.origin);
-    socket.on('disconnect', reason => console.log('[socketServer] client disconnected', socket.id, reason));
-    socket.on('connect_error', err => console.warn('[socketServer] connect_error', err && err.message));
-    // keep existing socket handlers (namespaces/files) as before
+  io.on('connection', (socket) => {
+    console.log('[socketServer] client connected', socket.id);
+
+    socket.on('joinRoom', async ({ code, gameId, user }) => {
+      try {
+        const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
+        if (!room) {
+          socket.emit('room-error', { message: 'Room not found or game mismatch' });
+          return;
+        }
+
+        const name = user || `guest_${Math.random().toString(36).slice(2, 8)}`;
+        const exists = room.players.some(p => p.name === name);
+        if (!exists) {
+          room.players.push({ name });
+          await room.save();
+        }
+
+        socket.join(code);
+        io.to(code).emit('update-players', { list: room.players, host: room.host?.username || room.host });
+      } catch (err) {
+        console.error('[socketServer] joinRoom error', err);
+        socket.emit('room-error', { message: 'Internal server error' });
+      }
+    });
+
+    socket.on('leaveRoom', async ({ code, player }) => {
+      try {
+        const room = await Room.findOne({ code }).exec();
+        if (!room) return;
+
+        room.players = room.players.filter(p => p.name !== player);
+        await room.save();
+
+        socket.leave(code);
+        io.to(code).emit('update-players', { list: room.players, host: room.host?.username || room.host });
+      } catch (err) {
+        console.error('[socketServer] leaveRoom error', err);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('[socketServer] client disconnected', socket.id);
+    });
   });
 
   return io;
