@@ -4,6 +4,8 @@ const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
 const { Server } = require('socket.io');
+let ioInstance = null;
+
 let jwt;
 try {
   jwt = require('jsonwebtoken');
@@ -11,19 +13,26 @@ try {
   console.warn('[socketServer] jsonwebtoken not installed - socket auth disabled');
   jwt = null;
 }
-const Room = require('./models/Room');
 
-let ioInstance = null;
+const Room = require('./models/Room');
+const User = require('./models/User');
+
 function socketServer(server) {
-  const io = require('socket.io')(server, { path: '/socket.io', cors: { origin: process.env.FRONTEND_URL || '*' } });
+  const { Server } = require('socket.io');
+  const io = new Server(server, {
+    path: '/socket.io',
+    cors: { origin: process.env.FRONTEND_URL || '*' },
+    transports: ['websocket', 'polling']
+  });
+
   ioInstance = io;
 
   io.on('connection', (socket) => {
-    console.log('socket connected', socket.id);
+    console.log('[socket] connected', socket.id);
 
     socket.on('authenticate', (token) => {
       if (!jwt) {
-        socket.emit('auth_error', 'Auth module not available');
+        socket.emit('auth_error', 'Auth module missing');
         return;
       }
       try {
@@ -48,17 +57,45 @@ function socketServer(server) {
           await room.save();
         }
         socket.join(roomId);
-        io.to(roomId).emit('player_joined', { userId: socket.userId });
+        io.to(roomId).emit('player_joined', { userId: socket.userId, players: room.players });
+        socket.emit('joined_room', room);
       } catch (err) {
-        console.error(err);
-        socket.emit('error', 'Join failed');
+        console.error('[socket] join_room error', err);
+        socket.emit('error', 'Failed to join room');
+      }
+    });
+
+    socket.on('leave_room', async (roomId) => {
+      try {
+        socket.leave(roomId);
+        const room = await Room.findById(roomId);
+        if (!room) return;
+        room.players = room.players.filter(id => id.toString() !== socket.userId);
+        if (room.host && room.host.toString() === socket.userId) {
+          room.host = room.players[0] || null;
+        }
+        await room.save();
+        io.to(roomId).emit('player_left', { userId: socket.userId, players: room.players, newHost: room.host });
+      } catch (err) {
+        console.error('[socket] leave_room error', err);
+      }
+    });
+
+    socket.on('send_game_data', async (data) => {
+      try {
+        await Room.findByIdAndUpdate(data.roomId, { gameData: data.gameData });
+        socket.to(data.roomId).emit('game_data_updated', data);
+      } catch (err) {
+        socket.emit('error', 'Failed to save game data');
       }
     });
 
     socket.on('disconnect', () => {
-      console.log('socket disconnect', socket.id);
+      console.log('[socket] disconnected', socket.id);
     });
   });
+
+  return io;
 }
 
 function getIO() { return ioInstance; }

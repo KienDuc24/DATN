@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bcrypt": "^5.1.0",
     "bcryptjs": "^2.4.3",
     "chokidar": "^4.0.3",
     "cloudinary": "^2.8.0",
@@ -23,6 +24,7 @@
     "express-session": "^1.18.2",
     "formidable": "^3.5.4",
     "get": "^1.4.0",
+    "jsonwebtoken": "^9.0.0",
     "mongoose": "^7.8.7",
     "multer": "^3.0.0-alpha.1",
     "passport": "^0.7.0",

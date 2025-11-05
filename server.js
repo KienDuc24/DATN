@@ -25,15 +25,20 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Kết nối MongoDB với pool tối ưu (thay đổi: thêm options để tránh lỗi kết nối)
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  maxPoolSize: 10, // Giới hạn pool để tránh quá tải
-}).then(() => console.log('MongoDB connected'))
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1); // Thoát nếu kết nối thất bại
-  });
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+  console.error('[server] MONGO_URI not set. Set env var MONGO_URI before starting.');
+} else {
+  mongoose.connect(MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    maxPoolSize: 10 // Giới hạn pool để tránh quá tải
+  }).then(() => console.log('MongoDB connected'))
+    .catch(err => {
+      console.error('MongoDB connection error:', err);
+      // don't call process.exit in some PaaS - let platform restart, but log enough
+    });
+}
 
 // mount auth routes (both API and oauth paths)
 try {
