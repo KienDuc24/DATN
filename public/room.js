@@ -77,17 +77,21 @@ let currentHost = null;
 
 socket.on("update-players", ({ list = [], host }) => {
   currentHost = host;
-  console.log("👥 Danh sách người chơi hiện tại:", list); // <--- Thêm dòng này
+  console.log("👥 Danh sách người chơi hiện tại:", list);
+
   const listEl = document.getElementById("playerList");
   if (listEl) {
     if (list.length === 0) {
       listEl.innerHTML = `<li>Chưa có người chơi nào.</li>`;
     } else {
-      listEl.innerHTML = list.map(name =>
+      // Đảm bảo host luôn đứng đầu danh sách
+      const sortedList = list.sort((a, b) => (a === host ? -1 : b === host ? 1 : 0));
+      listEl.innerHTML = sortedList.map(name =>
         `<li>${name} ${name === host ? "(👑 Chủ phòng)" : ""}</li>`
       ).join("");
     }
   }
+
   const startBtn = document.querySelector(".start-btn");
   if (startBtn) startBtn.style.display = playerName === host ? "inline-block" : "none";
 });
@@ -189,15 +193,15 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
     if (el('roomCode')) el('roomCode').innerText = room.room.code || '(unknown)';
     if (el('roomGame')) el('roomGame').innerText = room.room.game?.type || '(unknown)';
     if (el('roomPlayers')) {
-      el('roomPlayers').innerHTML = room.room.players.map(p => `<div>${p.name}</div>`).join('');
+      el('roomPlayers').innerHTML = room.room.players.map(p => `<div>${p}</div>`).join('');
     }
 
     const socket = io(BASE_API, { path: '/socket.io', transports: ['websocket'], withCredentials: true });
     socket.emit('joinRoom', { code, gameId, user });
 
-    socket.on('update-players', ({ list, host }) => {
+    socket.on('update-players', ({ list }) => {
       if (el('roomPlayers')) {
-        el('roomPlayers').innerHTML = list.map(p => `<div>${p.name} ${p.name === host ? '(👑 Chủ phòng)' : ''}</div>`).join('');
+        el('roomPlayers').innerHTML = list.map(p => `<div>${p}</div>`).join('');
       }
     });
   } catch (err) {

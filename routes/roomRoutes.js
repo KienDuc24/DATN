@@ -1,7 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Room = require('../models/Room');
-const User = require('../models/User');
 
 const router = express.Router();
 
@@ -18,19 +17,9 @@ router.post('/', async (req, res) => {
     const { player, game, gameType, role } = req.body || {};
     if (!player || !game) return res.status(400).json({ error: 'player and game are required' });
 
-    let hostUser = await User.findOne({ username: player }).exec();
-    if (!hostUser) {
-      try {
-        hostUser = await User.create({ username: player, displayName: player, role: role || 'player' });
-      } catch (e) {
-        hostUser = await User.findOne({ username: player }).exec();
-        if (!hostUser) hostUser = { _id: mongoose.Types.ObjectId(), username: player, displayName: player, role: role || 'player' };
-      }
-    }
-
     const room = new Room({
-      host: hostUser._id || hostUser,
-      players: [{ name: hostUser.displayName || hostUser.username || player }],
+      host: player,
+      players: [player],
       game: { gameId: String(game), type: gameType ? String(gameType) : String(game) }
     });
 
@@ -62,20 +51,8 @@ router.post('/join', async (req, res) => {
     const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
     if (!room) return res.status(404).json({ error: 'Room not found or game mismatch' });
 
-    let user = await User.findOne({ username: player }).exec();
-    if (!user) {
-      try {
-        user = await User.create({ username: player, displayName: player });
-      } catch (e) {
-        user = await User.findOne({ username: player }).exec();
-        if (!user) user = { _id: mongoose.Types.ObjectId(), username: player, displayName: player };
-      }
-    }
-
-    const name = user.displayName || user.username || player;
-    const exists = (room.players || []).some(p => p.name === name);
-    if (!exists) {
-      room.players.push({ name });
+    if (!room.players.includes(player)) {
+      room.players.push(player);
       await room.save();
     }
 
@@ -87,7 +64,7 @@ router.post('/join', async (req, res) => {
 });
 
 /**
- * Check room by code and gameId
+ * Get room info
  * Query: ?code=...&gameId=...
  */
 router.get('/', async (req, res) => {
@@ -101,7 +78,7 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'code and gameId are required' });
     }
 
-    const room = await Room.findOne({ code, 'game.gameId': gameId }).populate('host', 'username displayName').exec();
+    const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
     if (!room) {
       return res.status(404).json({ error: 'Room not found or game mismatch' });
     }
@@ -111,11 +88,9 @@ router.get('/', async (req, res) => {
       room: {
         id: room._id,
         code: room.code,
-        host: room.host,
         players: room.players,
         game: room.game,
-        status: room.status,
-        createdAt: room.createdAt
+        status: room.status
       }
     });
   } catch (err) {
