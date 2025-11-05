@@ -49,7 +49,7 @@ try {
   if (multer && multer.default) multer = multer.default;
   console.log('[authRoutes] multer loaded, memoryStorage=', typeof (multer && multer.memoryStorage));
 } catch (e) {
-  console.warn('[authRoutes] multer require failed, fallback to formidable. Error:', e && e.message);
+  console.warn('[authRoutes] multer require failed, fallback will be used. Error:', e && e.message);
   multer = null;
 }
 
@@ -59,7 +59,7 @@ if (multer && typeof multer.memoryStorage === 'function') {
   uploadMiddleware = multer({ storage });
   console.log('[authRoutes] uploadMiddleware configured (multer)');
 } else {
-  console.log('[authRoutes] using fallback upload handling (no multer)');
+  console.log('[authRoutes] uploadMiddleware not available, routes must use fallback uploader');
 }
 
 // Example: log incoming registration/login hits

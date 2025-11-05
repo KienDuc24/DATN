@@ -27,12 +27,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 console.log('[server] NODE_ENV=', process.env.NODE_ENV);
 console.log('[server] FRONTEND_URL=', process.env.FRONTEND_URL);
 
-const MONGO_URI = process.env.MONGO_URI;
-if (!MONGO_URI) {
-  console.error('[server][FATAL] MONGO_URI not set. Set env var before starting.');
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error('[server][FATAL] MONGODB_URI not set. Set env var before starting.');
 } else {
   console.log('[server] connecting to MongoDB...');
-  mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true, maxPoolSize: 10 })
+  mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true, maxPoolSize: 10 })
     .then(() => console.log('[server] MongoDB connected'))
     .catch(err => console.error('[server] MongoDB connection error:', err && err.stack || err));
 }
