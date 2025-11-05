@@ -5,10 +5,6 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-function isObjectId(val) {
-  return mongoose.Types.ObjectId.isValid(val);
-}
-
 /**
  * Create room
  * Body: { player, game, gameType, role? }
@@ -22,7 +18,6 @@ router.post('/', async (req, res) => {
     const { player, game, gameType, role } = req.body || {};
     if (!player || !game) return res.status(400).json({ error: 'player and game are required' });
 
-    // find/create user
     let hostUser = await User.findOne({ username: player }).exec();
     if (!hostUser) {
       try {
@@ -67,7 +62,6 @@ router.post('/join', async (req, res) => {
     const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
     if (!room) return res.status(404).json({ error: 'Room not found or game mismatch' });
 
-    // find/create user
     let user = await User.findOne({ username: player }).exec();
     if (!user) {
       try {
@@ -78,7 +72,6 @@ router.post('/join', async (req, res) => {
       }
     }
 
-    // add player to room if not exists
     const name = user.displayName || user.username || player;
     const exists = (room.players || []).some(p => p.name === name);
     if (!exists) {

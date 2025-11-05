@@ -38,21 +38,6 @@ module.exports = function attachSocket(server) {
       }
     });
 
-    socket.on('leaveRoom', async ({ code, player }) => {
-      try {
-        const room = await Room.findOne({ code }).exec();
-        if (!room) return;
-
-        room.players = room.players.filter(p => p.name !== player);
-        await room.save();
-
-        socket.leave(code);
-        io.to(code).emit('update-players', { list: room.players, host: room.host?.username || room.host });
-      } catch (err) {
-        console.error('[socketServer] leaveRoom error', err);
-      }
-    });
-
     socket.on('disconnect', () => {
       console.log('[socketServer] client disconnected', socket.id);
     });
