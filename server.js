@@ -9,7 +9,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+const FRONTEND = process.env.FRONTEND_URL || '*';
+
+// enable CORS for Express routes + socket.io polling XHR
+app.use(cors({ origin: FRONTEND, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

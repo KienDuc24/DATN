@@ -1141,10 +1141,10 @@ function handleGameClick(gameId, gameName) {
   };
 }
 
-const SOCKET_URL = window.SOCKET_URL || window.API_BASE || ''; // e.g. https://datn-socket.up.railway.app
+const SOCKET_URL = window.SOCKET_URL || window.API_BASE || window.location.origin;
 const socket = (typeof io === 'function') ? io(SOCKET_URL, {
   path: '/socket.io',
-  transports: ['polling','websocket'],
+  transports: ['polling', 'websocket'],
   withCredentials: true,
   reconnection: true,
   reconnectionAttempts: Infinity,
