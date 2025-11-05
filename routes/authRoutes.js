@@ -4,9 +4,9 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const util = require('util');
-
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 
 console.log('[authRoutes] loaded');
 
@@ -86,19 +86,15 @@ router.get('/user', async (req, res) => {
 // Register
 router.post('/auth/register', async (req, res) => {
   try {
-    const { username, password } = req.body || {};
-    if (!username || !password) return res.status(400).json({ ok: false, message: 'username and password required' });
-    const exists = await User.findOne({ username });
-    if (exists) return res.status(400).json({ ok: false, message: 'username exists' });
-    const hash = await bcrypt.hash(password, 10);
-    const u = new User({ username, password: hash, displayName: username });
-    await u.save();
-    const user = u.toObject();
-    delete user.password;
-    res.json({ ok: true, user });
+    const { username, email, password } = req.body;
+    if (!username || !email || !password) return res.status(400).json({ error: 'All fields required' });
+    
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ username, email, password: hashedPassword });
+    await user.save();
+    res.status(201).json({ message: 'User registered' });
   } catch (err) {
-    console.error('[authRoutes] register error', err && err.message);
-    res.status(500).json({ ok: false, message: 'error' });
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 
@@ -110,19 +106,15 @@ router.post('/auth/login', async (req, res) => {
   }
   dbg(req);
   try {
-    const { username, password } = req.body || {};
-    if (!username || !password) return res.status(400).json({ ok: false, message: 'username and password required' });
-    const u = await User.findOne({ username });
-    if (!u) return res.status(400).json({ ok: false, message: 'invalid credentials' });
-    const ok = await bcrypt.compare(password, u.password || '');
-    if (!ok) return res.status(400).json({ ok: false, message: 'invalid credentials' });
-    const user = u.toObject();
-    delete user.password;
-    // TODO: sign JWT if you use tokens
-    return res.json({ ok: true, token: '', user });
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.json({ token });
   } catch (err) {
-    console.error('[authRoutes] login error', err && (err.stack || err));
-    return res.status(500).json({ ok: false, message: 'server error', error: err.message });
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 
@@ -312,14 +304,11 @@ if (uploadHandler) {
 }
 
 // GET /auth/google (OAuth start) & callback
-router.get('/google', (req, res, next) => {
-  console.log('[authRoutes] GET /google');
-  // start oauth (passport)...
-  next();
-});
-router.get('/google/callback', (req, res, next) => {
-  console.log('[authRoutes] GET /google/callback');
-  next();
+const passport = require('passport'); // Cần cài đặt passport
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/' }), (req, res) => {
+  const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET);
+  res.redirect(`/room?token=${token}`); // Chuyển hướng với token
 });
 
 module.exports = router;

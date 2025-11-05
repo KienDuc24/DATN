@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
-const User = require('../models/User');
 const Room = require('../models/Room');
+const User = require('../models/User');
 
 // Trả về user nhưng không kèm password/hash
 function sanitizeUser(user) {
@@ -76,5 +76,35 @@ exports.uploadAvatar = async (req, res) => {
   } catch (err) {
     console.error('uploadAvatar error', err);
     return res.status(500).json({ ok: false, message: 'Upload failed' });
+  }
+};
+
+// Tạo phòng (thay đổi: thêm validation)
+exports.createRoom = async (req, res) => {
+  try {
+    const { name, gameType, maxPlayers } = req.body;
+    if (!name || !gameType) return res.status(400).json({ error: 'Name and gameType required' });
+    
+    const room = new Room({ name, gameType, maxPlayers, players: [req.user.id] });
+    await room.save();
+    res.status(201).json(room);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create room' });
+  }
+};
+
+// Tham gia phòng (thay đổi: kiểm tra số lượng người chơi)
+exports.joinRoom = async (req, res) => {
+  try {
+    const room = await Room.findById(req.params.id);
+    if (!room || room.players.length >= room.maxPlayers) return res.status(400).json({ error: 'Room full or not found' });
+    
+    if (!room.players.includes(req.user.id)) {
+      room.players.push(req.user.id);
+      await room.save();
+    }
+    res.json(room);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to join room' });
   }
 };

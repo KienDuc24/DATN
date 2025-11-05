@@ -1,18 +1,34 @@
 require('dotenv').config();
 
 const express = require('express');
+const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const cors = require('cors'); // Thêm để hỗ trợ CORS cho socket
+const socketServer = require('./socketServer');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// body parsers + cookies
+// Middleware
+app.use(cors()); // Cho phép cross-origin cho socket
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // serve static public
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Kết nối MongoDB với pool tối ưu (thay đổi: thêm options để tránh lỗi kết nối)
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  maxPoolSize: 10, // Giới hạn pool để tránh quá tải
+}).then(() => console.log('MongoDB connected'))
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1); // Thoát nếu kết nối thất bại
+  });
 
 // mount auth routes (both API and oauth paths)
 try {
@@ -37,6 +53,11 @@ try {
   app.use('/api/room', roomRoutes);
 } catch (e) { /* ignore */ }
 
+try {
+  const gameRoutes = require('./routes/gameRoutes');
+  app.use('/api/games', gameRoutes);
+} catch (e) { /* ignore */ }
+
 // mount debug routes
 try {
   const debugRoutes = require('./routes/debugRoutes');
@@ -54,46 +75,9 @@ app.use((err, req, res, next) => {
   if (!res.headersSent) res.status(500).json({ ok: false, message: 'Internal server error' });
 });
 
-// Mongoose connect + start server only after connect (with retries)
-const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO || process.env.MONGODB;
-const PORT = process.env.PORT || 3000;
-
-if (!MONGO_URI) {
-  console.error('[server] MONGODB_URI not set. Starting server in read-only mode.');
-  app.listen(PORT, () => {
-    console.warn('[server] started WITHOUT MongoDB (read-only). PORT=', PORT);
-  });
-} else {
-  const connectOptions = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000
-  };
-
-  let attempts = 0;
-  const maxAttempts = 6;
-
-  (async function connectWithRetry() {
-    attempts++;
-    console.log(`[server] connecting to MongoDB (attempt ${attempts}/${maxAttempts})...`);
-    try {
-      await mongoose.connect(MONGO_URI, connectOptions);
-      console.log('✅ MongoDB connected');
-      app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
-    } catch (err) {
-      console.error('[server] MongoDB connection error', err && err.message);
-      if (attempts < maxAttempts) {
-        const delay = Math.min(2000 * attempts, 20000);
-        console.log(`[server] retrying connection in ${delay}ms...`);
-        setTimeout(connectWithRetry, delay);
-      } else {
-        console.error('[server] failed to connect to MongoDB after multiple attempts. Exiting.');
-        process.exit(1);
-      }
-    }
-  })();
-}
+// Khởi tạo socket server (thay đổi: truyền app để tích hợp)
+const server = require('http').createServer(app);
+socketServer(server); // Gọi socketServer với server HTTP
 
 // handle uncaught errors
 process.on('unhandledRejection', (reason) => {
@@ -124,5 +108,7 @@ setTimeout(()=> {
     console.log('[server] registered routes:\n' + routes.join('\n'));
   } catch(e){ console.warn('list routes failed', e); }
 }, 500);
+
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 module.exports = app;
