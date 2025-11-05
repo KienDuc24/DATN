@@ -1,23 +1,21 @@
 const API_BASE = window.__API_BASE__ || ''; // nếu bỏ trống -> relative
 
-async function createRoom(payload, token){
-  const url = (API_BASE || '') + '/api/room';
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    },
-    body: JSON.stringify(payload)
-  });
-  const text = await res.text();
+async function createRoom(payload) {
+  const url = `${window.__API_BASE__ || ''}/api/room`;
   try {
-    const data = JSON.parse(text);
-    if (!res.ok) throw new Error(data.error || 'Create room failed');
-    return data;
-  } catch(e) {
-    console.error('Create room response is not JSON:', text);
-    throw e;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to create room');
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('Create room error:', err.message);
+    alert('Không thể tạo phòng. Vui lòng thử lại!');
   }
 }
 
@@ -167,7 +165,7 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
   }
 });
 
-(async function initRoomPage() {
+async function initRoomPage() {
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
   const gameId = params.get('gameId');
@@ -208,4 +206,4 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
     console.error('initRoomPage error', err);
     el('roomError') && (el('roomError').innerText = 'Error loading room');
   }
-})();
+};

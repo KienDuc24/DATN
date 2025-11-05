@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Room = require('../models/Room');
+const User = require('../models/User');
 
 const router = express.Router();
 
@@ -15,22 +16,41 @@ router.post('/', async (req, res) => {
 
   try {
     const { player, game, gameType, role } = req.body || {};
-    if (!player || !game) return res.status(400).json({ error: 'player and game are required' });
+    if (!player || !game) {
+      return res.status(400).json({ error: 'player and game are required' });
+    }
 
+    // Find or create host user
+    let hostUser = await User.findOne({ username: player }).exec();
+    if (!hostUser) {
+      try {
+        hostUser = await User.create({ username: player, displayName: player, role: role || 'player' });
+      } catch (err) {
+        console.error('[roomRoutes] Failed to create user:', err.message);
+        return res.status(500).json({ error: 'Failed to create user' });
+      }
+    }
+
+    // Create room
     const room = new Room({
-      host: player,
-      players: [player],
+      host: hostUser._id || hostUser,
+      players: [{ name: hostUser.displayName || hostUser.username || player }],
       game: { gameId: String(game), type: gameType ? String(gameType) : String(game) }
     });
 
-    await room.save();
+    try {
+      await room.save();
+    } catch (err) {
+      console.error('[roomRoutes] Failed to create room:', err.message);
+      return res.status(500).json({ error: 'Failed to create room' });
+    }
 
     return res.status(201).json({
       roomCode: room.code,
       room: { id: room._id, code: room.code, game: room.game, players: room.players, status: room.status }
     });
   } catch (err) {
-    console.error('[roomRoutes] create room error', err && (err.stack || err.message));
+    console.error('[roomRoutes] Unexpected error:', err.message);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
