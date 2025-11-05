@@ -8,7 +8,7 @@ let server; // declare so handlers can reference
 
 // Graceful shutdown helper
 function gracefulShutdown(signal) {
-  console.log(`[index] Received ${signal}, starting graceful shutdown...`);
+  console.log(`[index] gracefulShutdown called by ${signal}`);
   if (!server) {
     console.log('[index] no server instance, exiting now');
     return process.exit(0);
@@ -26,21 +26,23 @@ function gracefulShutdown(signal) {
 
   // Force exit after timeout (Railway may enforce a hard timeout)
   setTimeout(() => {
-    console.error('[index] graceful shutdown timed out, forcing exit');
+    console.error('[index] force exit');
     process.exit(1);
   }, 10_000).unref(); // 10s, adjust if needed
 }
 
-// register handlers early
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+// register signal handlers as early as possible
+process.on('SIGTERM', () => {
+  console.log('[index] Received SIGTERM, starting graceful shutdown (early handler)');
+});
+process.on('SIGINT', () => {
+  console.log('[index] Received SIGINT');
+});
 process.on('uncaughtException', (err) => {
   console.error('[index][FATAL] uncaughtException', err && err.stack || err);
-  gracefulShutdown('uncaughtException');
 });
 process.on('unhandledRejection', (reason) => {
   console.error('[index][FATAL] unhandledRejection', reason && reason.stack || reason);
-  // optionally call gracefulShutdown or let process continue
 });
 
 // create server and attach socket
