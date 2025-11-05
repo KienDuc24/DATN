@@ -17,8 +17,17 @@ try {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`[index] Server + Socket running on port ${PORT}`));
 
-process.on('uncaughtException', (err) => console.error('[index][FATAL] uncaughtException', err && err.stack || err));
-process.on('unhandledRejection', (reason) => console.error('[index][FATAL] unhandledRejection', reason && reason.stack || reason));
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('[index][FATAL] uncaughtException', err && err.stack || err);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason) => {
+  console.error('[index][FATAL] unhandledRejection', reason && reason.stack || reason);
+});
+
+// Handle SIGTERM for graceful shutdown
 process.on('SIGTERM', () => {
   console.log('[index] Received SIGTERM, shutting down gracefully...');
   server.close(() => {
