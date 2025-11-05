@@ -7,6 +7,11 @@ const router = express.Router();
 
 // Create room
 router.post('/', async (req, res) => {
+  if (mongoose.connection.readyState !== 1) { // 1 == connected
+    console.warn('[roomRoutes] DB not connected, readyState=', mongoose.connection.readyState);
+    return res.status(503).json({ error: 'Database not ready, try again shortly' });
+  }
+
   console.log('[roomRoutes] POST /api/room body=', JSON.stringify(req.body));
   try {
     const { player, game, gameType } = req.body || {};

@@ -2,6 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const mongoose = require('mongoose');
 
 const DIAG = '/tmp/diag-index.log';
 function logd(...args) {
@@ -30,7 +31,10 @@ process.on('unhandledRejection', (reason) => {
 
 logd('env preview', { PORT: process.env.PORT ? 'set' : 'unset', FRONTEND_URL: !!process.env.FRONTEND_URL, MONGODB_URI: !!process.env.MONGODB_URI });
 
-const app = require('./server');
+const app = require('./server'); // server.js phải export express app
+const socketServer = require('./socketServer'); // nếu file của bạn xuất hàm attach/socket init
+const PORT = process.env.PORT || 8080;
+
 let server;
 
 function writeRuntimeDiag() {
@@ -70,26 +74,47 @@ function gracefulShutdown(signal) {
   }, 10000).unref();
 }
 
-// create server and attach socket
-const PORT = process.env.PORT || 3000;
-server = http.createServer(app);
+async function start() {
+  try {
+    if (!process.env.MONGODB_URI) {
+      throw new Error('MONGODB_URI is not set in environment');
+    }
 
-try {
-  const { socketServer } = require('./socketServer');
-  socketServer(server);
-  logd('socketServer attached');
-} catch (e) {
-  logd('failed to attach socketServer', e && e.stack || e);
+    // Disable mongoose buffering so operations fail fast if DB not connected
+    mongoose.set('bufferCommands', false);
+    // connect and wait
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 10000
+    });
+    console.log('[index] connected to MongoDB');
+
+    server = http.createServer(app);
+
+    // if your socketServer exports a function to attach:
+    if (typeof socketServer === 'function') {
+      socketServer(server);
+    } else if (socketServer && typeof socketServer.attach === 'function') {
+      socketServer.attach(server);
+    }
+
+    server.listen(PORT, () => {
+      console.log(`[index] Server + Socket running on port ${PORT}`);
+      try {
+        const addr = server.address() || {};
+        logd('server.address', addr);
+        fs.writeFileSync(DIAG, `listening ${JSON.stringify(addr)}\n`, { flag: 'a' });
+      } catch (e) {}
+    });
+  } catch (err) {
+    console.error('[index] startup error', err && (err.stack || err.message));
+    // exit so platform shows failure (or implement retry logic)
+    process.exit(1);
+  }
 }
 
-server.listen(PORT, () => {
-  logd(`Server + Socket running on port ${PORT}`);
-  try {
-    const addr = server.address() || {};
-    logd('server.address', addr);
-    fs.writeFileSync(DIAG, `listening ${JSON.stringify(addr)}\n`, { flag: 'a' });
-  } catch (e) {}
-});
+start();
 
 // periodic heartbeat so logs show activity & memory trends
 setInterval(() => {
