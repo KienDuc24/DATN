@@ -175,7 +175,9 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
 
   function el(id) { return document.getElementById(id); }
 
+  // Kiểm tra tham số đầu vào
   if (!code || !gameId) {
+    console.error('[room.js] Missing code or gameId:', { code, gameId });
     if (el('roomError')) el('roomError').innerText = 'Missing room code or gameId';
     return;
   }
@@ -183,6 +185,7 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
   try {
     const res = await fetch(`${BASE_API}/api/room?code=${encodeURIComponent(code)}&gameId=${encodeURIComponent(gameId)}`);
     if (!res.ok) {
+      console.error('[room.js] Room not found:', { code, gameId });
       el('roomError') && (el('roomError').innerText = `Room not found (${res.status})`);
       return;
     }
@@ -191,7 +194,7 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
     if (el('roomCode')) el('roomCode').innerText = room.room.code || '(unknown)';
     if (el('roomGame')) el('roomGame').innerText = room.room.game?.type || '(unknown)';
     if (el('roomPlayers')) {
-      el('roomPlayers').innerHTML = room.room.players.map(p => `<div>${p.name}</div>`).join('');
+      el('roomPlayers').innerHTML = room.room.players.map(p => `<div>${p}</div>`).join('');
     }
 
     const socket = io(BASE_API, { path: '/socket.io', transports: ['websocket'], withCredentials: true });
@@ -203,7 +206,7 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
       }
     });
   } catch (err) {
-    console.error('initRoomPage error:', err);
+    console.error('[room.js] initRoomPage error:', err);
     el('roomError') && (el('roomError').innerText = 'Error loading room');
   }
 })();

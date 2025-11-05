@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
       console.log('[roomRoutes] Room created:', {
         code: room.code,
         game: room.game,
-        players: room.players
+        players: room.players.map(p => p.name)
       });
     } catch (err) {
       console.error('[roomRoutes] Failed to create room:', err.message);
@@ -56,7 +56,7 @@ router.post('/', async (req, res) => {
         id: room._id,
         code: room.code,
         game: room.game,
-        players: room.players,
+        players: room.players.map(p => p.name),
         status: room.status
       }
     });
@@ -78,23 +78,24 @@ router.get('/', async (req, res) => {
 
   try {
     const { code, gameId } = req.query;
+
+    // Kiểm tra tham số đầu vào
     if (!code || !gameId) {
-      console.error('[roomRoutes] Missing code or gameId');
+      console.error('[roomRoutes] Missing code or gameId:', { code, gameId });
       return res.status(400).json({ error: 'code and gameId are required' });
     }
 
+    // Tìm phòng với mã phòng và ID game
     const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
     if (!room) {
       console.error('[roomRoutes] Room not found:', { code, gameId });
       return res.status(404).json({ error: 'Room not found or game mismatch' });
     }
 
-    // Cập nhật danh sách người chơi nếu cần
-    const updatedPlayers = room.players.map(p => p.name);
     console.log('[roomRoutes] Room found:', {
       code: room.code,
       game: room.game,
-      players: updatedPlayers
+      players: room.players.map(p => p.name)
     });
 
     return res.json({
@@ -102,7 +103,7 @@ router.get('/', async (req, res) => {
       room: {
         id: room._id,
         code: room.code,
-        players: updatedPlayers,
+        players: room.players.map(p => p.name),
         game: room.game,
         status: room.status
       }
@@ -132,21 +133,18 @@ router.post('/join', async (req, res) => {
 
     const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
     if (!room) {
-      console.error('[roomRoutes] Room not found or game mismatch:', { code, gameId });
+      console.error('[roomRoutes] Room not found:', { code, gameId });
       return res.status(404).json({ error: 'Room not found or game mismatch' });
     }
 
-    // Kiểm tra người chơi đã có trong phòng chưa
-    const playerExists = room.players.some(p => p.name === player);
-    if (!playerExists) {
+    if (!room.players.some(p => p.name === player)) {
       room.players.push({ name: player });
       await room.save();
-      console.log('[roomRoutes] Player joined room:', { player, room: room.code });
-    } else {
-      console.log('[roomRoutes] Player already in room:', { player, room: room.code });
     }
 
-    return res.json({ success: true, room: { id: room._id, code: room.code, players: room.players, game: room.game } });
+    console.log('[roomRoutes] Player joined:', { player, code, gameId });
+
+    return res.json({ success: true, room: { id: room._id, code: room.code, players: room.players.map(p => p.name), game: room.game } });
   } catch (err) {
     console.error('[roomRoutes] join room error:', err.message);
     return res.status(500).json({ error: 'Internal Server Error' });
