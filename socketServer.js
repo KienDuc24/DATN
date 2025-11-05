@@ -1,91 +1,68 @@
 require('dotenv').config();
-const http = require('http');
 const path = require('path');
-const express = require('express');
-const mongoose = require('mongoose');
+const { Server } = require('socket.io');
 const Room = require('./models/Room');
 const User = require('./models/User');
 
-let ioInstance = null;
-let jwt;
-try { jwt = require('jsonwebtoken'); } catch (e) { jwt = null; console.warn('[socketServer] jsonwebtoken missing - auth disabled'); }
-
-function socketServer(httpServer) {
-  if (ioInstance) {
-    console.log('[socketServer] io already initialized');
-    return ioInstance;
-  }
-
-  const { Server } = require('socket.io');
-  const io = new Server(httpServer, {
-    path: '/socket.io',
-    cors: { origin: process.env.FRONTEND_URL || '*' },
-    transports: ['websocket', 'polling']
-  });
-
-  ioInstance = io;
-  console.log('[socketServer] initialized');
-
-  io.on('connection', (socket) => {
-    console.log('[socket] connected', socket.id);
-
-    socket.on('authenticate', (token) => {
-      if (!jwt) { socket.emit('authenticated_no_jwt'); return; }
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        socket.userId = decoded.id;
-        socket.emit('authenticated');
-      } catch (err) {
-        socket.emit('auth_error', 'Invalid token');
-        socket.disconnect();
-      }
-    });
-
-    socket.on('join_room', async (roomId) => {
-      try {
-        if (!socket.userId) return socket.emit('error', 'Not authenticated');
-        const room = await Room.findById(roomId);
-        if (!room) return socket.emit('error', 'Room not found');
-        if (room.players.length >= room.maxPlayers) return socket.emit('error', 'Room full');
-        if (!room.players.some(p => p.toString() === socket.userId)) {
-          room.players.push(socket.userId);
-          await room.save();
-        }
-        socket.join(roomId);
-        const players = room.players.map(p => p.toString());
-        io.to(roomId).emit('player_joined', { userId: socket.userId, players });
-        socket.emit('joined_room', { roomId, players });
-      } catch (err) {
-        console.error('[socket] join_room error', err && err.stack || err);
-        socket.emit('error', 'Failed to join room');
-      }
-    });
-
-    socket.on('leave_room', async (roomId) => {
-      try {
-        socket.leave(roomId);
-        const room = await Room.findById(roomId);
-        if (!room) return;
-        room.players = room.players.filter(id => id.toString() !== socket.userId);
-        if (room.host && room.host.toString() === socket.userId) room.host = room.players[0] || null;
-        await room.save();
-        io.to(roomId).emit('player_left', { userId: socket.userId, players: room.players.map(p => p.toString()), newHost: room.host });
-      } catch (err) {
-        console.error('[socket] leave_room error', err && err.stack || err);
-      }
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.log('[socket] disconnect', socket.id, 'reason=', reason);
-    });
-  });
-
-  return io;
+let todSocket = null;
+try {
+  todSocket = require(path.join(__dirname, 'games', 'ToD', 'todSocket'));
+} catch (e) {
+  // optional handler may not exist — that's fine
+  console.warn('[socketServer] optional todSocket not loaded:', e && e.message || e);
 }
 
-function getIO() { return ioInstance; }
+/**
+ * Attach a Socket.IO server to an existing HTTP server.
+ * Do NOT create a new http server or call listen() here.
+ *
+ * Usage in index.js:
+ * const { socketServer } = require('./socketServer');
+ * socketServer(server);
+ */
+function socketServer(httpServer) {
+  if (!httpServer) {
+    console.error('[socketServer] No http server provided to attach socket.io');
+    return;
+  }
 
-module.exports = { socketServer, getIO };
+  if (socketServer._attached) {
+    console.log('[socketServer] already attached to an http server');
+    return;
+  }
+
+  const io = new Server(httpServer, {
+    cors: {
+      origin: process.env.FRONTEND_URL || '*',
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      credentials: true
+    }
+  });
+
+  // expose for debugging/tests if needed
+  socketServer.io = io;
+  socketServer._attached = true;
+
+  io.on('connection', (socket) => {
+    console.log('[socketServer] client connected', socket.id);
+
+    try {
+      if (todSocket && typeof todSocket.init === 'function') {
+        todSocket.init(io, socket);
+      }
+    } catch (err) {
+      console.error('[socketServer] error in todSocket.init:', err && err.stack || err);
+    }
+
+    socket.on('disconnect', (reason) => {
+      console.log('[socketServer] client disconnected', socket.id, reason);
+    });
+  });
+
+  console.log('[socketServer] Socket.io attached to provided HTTP server');
+}
+
+module.exports = { socketServer };
 
 // start express app
 const app = express();
