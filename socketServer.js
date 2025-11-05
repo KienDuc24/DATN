@@ -17,9 +17,9 @@ try {
 const Room = require('./models/Room');
 const User = require('./models/User');
 
-function socketServer(server) {
-  const { Server } = require('socket.io');
-  const io = new Server(server, {
+function socketServer(httpServer) {
+  if (ioInstance) return ioInstance; // idempotent init
+  const io = new Server(httpServer, {
     path: '/socket.io',
     cors: { origin: process.env.FRONTEND_URL || '*' },
     transports: ['websocket', 'polling']
@@ -95,6 +95,7 @@ function socketServer(server) {
     });
   });
 
+  console.log('[socketServer] initialized');
   return io;
 }
 

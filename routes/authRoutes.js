@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const util = require('util');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
@@ -43,14 +43,21 @@ try {
 }
 
 // try multer; if ESM-only fails, fallback to formidable
-let multerInstance = null;
-let useFormidable = false;
+let multer;
 try {
-  multerInstance = require('multer');
-  console.log('[authRoutes] multer loaded');
-} catch (err) {
-  console.warn('[authRoutes] multer require failed, falling back to formidable:', err && err.message);
-  useFormidable = true;
+  multer = require('multer'); // nếu package là ESM, require sẽ ném => fallback sẽ chạy
+} catch (e) {
+  console.warn('[authRoutes] multer require failed, falling back to formidable. To use multer, install multer@1.x or use dynamic import.');
+  multer = null;
+}
+
+// if multer available, init storage/middleware
+let uploadMiddleware = null;
+if (multer) {
+  const storage = multer.memoryStorage();
+  uploadMiddleware = multer({ storage });
+} else {
+  // keep existing formidable fallback logic here
 }
 
 let uploadHandler = null;
