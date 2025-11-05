@@ -19,3 +19,10 @@ server.listen(PORT, () => console.log(`[index] Server + Socket running on port $
 
 process.on('uncaughtException', (err) => console.error('[index][FATAL] uncaughtException', err && err.stack || err));
 process.on('unhandledRejection', (reason) => console.error('[index][FATAL] unhandledRejection', reason && reason.stack || reason));
+process.on('SIGTERM', () => {
+  console.log('[index] Received SIGTERM, shutting down gracefully...');
+  server.close(() => {
+    console.log('[index] Server closed');
+    process.exit(0);
+  });
+});
