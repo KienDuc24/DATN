@@ -1045,20 +1045,34 @@ function handleGameClick(gameId, gameName) {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const username = user.username || user.displayName || 'Guest';
 
-    // Gửi request tạo phòng lên backend
-    const res = await fetch(`${BASE_API_URL}/api/room`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        player: username,
-        game: gameId
-      })
-    });
-    const data = await res.json();
-    if (data.roomCode) {
-      window.location.href = `/room.html?code=${data.roomCode}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
-    } else {
-      alert('Không thể tạo phòng. Vui lòng thử lại!');
+    try {
+      const res = await fetch(`${BASE_API_URL}/api/room`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player: username, game: gameId })
+      });
+
+      const text = await res.text().catch(()=>null);
+      let data;
+      try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { raw: text }; }
+
+      if (!res.ok) {
+        console.error('[client] create room failed', res.status, data);
+        alert('Không thể tạo phòng. Vui lòng thử lại!');
+        return;
+      }
+
+      const roomCode = data.roomCode || data.code || (data.room && data.room.code);
+      if (!roomCode) {
+        console.error('[client] create room no code', data);
+        alert('Server không trả về mã phòng. Kiểm tra log backend.');
+        return;
+      }
+
+      window.location.href = `/room.html?code=${encodeURIComponent(roomCode)}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
+    } catch (err) {
+      console.error('[client] create room error', err);
+      alert('Lỗi khi tạo phòng: ' + (err && err.message));
     }
   };
 
