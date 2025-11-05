@@ -1,8 +1,6 @@
 require('dotenv').config();
 const path = require('path');
 const { Server } = require('socket.io');
-const Room = require('./models/Room');
-const User = require('./models/User');
 
 let todSocket = null;
 try {
@@ -48,7 +46,7 @@ function socketServer(httpServer) {
   socketServer._attached = true;
 
   io.on('connection', (socket) => {
-    console.log('[socketServer] client connected', socket.id);
+    console.log('[socketServer] client connected', socket.id, 'origin=', socket.handshake.headers.origin);
 
     try {
       if (todSocket && typeof todSocket.init === 'function') {
@@ -61,7 +59,12 @@ function socketServer(httpServer) {
     socket.on('disconnect', (reason) => {
       console.log('[socketServer] client disconnected', socket.id, reason);
     });
+    socket.on('connect_error', (err) => {
+      console.warn('[socketServer] client connect_error', err && err.message);
+    });
   });
+
+  io.of('/').adapter.on && io.of('/').adapter.on('error', (e)=> console.error('[socketServer] adapter error', e));
 
   console.log('[socketServer] Socket.IO attached to provided HTTP server');
 }

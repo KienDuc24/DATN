@@ -1141,15 +1141,11 @@ function handleGameClick(gameId, gameName) {
   };
 }
 
-// ...near where you create socket...
-const SOCKET_URL = window.SOCKET_URL || (window.API_BASE ? window.API_BASE.replace(/^http/, 'ws').replace(/^https/, 'wss') : '');
+const SOCKET_URL = window.SOCKET_URL || window.API_BASE || ''; // e.g. https://datn-socket.up.railway.app
 const socket = (typeof io === 'function') ? io(SOCKET_URL, {
   path: '/socket.io',
-  transports: ['websocket', 'polling'],
+  transports: ['polling','websocket'],
   withCredentials: true,
-  // secure true when using wss
-  secure: true,
-  // allow reconnection attempts
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000
