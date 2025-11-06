@@ -34,3 +34,7 @@ async function start() {
 }
 
 start();
+
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('[MongoDB] Connected successfully'))
+  .catch(err => console.error('[MongoDB] Connection error:', err.message));

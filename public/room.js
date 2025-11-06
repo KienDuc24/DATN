@@ -210,3 +210,32 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
     el('roomError') && (el('roomError').innerText = 'Error loading room');
   }
 })();
+
+document.getElementById('joinRoomBtn').addEventListener('click', () => {
+  const roomCodeInput = prompt('Nhập mã phòng:');
+  if (!roomCodeInput) {
+    alert('Vui lòng nhập mã phòng!');
+    return;
+  }
+
+  const gameId = 'ToD'; // ID game cố định hoặc lấy từ giao diện
+  const BASE_API = window.API_BASE || '';
+
+  fetch(`${BASE_API}/api/room?code=${encodeURIComponent(roomCodeInput)}&gameId=${encodeURIComponent(gameId)}`)
+    .then(res => {
+      if (!res.ok) throw new Error(`Room not found (${res.status})`);
+      return res.json();
+    })
+    .then(room => {
+      console.log('[Frontend] Room found:', room);
+      alert(`Đã vào phòng: ${room.room.code}`);
+      // Hiển thị thông tin phòng
+      document.getElementById('roomCode').innerText = room.room.code;
+      document.getElementById('roomGame').innerText = room.room.game.type;
+      document.getElementById('roomPlayers').innerHTML = room.room.players.map(p => `<div>${p}</div>`).join('');
+    })
+    .catch(err => {
+      console.error('[Frontend] Room not found:', err.message);
+      alert('Không tìm thấy phòng!');
+    });
+});
