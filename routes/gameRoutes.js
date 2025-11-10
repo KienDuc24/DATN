@@ -3,12 +3,25 @@ const fs = require('fs');
 const path = require('path');
 const router = express.Router();
 
+// Lấy danh sách games từ games.json (thay đổi: đọc file động)
 router.get('/', (req, res) => {
-  const gamesPath = path.join(__dirname, '../public/games.json');
-  fs.readFile(gamesPath, 'utf8', (err, data) => {
-    if (err) return res.status(500).json({ error: 'Không đọc được dữ liệu game' });
-    res.json(JSON.parse(data));
-  });
+  try {
+    const games = JSON.parse(fs.readFileSync(path.join(__dirname, '../public/games.json'), 'utf8'));
+    res.json(games);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load games' });
+  }
+});
+
+// Khởi động game trong room (thay đổi: cập nhật room)
+router.post('/:gameId/start/:roomId', async (req, res) => {
+  try {
+    const Room = require('../models/Room');
+    await Room.findByIdAndUpdate(req.params.roomId, { gameType: req.params.gameId, isActive: true });
+    res.json({ message: 'Game started' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to start game' });
+  }
 });
 
 module.exports = router;

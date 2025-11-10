@@ -1,40 +1,25 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+const { Schema } = mongoose;
 
-const PlayerSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
-  username: { type: String, default: null },     // legacy / login username
-  name: { type: String, default: null },         // client-provided name (used by ToD)
-  displayName: { type: String, default: null },  // readable name
-  avatar: { type: String, default: null }        // optional, allowed but you said ko cần
-}, { _id: false });
-
-const RoomSchema = new Schema({
-  code: { type: String, required: true, unique: true },        // mã phòng hiển thị
+const roomSchema = new Schema({
+  code: {
+    type: String,
+    required: true,
+    unique: true,
+    default: () => {
+      const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26)); // A-Z
+      const number = Math.floor(100 + Math.random() * 900); // 100-999
+      return letter + number;
+    }
+  },
+  host: { type: mongoose.Types.ObjectId, ref: 'User', required: true },
+  players: [{ name: String }],
   game: {
-    id: { type: String },
-    name: { type: String },
+    gameId: { type: String, required: true },
+    type: { type: String }
   },
-  owner: {
-    userId: { type: Schema.Types.ObjectId, ref: 'User' },
-    username: { type: String }
-  },
-  // keep both participants and players for compatibility
-  participants: { type: [PlayerSchema], default: [] },
-  players: { type: [PlayerSchema], default: [] },
-
-  status: { type: String, enum: ['open','playing','closed','waiting'], default: 'open' },
-  isOpen: { type: Boolean, default: true },
-  isPlaying: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  status: { type: String, default: 'waiting' },
+  createdAt: { type: Date, default: Date.now }
 });
 
-// update updatedAt on save
-RoomSchema.pre('save', function(next){
-  this.updatedAt = Date.now();
-  next();
-});
-
-// export
-module.exports = mongoose.models.Room || mongoose.model('Room', RoomSchema);
+module.exports = mongoose.model('Room', roomSchema);
