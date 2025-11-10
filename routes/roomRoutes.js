@@ -11,18 +11,25 @@ const router = express.Router();
  */
 router.post('/', async (req, res) => {
   if (mongoose.connection.readyState !== 1) {
+    console.error('[roomRoutes] Database not ready');
     return res.status(503).json({ error: 'Database not ready' });
   }
 
   try {
     const { player, game, gameType, role } = req.body || {};
     if (!player || !game) {
+      console.error('[roomRoutes] Missing player or game');
       return res.status(400).json({ error: 'player and game are required' });
     }
 
     let hostUser = await User.findOne({ username: player }).exec();
     if (!hostUser) {
-      hostUser = await User.create({ username: player, displayName: player, role: role || 'player' });
+      try {
+        hostUser = await User.create({ username: player, displayName: player, role: role || 'player' });
+      } catch (err) {
+        console.error('[roomRoutes] Failed to create user:', err.message);
+        return res.status(500).json({ error: 'Failed to create user' });
+      }
     }
 
     const room = new Room({
@@ -31,7 +38,17 @@ router.post('/', async (req, res) => {
       game: { gameId: String(game), type: gameType ? String(gameType) : String(game) }
     });
 
-    await room.save();
+    try {
+      await room.save();
+      console.log('[roomRoutes] Room created:', {
+        code: room.code,
+        game: room.game,
+        players: room.players.map(p => p.name)
+      });
+    } catch (err) {
+      console.error('[roomRoutes] Failed to create room:', err.message);
+      return res.status(500).json({ error: 'Failed to create room' });
+    }
 
     return res.status(201).json({
       roomCode: room.code,
@@ -44,6 +61,7 @@ router.post('/', async (req, res) => {
       }
     });
   } catch (err) {
+    console.error('[roomRoutes] Unexpected error:', err.message);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -54,19 +72,29 @@ router.post('/', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   if (mongoose.connection.readyState !== 1) {
+    console.error('[roomRoutes] Database not ready');
     return res.status(503).json({ error: 'Database not ready' });
   }
 
   try {
     const { code, gameId } = req.query;
+
     if (!code || !gameId) {
+      console.error('[roomRoutes] Missing code or gameId:', { code, gameId });
       return res.status(400).json({ error: 'code and gameId are required' });
     }
 
     const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
     if (!room) {
+      console.error('[roomRoutes] Room not found:', { code, gameId });
       return res.status(404).json({ error: 'Room not found or game mismatch' });
     }
+
+    console.log('[roomRoutes] Room found:', {
+      code: room.code,
+      game: room.game,
+      players: room.players.map(p => p.name)
+    });
 
     return res.json({
       found: true,
@@ -79,6 +107,7 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (err) {
+    console.error('[roomRoutes] Unexpected error:', err.message);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });

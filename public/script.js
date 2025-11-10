@@ -8,7 +8,7 @@ let gamesByCategory = {};
 
 
 // Use same origin API by default (safer). If you need cross-domain, set this env.
-const BASE_API_URL = window.API_BASE || window.location.origin; // e.g. https://your-backend.up.railway.app or http://localhost:3000
+const BASE_API = window.__BASE_API__ || window.location.origin; // e.g. https://your-backend.up.railway.app or http://localhost:3000
 
 // Lưu vị trí trang hiện tại cho từng slider
 let sliderPage = {
@@ -563,7 +563,7 @@ document.getElementById('registerForm').onsubmit = async function(e) {
     document.getElementById('register-message').innerText = msg;
     return;
   }
-  const res = await fetch(`${BASE_API_URL}/api/auth/register`, {
+  const res = await fetch(`${BASE_API}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password })
@@ -587,7 +587,7 @@ document.getElementById('anonymousLoginBtn').onclick = function() {
 
 // Đăng nhập Google (giả lập)
 document.getElementById('googleLoginBtn').onclick = function() {
-  window.location.href = `${BASE_API_URL}/auth/google`;
+  window.location.href = `${BASE_API}/auth/google`;
 };
 
 // Đăng nhập Facebook (giả lập)
@@ -895,7 +895,7 @@ document.getElementById('registerForm').onsubmit = async function(e) {
     document.getElementById('register-message').innerText = msg;
     return;
   }
-  const res = await fetch(`${BASE_API_URL}/api/auth/register`, {
+  const res = await fetch(`${BASE_API}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password })
@@ -913,7 +913,7 @@ document.getElementById('loginForm').onsubmit = async function(e) {
   const username = document.getElementById('login-username').value;
   const password = document.getElementById('login-password').value;
   try {
-    const res = await fetch(`${BASE_API_URL}/api/auth/login`, {
+    const res = await fetch(`${BASE_API}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
@@ -1046,7 +1046,7 @@ function handleGameClick(gameId, gameName) {
     const username = user.username || user.displayName || 'Guest';
 
     try {
-      const res = await fetch(`${BASE_API_URL}/api/room`, {
+      const res = await fetch(`${BASE_API}/api/room`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ player: username, game: gameIdLocal })
@@ -1093,7 +1093,7 @@ function handleGameClick(gameId, gameName) {
     }
 
     try {
-      const res = await fetch(`${BASE_API_URL}/api/room?code=${encodeURIComponent(code)}`);
+      const res = await fetch(`${BASE_API}/api/room?code=${encodeURIComponent(code)}`);
       if (res.status === 404) {
         alert('Không tìm thấy phòng.');
         return;
@@ -1141,7 +1141,7 @@ function handleGameClick(gameId, gameName) {
   };
 }
 
-const SOCKET_URL = window.SOCKET_URL || window.API_BASE || window.location.origin;
+const SOCKET_URL = window.SOCKET_URL || window.__BASE_API__ || window.location.origin;
 const socket = (typeof io === 'function') ? io(SOCKET_URL, {
   path: '/socket.io',
   transports: ['polling', 'websocket'],
@@ -1314,7 +1314,7 @@ if (settingsBtn) {
       const payload = { username: user.username || user._id, newUsername: newUsername };
 
       try {
-        const res = await fetch(`${BASE_API_URL}/api/user`, {
+        const res = await fetch(`${BASE_API}/api/user`, {
           method: 'PUT',
           headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': `Bearer ${token}` } : {}),
           body: JSON.stringify(payload)
@@ -1432,7 +1432,7 @@ if (settingsBtn) {
 async function updateUserOnServer(user) {
   try {
     const token = localStorage.getItem('token');
-    const res = await fetch(`${BASE_API_URL}/api/user`, {
+    const res = await fetch(`${BASE_API}/api/user`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -1472,7 +1472,7 @@ async function updateUserOnServer(user) {
   async function fetchUserFromServer(identifier) {
     if (!identifier) return null;
     try {
-      const res = await fetch(`${BASE_API_URL}/api/user?username=${encodeURIComponent(identifier)}`, {
+      const res = await fetch(`${BASE_API}/api/user?username=${encodeURIComponent(identifier)}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -1572,7 +1572,7 @@ async function updateUserOnServer(user) {
               if (user.username) fd.append('username', user.username);
               else if (user._id) fd.append('username', user._id);
 
-              const res = await fetch(`${BASE_API_URL}/api/user/upload-avatar`, {
+              const res = await fetch(`${BASE_API}/api/user/upload-avatar`, {
                 method: 'POST',
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {},
                 body: fd
@@ -1595,7 +1595,7 @@ async function updateUserOnServer(user) {
 
           // send PUT
           try {
-            const res2 = await fetch(`${BASE_API_URL}/api/user`, {
+            const res2 = await fetch(`${BASE_API}/api/user`, {
               method: 'PUT',
               headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': `Bearer ${token}` } : {}),
               body: JSON.stringify(payload)

@@ -1,7 +1,7 @@
-const API_BASE = window.__API_BASE__ || ''; // nếu bỏ trống -> relative
+const BASE_API = window.__BASE_API__ || ''; // nếu bỏ trống -> relative
 
 async function createRoom(payload) {
-  const BASE_API = window.API_BASE || '';
+  const BASE_API = window.__BASE_API__ || '';
   try {
     const res = await fetch(`${BASE_API}/api/room`, {
       method: 'POST',
@@ -21,17 +21,9 @@ async function createRoom(payload) {
   }
 }
 
-// Example usage
-createRoom({
-  player: 'guest_12345', // Tên người chơi
-  game: 'ToD', // ID game
-  gameType: 'ToD', // Loại game
-  role: 'host' // Vai trò
-});
-
 // Socket connect
 function initSocket(token){
-  const socketUrl = window.__API_BASE__ || undefined; // undefined => same origin
+  const socketUrl = window.__BASE_API__ || undefined; // undefined => same origin
   const socket = io(socketUrl, {
     path: '/socket.io',
     transports: ['websocket', 'polling']
@@ -181,11 +173,10 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
   const gameId = params.get('gameId');
   const user = params.get('user') || JSON.parse(localStorage.getItem('user') || '{}').username || 'Guest';
 
-  const BASE_API = window.API_BASE || '';
+  const BASE_API = window.__BASE_API__ || '';
 
   function el(id) { return document.getElementById(id); }
 
-  // Kiểm tra tham số đầu vào
   if (!code || !gameId) {
     console.error('[room.js] Missing code or gameId:', { code, gameId });
     if (el('roomError')) el('roomError').innerText = 'Missing room code or gameId';
@@ -201,21 +192,11 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
     }
     const room = await res.json();
 
-    // Hiển thị thông tin phòng
     if (el('roomCode')) el('roomCode').innerText = room.room.code || '(unknown)';
     if (el('roomGame')) el('roomGame').innerText = room.room.game?.type || '(unknown)';
     if (el('roomPlayers')) {
       el('roomPlayers').innerHTML = room.room.players.map(p => `<div>${p}</div>`).join('');
     }
-
-    const socket = io(BASE_API, { path: '/socket.io', transports: ['websocket'], withCredentials: true });
-    socket.emit('joinRoom', { code, gameId, user });
-
-    socket.on('update-players', ({ list }) => {
-      if (el('roomPlayers')) {
-        el('roomPlayers').innerHTML = list.map(p => `<div>${p}</div>`).join('');
-      }
-    });
   } catch (err) {
     console.error('[room.js] initRoomPage error:', err);
     el('roomError') && (el('roomError').innerText = 'Error loading room');
@@ -274,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const gameId = 'ToD'; // ID game cố định hoặc lấy từ giao diện
-    const BASE_API = window.API_BASE || '';
+    const BASE_API = window.__BASE_API__ || '';
 
     fetch(`${BASE_API}/api/room?code=${encodeURIComponent(roomCodeInput)}&gameId=${encodeURIComponent(gameId)}`)
       .then(res => {
