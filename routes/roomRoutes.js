@@ -85,8 +85,8 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'code and gameId are required' });
     }
 
-    // Sửa logic truy vấn MongoDB
-    const room = await Room.findOne({ code: code, 'game.gameId': gameId }).exec();
+    // Tìm phòng với mã phòng và ID game
+    const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
     if (!room) {
       console.error('[roomRoutes] Room not found:', { code, gameId });
       return res.status(404).json({ error: 'Room not found or game mismatch' });
