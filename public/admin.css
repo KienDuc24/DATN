@@ -22,8 +22,7 @@ header{position:sticky;top:0;left:220px;right:0;height:72px;display:flex;align-i
 .header-main h1{margin:0;font-size:1.15rem;color:var(--accent)}
 
 /* main layout */
-.main-content{  background: url(img/fav.png) no-repeat center center fixed;
-  background-size: cover;margin-left:220px;padding:22px 28px 60px;min-height:calc(100vh - 72px)}
+.main-content{margin-left:220px;padding:22px 28px 60px;min-height:calc(100vh - 72px)}
 .admin-tabs{display:flex;gap:8px;margin-bottom:14px}
 .tab-btn{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px 12px;border-radius:8px;color:var(--muted);cursor:pointer}
 .tab-btn.active{background:linear-gradient(90deg, rgba(255,159,67,0.12), rgba(255,159,67,0.06));color:var(--accent);border-color:rgba(255,159,67,0.2)}
