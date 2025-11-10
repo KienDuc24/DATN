@@ -78,14 +78,11 @@ router.get('/', async (req, res) => {
 
   try {
     const { code, gameId } = req.query;
-
-    // Kiểm tra tham số đầu vào
     if (!code || !gameId) {
       console.error('[roomRoutes] Missing code or gameId:', { code, gameId });
       return res.status(400).json({ error: 'code and gameId are required' });
     }
 
-    // Tìm phòng với mã phòng và ID game
     const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
     if (!room) {
       console.error('[roomRoutes] Room not found:', { code, gameId });
