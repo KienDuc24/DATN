@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
+const Schema = mongoose.Schema;
 
 const roomSchema = new Schema({
   code: {
@@ -13,7 +13,7 @@ const roomSchema = new Schema({
     }
   },
   host: { type: mongoose.Types.ObjectId, ref: 'User', required: true },
-  players: [{ name: String }],
+  players: [{ name: String }], // Danh sách người chơi
   game: {
     gameId: { type: String, required: true },
     type: { type: String }

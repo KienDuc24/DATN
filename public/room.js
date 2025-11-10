@@ -1,9 +1,9 @@
 const API_BASE = window.__API_BASE__ || ''; // nếu bỏ trống -> relative
 
 async function createRoom(payload) {
-  const url = `${window.__API_BASE__ || ''}/api/room`;
+  const BASE_API = window.API_BASE || '';
   try {
-    const res = await fetch(url, {
+    const res = await fetch(`${BASE_API}/api/room`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -12,12 +12,22 @@ async function createRoom(payload) {
       const error = await res.json();
       throw new Error(error.error || 'Failed to create room');
     }
-    return await res.json();
+    const room = await res.json();
+    console.log('[createRoom] Room created:', room);
+    return room;
   } catch (err) {
-    console.error('Create room error:', err.message);
+    console.error('[createRoom] Error:', err.message);
     alert('Không thể tạo phòng. Vui lòng thử lại!');
   }
 }
+
+// Example usage
+createRoom({
+  player: 'guest_12345', // Tên người chơi
+  game: 'ToD', // ID game
+  gameType: 'ToD', // Loại game
+  role: 'host' // Vai trò
+});
 
 // Socket connect
 function initSocket(token){
@@ -191,6 +201,7 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
     }
     const room = await res.json();
 
+    // Hiển thị thông tin phòng
     if (el('roomCode')) el('roomCode').innerText = room.room.code || '(unknown)';
     if (el('roomGame')) el('roomGame').innerText = room.room.game?.type || '(unknown)';
     if (el('roomPlayers')) {
@@ -210,6 +221,43 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
     el('roomError') && (el('roomError').innerText = 'Error loading room');
   }
 })();
+
+document.addEventListener('DOMContentLoaded', () => {
+  const createRoomBtn = document.getElementById('createRoomBtn');
+  if (!createRoomBtn) {
+    console.error('[Frontend] createRoomBtn element not found');
+    return;
+  }
+
+  createRoomBtn.addEventListener('click', async () => {
+    const playerName = prompt('Nhập tên của bạn:');
+    if (!playerName) {
+      alert('Vui lòng nhập tên!');
+      return;
+    }
+
+    const gameId = 'ToD'; // ID game cố định hoặc lấy từ giao diện
+    const gameType = 'ToD'; // Loại game cố định hoặc lấy từ giao diện
+
+    try {
+      const room = await createRoom({
+        player: playerName,
+        game: gameId,
+        gameType: gameType,
+        role: 'host'
+      });
+
+      alert(`Phòng đã được tạo thành công!\nMã phòng: ${room.roomCode}`);
+      // Hiển thị thông tin phòng
+      document.getElementById('roomCode').innerText = room.room.code;
+      document.getElementById('roomGame').innerText = room.room.game.type;
+      document.getElementById('roomPlayers').innerHTML = room.room.players.map(p => `<div>${p}</div>`).join('');
+    } catch (err) {
+      console.error('[Frontend] Error creating room:', err.message);
+      alert('Không thể tạo phòng. Vui lòng thử lại!');
+    }
+  });
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   const joinRoomBtn = document.getElementById('joinRoomBtn');
