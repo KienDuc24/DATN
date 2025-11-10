@@ -8,7 +8,7 @@ let gamesByCategory = {};
 
 
 // Use same origin API by default (safer). If you need cross-domain, set this env.
-const BASE_API = window.__BASE_API__ || window.location.origin; // e.g. https://your-backend.up.railway.app or http://localhost:3000
+const BASE_API_URL = window.BASE_API_URL || window.location.origin;
 
 // Lưu vị trí trang hiện tại cho từng slider
 let sliderPage = {
@@ -721,10 +721,6 @@ if (logoutBtn) {
     // location.reload();
   };
 }
-
-  // Hồ sơ, lịch sử, cài đặt (demo)
-  // Hồ sơ/ Cài đặt được xử lý tập trung trong attachProfileUI()
-  // Giữ lại handler cho "Lịch sử" (nếu có)
   const historyBtn = document.getElementById('historyBtn');
   if (historyBtn) historyBtn.onclick = () => alert('Tính năng lịch sử chơi sẽ được bổ sung sau!');
 });
@@ -982,12 +978,6 @@ function closeAuthModal() {
   const modal = document.querySelector('.auth-form-modal, .auth-modal, .modal');
   if (modal) modal.style.display = 'none';
 }
-
-// Hàm sinh mã phòng kiểu A111
-//   const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26)); // A-Z
-//   const number = Math.floor(100 + Math.random() * 900); // 100-999
-//   return letter + number;
-// }
 
 // Hiện modal khi click vào game
 function handleGameClick(gameId, gameName) {
@@ -1641,3 +1631,26 @@ async function updateUserOnServer(user) {
 
   try { createProfileModal(); } catch (e) { console.warn('createProfileModal init failed', e && e.message); }
 })();
+
+async function createRoom(payload) {
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/room`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to create room');
+    }
+    const room = await res.json();
+    console.log('[createRoom] Room created:', room);
+
+    // Chuyển người dùng vào phòng chờ
+    const roomUrl = `room.html?code=${encodeURIComponent(room.roomCode)}&gameId=${encodeURIComponent(payload.game)}&user=${encodeURIComponent(payload.player)}`;
+    window.location.href = roomUrl;
+  } catch (err) {
+    console.error('[createRoom] Error:', err.message);
+    alert('Không thể tạo phòng. Vui lòng thử lại!');
+  }
+}

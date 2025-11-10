@@ -1,9 +1,8 @@
-const BASE_API = window.__BASE_API__ || ''; // nếu bỏ trống -> relative
+const BASE_API_URL = window.BASE_API_URL || window.location.origin;
 
 async function createRoom(payload) {
-  const BASE_API = window.__BASE_API__ || '';
   try {
-    const res = await fetch(`${BASE_API}/api/room`, {
+    const res = await fetch(`${BASE_API_URL}/api/room`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -173,7 +172,7 @@ socket.on('room-start', ({ gameFolder, roomCode: rc }) => {
   const gameId = params.get('gameId');
   const user = params.get('user') || JSON.parse(localStorage.getItem('user') || '{}').username || 'Guest';
 
-  const BASE_API = window.__BASE_API__ || '';
+  const BASE_API = window.BASE_API_URL || window.location.origin;
 
   function el(id) { return document.getElementById(id); }
 
@@ -228,11 +227,9 @@ document.addEventListener('DOMContentLoaded', () => {
         role: 'host'
       });
 
-      alert(`Phòng đã được tạo thành công!\nMã phòng: ${room.roomCode}`);
-      // Hiển thị thông tin phòng
-      document.getElementById('roomCode').innerText = room.room.code;
-      document.getElementById('roomGame').innerText = room.room.game.type;
-      document.getElementById('roomPlayers').innerHTML = room.room.players.map(p => `<div>${p}</div>`).join('');
+      // Chuyển người dùng vào phòng chờ
+      const roomUrl = `room.html?code=${encodeURIComponent(room.roomCode)}&gameId=${encodeURIComponent(gameId)}&user=${encodeURIComponent(playerName)}`;
+      window.location.href = roomUrl;
     } catch (err) {
       console.error('[Frontend] Error creating room:', err.message);
       alert('Không thể tạo phòng. Vui lòng thử lại!');
@@ -254,7 +251,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const gameId = 'ToD'; // ID game cố định hoặc lấy từ giao diện
     const BASE_API = window.__BASE_API__ || '';
 
     fetch(`${BASE_API}/api/room?code=${encodeURIComponent(roomCodeInput)}&gameId=${encodeURIComponent(gameId)}`)

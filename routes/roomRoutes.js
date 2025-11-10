@@ -90,12 +90,6 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ error: 'Room not found or game mismatch' });
     }
 
-    console.log('[roomRoutes] Room found:', {
-      code: room.code,
-      game: room.game,
-      players: room.players.map(p => p.name)
-    });
-
     return res.json({
       found: true,
       room: {
