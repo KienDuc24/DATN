@@ -1,9 +1,11 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const Room = require('../models/Room');
 const User = require('../models/User');
 
 const router = express.Router();
+router.use(cors());
 
 /**
  * API tạo phòng

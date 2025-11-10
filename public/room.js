@@ -1,5 +1,3 @@
-const BASE_API_URL = window.BASE_API_URL || window.location.origin;
-
 async function createRoom(payload) {
   try {
     const res = await fetch(`${BASE_API_URL}/api/room`, {
