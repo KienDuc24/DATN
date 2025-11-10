@@ -396,14 +396,3 @@ module.exports = (socket, io) => {
     }
   });
 };
-
-module.exports.init = (io, socket) => {
-  console.log('[ToD] Socket initialized for client:', socket.id);
-
-  // Example: Handle a custom event
-  socket.on('todEvent', (data) => {
-    console.log('[ToD] Received event:', data);
-    // Emit a response
-    socket.emit('todResponse', { message: 'Event received!' });
-  });
-};
