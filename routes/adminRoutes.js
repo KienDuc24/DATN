@@ -5,12 +5,11 @@ const Room = require('../models/Room');
 const fs = require('fs').promises;
 const path = require('path');
 const GAMES_PATH = path.join(__dirname, '..', 'public', 'games.json');
-const adminAuth = require('../middleware/adminAuth'); // Middleware kiểm tra admin
 
 // Basic admin endpoints (no auth). Add auth middleware if needed.
 
 // GET /api/admin/users
-router.get('/users', adminAuth, async (req, res) => {
+router.get('/users', async (req, res) => {
   try {
     const q = {};
     if (req.query.q) {
@@ -68,7 +67,7 @@ router.delete('/user/:id', async (req, res) => {
 // ROOMS
 
 // GET /api/admin/rooms
-router.get('/rooms', adminAuth, async (req, res) => {
+router.get('/rooms', async (req, res) => {
   try {
     const q = {};
     if (req.query.q) q.name = new RegExp(req.query.q, 'i');
@@ -100,7 +99,7 @@ router.put('/room/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/room/:id
-router.delete('/room/:id', adminAuth, async (req, res) => {
+router.delete('/room/:id', async (req, res) => {
   try {
     const id = req.params.id;
     const removed = await Room.findByIdAndDelete(id);

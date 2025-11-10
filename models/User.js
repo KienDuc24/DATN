@@ -1,32 +1,26 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
 
-const playHistorySchema = new Schema({
-  gameId: { type: String },
-  gameName: { type: String },
-  action: { type: String, default: 'played' },
-  result: { type: String },
-  playedAt: { type: Date, default: Date.now }
-}, { _id: false });
-
-const userSchema = new Schema({
-  id: {
-    type: String,
-    required: true,
-    unique: true,
-    default: () => new mongoose.Types.ObjectId().toString()
-  },
-  username: { type: String, required: true, unique: true },
-  displayName: { type: String },
+const userSchema = new mongoose.Schema({
+  id: { type: String, unique: true, required: true },
+  username: { type: String, required: true, unique: true, index: true },
   password: { type: String },
-  avatar: { type: String },
-  role: {
-    type: String,
-    enum: ['player', 'admin'],
-    default: 'player'
-  },
-  playHistory: { type: [playHistorySchema], default: [] },
-  createdAt: { type: Date, default: Date.now }
+  email: { type: String, unique: true, sparse: true },
+  displayName: { type: String },
+  avatar: { type: String, default: '' },
+  avatarUrl: { type: String, default: null }, 
+  role: { type: String, default: 'user' },
+  provider: { type: String, enum: ['local', 'google'], default: 'local' },
+  googleId: { type: String, default: null },
+  gameHistory: [
+    {
+      gameId: String,
+      gameName: String,
+      playedAt: { type: Date, default: Date.now },
+      score: Number
+    }
+  ],
+}, {
+  timestamps: true
 });
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.models.User || mongoose.model('User', userSchema);
