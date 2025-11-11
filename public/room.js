@@ -1,5 +1,4 @@
-const BASE_API_URL = window.BASE_API_URL || 'https://datn-smoky.vercel.app';
-
+const BASE_API_URL = 'https://datn-socket.up.railway.app'; // URL của socket server
 async function createRoom(payload) {
   try {
     const res = await fetch(`${BASE_API_URL}/api/room`, { // Đảm bảo URL đúng

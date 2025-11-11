@@ -8,8 +8,7 @@ let gamesByCategory = {};
 
 
 // Use same origin API by default (safer). If you need cross-domain, set this env.
-const BASE_API_URL = window.BASE_API_URL || 'https://datn-smoky.vercel.app';
-
+const BASE_API_URL = 'https://datn-socket.up.railway.app'; // URL của socket server
 // Lưu vị trí trang hiện tại cho từng slider
 let sliderPage = {
   recent: 0,
