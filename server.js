@@ -16,11 +16,15 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || '*', // Cho phép mọi nguồn gốc hoặc chỉ định URL frontend
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
-})); // Thêm middleware CORS
+})); 
+// Thêm middleware CORS
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use('/api/room', require('./routes/roomRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/debug', require('./routes/debugRoutes'));
 
 // static and routes (keep your existing mounts)
 app.use(express.static(path.join(__dirname, 'public')));
