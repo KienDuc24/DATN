@@ -3,15 +3,22 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const http = require('http');
 const path = require('path');
 const bodyParser = require('body-parser');
+const attachSocket = require('./socketServer');
 
 const app = express();
+const server = http.createServer(app);
 const FRONTEND = process.env.FRONTEND_URL || '*';
 const PORT = process.env.PORT || 3000;
 
 // allow CORS for express routes and socket.io polling XHR
-app.use(cors()); // Thêm middleware CORS
+app.use(cors({
+  origin: FRONTEND, // Cho phép mọi nguồn gốc hoặc chỉ định URL frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+})); // Thêm middleware CORS
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -40,8 +47,11 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
+// Socket
+attachSocket(server);
+
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
