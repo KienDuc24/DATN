@@ -1579,7 +1579,15 @@ async function updateUserOnServer(user) {
           }
 
           // build update payload: include current username and newUsername (if changed)
-          const payload = { username: user.username || user._id };
+          const user = JSON.parse(localStorage.getItem('user') || '{}'); // Lấy thông tin người dùng từ localStorage
+          const selectedGame = allGames.find(game => game.id === window.selectedGameId); // Lấy thông tin game từ games.json
+
+          const payload = {
+            player: user.username || user._id || 'Guest', // Tên người chơi (hoặc ID nếu không có username)
+            game: selectedGame?.id || '',                // ID của game được chọn
+            gameType: selectedGame?.type || 'default',   // Loại game (lấy từ games.json hoặc mặc định là 'default')
+            role: 'host'                                 // Vai trò mặc định là host (người tạo phòng)
+          };
           if (newUsernameVal && newUsernameVal !== (user.username || '')) payload.newUsername = newUsernameVal;
           if (user.avatar) payload.avatar = user.avatar;
 
