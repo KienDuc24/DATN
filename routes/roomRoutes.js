@@ -24,17 +24,11 @@ router.post('/room', async (req, res, next) => {
 
     const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    const hostUser = await User.findOneAndUpdate(
-      { username: player },
-      { username: player, displayName: player, role: role || 'player' },
-      { upsert: true, new: true }
-    );
-
     const newRoom = new Room({
       code: roomCode,
-      host: hostUser._id,
-      players: [{ name: hostUser.displayName || hostUser.username }],
-      game: { gameId: String(game), type: String(gameType) }
+      host: player,
+      players: [{ name: player }],
+      game: { gameId: game, type: gameType }
     });
 
     await newRoom.save();

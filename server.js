@@ -13,10 +13,14 @@ const server = http.createServer(app);
 
 // Cấu hình CORS
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*', // Cho phép nguồn gốc từ FRONTEND_URL hoặc tất cả
+  origin: 'https://datn-smoky.vercel.app', // Cho phép nguồn gốc từ Vercel
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
-})); 
+}));
+
+// Xử lý preflight request
+app.options('*', cors());
+
 // Thêm middleware CORS
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
