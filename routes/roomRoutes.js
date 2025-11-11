@@ -5,51 +5,39 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-/**
- * API tạo phòng
- * Body: { player, game, gameType, role? }
- */
-router.post('/room', async (req, res) => {
+// Middleware kiểm tra trạng thái MongoDB
+router.use((req, res, next) => {
   if (mongoose.connection.readyState !== 1) {
     console.error('[roomRoutes] Database not ready');
     return res.status(503).json({ error: 'Database not ready' });
   }
+  next();
+});
 
+// API tạo phòng
+router.post('/room', async (req, res, next) => {
   try {
     const { player, game, gameType, role } = req.body || {};
     if (!player || !game || !gameType || !role) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    let hostUser = await User.findOne({ username: player }).exec();
-    if (!hostUser) {
-      try {
-        hostUser = await User.create({ username: player, displayName: player, role: role || 'player' });
-      } catch (err) {
-        console.error('[roomRoutes] Failed to create user:', err.message);
-        return res.status(500).json({ error: 'Failed to create user' });
-      }
-    }
-
     const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    const hostUser = await User.findOneAndUpdate(
+      { username: player },
+      { username: player, displayName: player, role: role || 'player' },
+      { upsert: true, new: true }
+    );
+
     const newRoom = new Room({
       code: roomCode,
-      host: hostUser._id || hostUser,
-      players: [{ name: hostUser.displayName || hostUser.username || player }],
-      game: { gameId: String(game), type: gameType ? String(gameType) : String(game) }
+      host: hostUser._id,
+      players: [{ name: hostUser.displayName || hostUser.username }],
+      game: { gameId: String(game), type: String(gameType) }
     });
 
-    try {
-      await newRoom.save();
-      console.log('[roomRoutes] Room created:', {
-        code: newRoom.code,
-        game: newRoom.game,
-        players: newRoom.players.map(p => p.name)
-      });
-    } catch (err) {
-      console.error('[roomRoutes] Failed to create room:', err.message);
-      return res.status(500).json({ error: 'Failed to create room' });
-    }
+    await newRoom.save();
 
     return res.status(201).json({
       roomCode: newRoom.code,
@@ -62,32 +50,24 @@ router.post('/room', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('[roomRoutes] Unexpected error:', err.message);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    next(err);
   }
 });
 
-/**
- * API kiểm tra phòng
- * Query: ?code=...&gameId=...
- */
-router.get('/', async (req, res) => {
-  if (mongoose.connection.readyState !== 1) {
-    console.error('[roomRoutes] Database not ready');
-    return res.status(503).json({ error: 'Database not ready' });
-  }
-
+// API kiểm tra phòng
+router.get('/', async (req, res, next) => {
   try {
     const { code, gameId } = req.query;
 
     if (!code || !gameId) {
-      console.error('[roomRoutes] Missing code or gameId:', { code, gameId });
       return res.status(400).json({ error: 'code and gameId are required' });
     }
 
-    const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
+    const room = await Room.findOne({ code, 'game.gameId': gameId })
+      .select('code game players status')
+      .exec();
+
     if (!room) {
-      console.error('[roomRoutes] Room not found:', { code, gameId });
       return res.status(404).json({ error: 'Room not found or game mismatch' });
     }
 
@@ -102,40 +82,46 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('[roomRoutes] Unexpected error:', err.message);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    next(err);
   }
 });
 
-/**
- * API tham gia phòng
- * Body: { player, code, gameId }
- */
-router.post('/join', async (req, res) => {
-  if (mongoose.connection.readyState !== 1) {
-    return res.status(503).json({ error: 'Database not ready' });
-  }
-
+// API tham gia phòng
+router.post('/join', async (req, res, next) => {
   try {
     const { player, code, gameId } = req.body || {};
     if (!player || !code || !gameId) {
       return res.status(400).json({ error: 'player, code, and gameId are required' });
     }
 
-    const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
+    const room = await Room.findOneAndUpdate(
+      { code, 'game.gameId': gameId },
+      { $addToSet: { players: { name: player } } },
+      { new: true }
+    ).select('code game players');
+
     if (!room) {
       return res.status(404).json({ error: 'Room not found or game mismatch' });
     }
 
-    if (!room.players.some(p => p.name === player)) {
-      room.players.push({ name: player });
-      await room.save();
-    }
-
-    return res.json({ success: true, room: { id: room._id, code: room.code, players: room.players.map(p => p.name), game: room.game } });
+    return res.json({
+      success: true,
+      room: {
+        id: room._id,
+        code: room.code,
+        players: room.players.map(p => p.name),
+        game: room.game
+      }
+    });
   } catch (err) {
-    return res.status(500).json({ error: 'Internal Server Error' });
+    next(err);
   }
+});
+
+// Middleware xử lý lỗi chung
+router.use((err, req, res, next) => {
+  console.error('[roomRoutes] Unexpected error:', err.message);
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 module.exports = router;

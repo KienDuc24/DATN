@@ -13,7 +13,7 @@ const server = http.createServer(app);
 
 // Cấu hình CORS
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*', // Cho phép mọi nguồn gốc hoặc chỉ định URL frontend
+  origin: process.env.FRONTEND_URL || '*', // Cho phép nguồn gốc từ FRONTEND_URL hoặc tất cả
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 })); 

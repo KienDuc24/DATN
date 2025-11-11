@@ -1,8 +1,8 @@
-const BASE_API_URL = window.BASE_API_URL || 'http://localhost:3000';
+const BASE_API_URL = window.BASE_API_URL || 'https://datn-smoky.vercel.app';
 
 async function createRoom(payload) {
   try {
-    const res = await fetch(`${BASE_API_URL}/api/room`, {
+    const res = await fetch(`${BASE_API_URL}/api/room`, { // Đảm bảo URL đúng
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -13,7 +13,9 @@ async function createRoom(payload) {
     }
     const room = await res.json();
     console.log('[createRoom] Room created:', room);
-    return room;
+
+    // Chuyển hướng sang room.html với mã phòng
+    window.location.href = `room.html?code=${room.roomCode}&gameId=${payload.game}`;
   } catch (err) {
     console.error('[createRoom] Error:', err.message);
     alert('Không thể tạo phòng. Vui lòng thử lại!');
