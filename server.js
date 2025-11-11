@@ -11,7 +11,7 @@ const FRONTEND = process.env.FRONTEND_URL || '*';
 const PORT = process.env.PORT || 3000;
 
 // allow CORS for express routes and socket.io polling XHR
-app.use(cors({ origin: FRONTEND, credentials: true }));
+app.use(cors()); // Thêm middleware CORS
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());

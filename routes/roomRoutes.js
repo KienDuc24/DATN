@@ -11,7 +11,7 @@ router.use(cors());
  * API tạo phòng
  * Body: { player, game, gameType, role? }
  */
-router.post('/', async (req, res) => {
+router.post('/room', async (req, res) => {
   if (mongoose.connection.readyState !== 1) {
     console.error('[roomRoutes] Database not ready');
     return res.status(503).json({ error: 'Database not ready' });
@@ -19,9 +19,8 @@ router.post('/', async (req, res) => {
 
   try {
     const { player, game, gameType, role } = req.body || {};
-    if (!player || !game) {
-      console.error('[roomRoutes] Missing player or game');
-      return res.status(400).json({ error: 'player and game are required' });
+    if (!player || !game || !gameType || !role) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
     let hostUser = await User.findOne({ username: player }).exec();
@@ -34,18 +33,20 @@ router.post('/', async (req, res) => {
       }
     }
 
-    const room = new Room({
+    const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const newRoom = new Room({
+      code: roomCode,
       host: hostUser._id || hostUser,
       players: [{ name: hostUser.displayName || hostUser.username || player }],
       game: { gameId: String(game), type: gameType ? String(gameType) : String(game) }
     });
 
     try {
-      await room.save();
+      await newRoom.save();
       console.log('[roomRoutes] Room created:', {
-        code: room.code,
-        game: room.game,
-        players: room.players.map(p => p.name)
+        code: newRoom.code,
+        game: newRoom.game,
+        players: newRoom.players.map(p => p.name)
       });
     } catch (err) {
       console.error('[roomRoutes] Failed to create room:', err.message);
@@ -53,13 +54,13 @@ router.post('/', async (req, res) => {
     }
 
     return res.status(201).json({
-      roomCode: room.code,
+      roomCode: newRoom.code,
       room: {
-        id: room._id,
-        code: room.code,
-        game: room.game,
-        players: room.players.map(p => p.name),
-        status: room.status
+        id: newRoom._id,
+        code: newRoom.code,
+        game: newRoom.game,
+        players: newRoom.players.map(p => p.name),
+        status: newRoom.status
       }
     });
   } catch (err) {

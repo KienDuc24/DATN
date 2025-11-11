@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const http = require('http');
 const app = require('./server');
 const attachSocket = require('./socketServer');
-const PORT = process.env.PORT || 8080;
 
 async function start() {
   try {

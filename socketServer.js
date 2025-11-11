@@ -59,27 +59,4 @@ module.exports = function attachSocket(server) {
   });
 
   return io;
-
-  socket.on('joinRoom', async ({ code, gameId, user }) => {
-  try {
-    const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
-    if (!room) {
-      socket.emit('room-error', { message: 'Room not found or game mismatch' });
-      return;
-    }
-
-    const name = user || `guest_${Math.random().toString(36).slice(2, 8)}`;
-    const exists = room.players.some(p => p.name === name);
-    if (!exists) {
-      room.players.push({ name });
-      await room.save();
-    }
-
-    socket.join(code);
-    io.to(code).emit('update-players', { list: room.players.map(p => p.name), host: room.host?.username || room.host });
-  } catch (err) {
-    console.error('[socketServer] joinRoom error:', err.message);
-    socket.emit('room-error', { message: 'Internal server error' });
-  }
-});
 };
