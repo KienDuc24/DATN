@@ -10,12 +10,10 @@ const attachSocket = require('./socketServer');
 
 const app = express();
 const server = http.createServer(app);
-const FRONTEND = process.env.FRONTEND_URL || '*';
-const PORT = process.env.PORT || 3000;
 
-// allow CORS for express routes and socket.io polling XHR
+// Cấu hình CORS
 app.use(cors({
-  origin: FRONTEND, // Cho phép mọi nguồn gốc hoặc chỉ định URL frontend
+  origin: process.env.FRONTEND_URL || '*', // Cho phép mọi nguồn gốc hoặc chỉ định URL frontend
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 })); // Thêm middleware CORS
@@ -51,8 +49,9 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
 attachSocket(server);
 
 // Start server
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
 
 // global error handler - đặt sau routes

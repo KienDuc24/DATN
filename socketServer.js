@@ -6,7 +6,7 @@ module.exports = function attachSocket(server) {
     path: '/socket.io',
     transports: ['polling', 'websocket'],
     cors: {
-      origin: process.env.FRONTEND_URL || '*',
+      origin: process.env.FRONTEND_URL || '*', // Cho phép mọi nguồn gốc hoặc chỉ định URL frontend
       methods: ['GET', 'POST'],
       credentials: true
     }
