@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Truth or Dare - Sự thật hay Thách thức</title>
-    
     <link rel="icon" href="Img/logo.png" />
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>  
 </head>
@@ -21,6 +19,7 @@
                 <i class="fas fa-home"></i>
                 <span>Trang chủ</span>
             </a>
+            
             <h1 class="game-title">Truth or Dare</h1>
             <div class="room-info">
                 <span>Phòng: <span id="roomCode">...</span></span>
@@ -28,37 +27,39 @@
             </div>
         </header>
 
-        <main class="game-container">
-            <section id="camp" class="player-camp">
-                <div id="avatars" class="player-grid">
+        <div class="playground-container">
+            <main class="game-container">
+                <section id="camp" class="player-camp">
+                    <div id="avatars" class="player-grid">
+                        </div>
+                </section>
+    
+                <section class="game-controls">
+                    <div class="turn-display" id="turnText">
+                        Đang chờ...
                     </div>
-            </section>
-
-            <section class="game-controls">
-                <div class="turn-display" id="turnText">
-                    Đang chờ...
-                </div>
-
-                <div class="action-panel" id="controls">
-                    <div class="action-buttons" id="actionBtns"></div>
-                </div>
-
-                <div id="questionCard" class="question-card hidden">
-                    <div class="question-header">
-                        <span class="question-type"></span>
-                        <button id="toggleQuestion" class="toggle-btn" title="Thu gọn/Mở rộng">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
+    
+                    <div class="action-panel" id="controls">
+                        <div class="action-buttons" id="actionBtns"></div>
                     </div>
-                    <p class="q-text">Câu hỏi sẽ hiện ra ở đây...</p>
-                    <div class="vote-info" id="voteInfo" style="display: none;">
-                        Đã vote: <span id="voteCount">0</span> / <span id="voteTotal">0</span>
+    
+                    <div id="questionCard" class="question-card hidden">
+                        <div class="question-header">
+                            <span class="question-type"></span>
+                            <button id="toggleQuestion" class="toggle-btn" title="Thu gọn/Mở rộng">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                        <p class="q-text">Câu hỏi sẽ hiện ra ở đây...</p>
+                        <div class="vote-info" id="voteInfo" style="display: none;">
+                            Đã vote: <span id="voteCount">0</span> / <span id="voteTotal">0</span>
+                        </div>
                     </div>
-                    </div>
-            </section>
-        </main>
-    </div>
+                </section>
+            </main>
+        </div>
+        </div>
 
-     <script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
