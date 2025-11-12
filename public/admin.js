@@ -55,11 +55,11 @@ function updateConfirmBar() {
     }
 }
 function addChange(change) {
-    // Xóa các thay đổi cũ cho cùng 1 ID (nếu có)
-    pendingChanges = pendingChanges.filter(c => c.id !== change.id);
-    // Thêm thay đổi mới
-    pendingChanges.push(change);
-    updateConfirmBar();
+  // Xóa các thay đổi cũ cho cùng 1 ID (nếu có)
+  pendingChanges = pendingChanges.filter(c => c.id !== change.id);
+  // Thêm thay đổi mới
+  pendingChanges.push(change);
+  updateConfirmBar();
 }
 
 async function executePendingChanges() {
@@ -70,12 +70,21 @@ async function executePendingChanges() {
     for (const change of changesToExecute) {
         try {
             const { type, action, id, payload } = change;
+            
+            // --- THÊM DÒNG NÀY ---
+            // Sửa lỗi: server route cho 'game' là 'games' (số nhiều)
+            // trong khi 'user' và 'room' là số ít.
+            const resourceType = (type === 'game') ? 'games' : type;
+            // ---------------------
+
             let res;
             if (action === 'delete') {
-                res = await fetch(`${ADMIN_API}/api/admin/${type}/${id}`, { method: 'DELETE', credentials: 'include' });
+                // SỬA: dùng resourceType
+                res = await fetch(`${ADMIN_API}/api/admin/${resourceType}/${id}`, { method: 'DELETE', credentials: 'include' });
             } else if (action === 'save') {
                 const method = id ? 'PUT' : 'POST';
-                const url = id ? `${ADMIN_API}/api/admin/${type}/${id}` : `${ADMIN_API}/api/admin/${type}`;
+                // SỬA: dùng resourceType
+                const url = id ? `${ADMIN_API}/api/admin/${resourceType}/${id}` : `${ADMIN_API}/api/admin/${resourceType}`;
                 res = await fetch(url, {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },
@@ -83,7 +92,8 @@ async function executePendingChanges() {
                     body: JSON.stringify(payload)
                 });
             } else if (action === 'update') { // Dùng cho "featured"
-                 res = await fetch(`${ADMIN_API}/api/admin/${type}/${id}`, {
+                // SỬA: dùng resourceType (Đây là cái bị lỗi của bạn)
+                 res = await fetch(`${ADMIN_API}/api/admin/${resourceType}/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',

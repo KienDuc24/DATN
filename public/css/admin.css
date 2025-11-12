@@ -77,17 +77,42 @@ header{position:sticky;top:0;left:220px;right:0;/* height:72px; */ display:flex;
 /* table wrap */
 
 .table-wrap {
-  background: var(--card); /* var(--card) là #081726 */
-  padding: 14px;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-  margin-bottom: 18px;
-  /* Thêm một đường viền mờ để tách biệt rõ hơn: */
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}.admin-table{width:100%;border-collapse:collapse;background:transparent}
-.admin-table thead th{background:transparent;color:var(--muted);text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,0.03)}
-.admin-table tbody td{padding:12px;border-bottom:1px dashed rgba(255,255,255,0.02);vertical-align:middle}
-.admin-table tbody tr:hover td{background:rgba(255,255,255,0.01)}
+    background: var(--card); /* Dùng màu nền --card */
+    border: 1px solid rgba(255, 255, 255, 0.05); /* Thêm viền ngoài */
+    padding: 0; /* Xóa padding cũ để bảng vừa khít */
+}
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    
+    /* QUAN TRỌNG: Sửa lỗi "sai ô" bằng cách cố định layout */
+    table-layout: fixed; 
+}
+.admin-table thead th {
+    background: rgba(255, 255, 255, 0.03); /* Nền header rõ hơn */
+    padding: 14px 16px; /* Tăng khoảng cách */
+    
+    /* Kẻ ô: Thêm viền */
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff; /* Cho màu chữ header sáng hơn */
+}
+.admin-table .col-small:last-child,
+.admin-table .col-medium:last-child {
+    text-align: center;
+}
+.admin-table tbody td:has(.icon-btn) {
+    text-align: center;
+}
+.admin-table tbody td:has(input[type="checkbox"]) {
+    text-align: center;
+}
+/* 6. Làm nổi bật hàng khi di chuột */
+.admin-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.03);
+}
 
 /* --- THÊM MỚI: Style cho hàng chờ xóa --- */
 .admin-table tbody tr.row-to-be-deleted td {
