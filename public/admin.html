@@ -111,30 +111,41 @@
     </section>
 
     <section id="analyticsTab" class="admin-tab-content" style="display:none">
-        <div class="section-title-row">
-            <div class="section-title">Vercel Web Analytics & Core Web Vitals</div>
-            <div>
-                <button class="btn btn-primary" onclick="window.open('https://vercel.com/kines-projects/datn/analytics?environment=all', '_blank')" style="background:linear-gradient(90deg,#00b0ff,#007aff);color:#fff">
-                    <span class="icon">🔗</span> Mở Analytics trong Tab mới
-                </button>
-            </div>
+      <div class="section-title-row">
+          <div class="section-title">Vercel Web Analytics & Core Web Vitals</div>
+          <div>
+              <button class="btn btn-primary" onclick="window.open('https://vercel.com/kines-projects/datn/analytics?environment=all', '_blank')" style="background:linear-gradient(90deg,#00b0ff,#007aff);color:#fff">
+                  <span class="icon">🔗</span> Mở Dashboard Vercel
+              </button>
+          </div>
+      </div>
+      
+      <div class="table-wrap" style="padding: 20px; min-height: 40vh;">
+          <p style="margin-bottom: 20px; color: var(--muted);">
+              Vì lý do bảo mật, không thể nhúng Dashboard Vercel Analytics trực tiếp vào đây. Bạn có thể kiểm tra trạng thái tích hợp script và sử dụng nút **"Mở Dashboard Vercel"** ở trên.
+          </p>
+          
+          <h4>⚙️ Trạng thái Tích hợp Script (Client-side)</h4>
+          <div id="analyticsStatusContainer" style="display: flex; flex-direction: column; gap: 10px; max-width: 500px; padding: 10px; border: 1px dashed rgba(255,255,255,0.1);">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dotted var(--muted); padding-bottom: 8px;">
+                  <span style="font-weight: 600;">Trạng thái Script:</span>
+                  <span id="analyticsScriptStatus" style="color: var(--danger); font-weight: 700;">CHƯA TÌM THẤY</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px;">
+                  <span style="font-weight: 600;">Vercel Project ID (data-sd-id):</span>
+                  <input type="text" id="vercelAnalyticsId" placeholder="ID (e.g., prj_xxxx)" style="width: 150px; padding: 6px; border-radius: 4px; background: rgba(0,0,0,0.3); border: 1px solid var(--muted);" readonly/>
+              </div>
+          </div>
+
+          <h4 style="margin-top: 30px;">💡 Gợi ý Tiếp theo</h4>
+          <p style="font-size: 13px;">Nhấp vào nút **"Mở Dashboard Vercel"** để xem các biểu đồ Core Web Vitals và dữ liệu lưu lượng truy cập thực tế của người dùng.</p>
+          
+          <div style="height: 150px; background: var(--panel); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-style: italic;">
+              [Khu vực hiển thị biểu đồ Analytics (Cần tích hợp API riêng)]
+          </div>
         </div>
-        
-        <div class="table-wrap" style="padding: 0; flex-grow: 1; height: 80vh; overflow: hidden;">
-            <p style="padding: 20px; color: var(--danger); font-weight: 600;">⚠️ Lưu ý: Vì lý do bảo mật, Vercel Dashboard thường chặn việc nhúng (iframe) từ các tên miền khác. Vui lòng sử dụng nút bên trên để xem dữ liệu.</p>
-            
-            <iframe 
-                src="https://vercel.com/kines-projects/datn/analytics?environment=all" 
-                style="width: 100%; height: 100%; border: none; margin-top: 10px;" 
-                allowfullscreen 
-                frameborder="0"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                title="Vercel Web Analytics Dashboard"
-            ></iframe>
-            
-            </div>
     </section>
-    </main>
+  </main>
 
   <footer style="margin-left:220px;padding:14px;color:var(--muted)">© 2025 Camping Game Admin</footer>
 
