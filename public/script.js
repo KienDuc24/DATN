@@ -89,14 +89,28 @@ function showAllGames(pageKey) {
 
 // Sắp xếp và phân nhóm game
 function groupGames(games) {
-  games.sort((a, b) => (getGameName(a)).localeCompare(getGameName(b)));
-  recentGames = games;
+  // Sắp xếp theo ngày tạo (nếu có) hoặc tên
+  games.sort((a, b) => {
+    if (a.createdAt && b.createdAt) {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    }
+    return (getGameName(a)).localeCompare(getGameName(b));
+  });
+  
+  recentGames = games.slice(0, 10); // Lấy 10 game mới nhất
+  
+  // --- SỬA LỖI: Lọc theo "featured: true" ---
+  featuredGames = games.filter(g => g.featured === true);
+  // ------------------------------------
+  
+  // (Giả sử logic cho Top và New vẫn dựa trên badge, nếu không, bạn cũng sửa tương tự)
   topGames = games.filter(g => g.badge === "Hot" || g.badge === "Top");
-  featuredGames = games.filter(g => g.badge === "Hot" || g.badge === "Updated");
   newGames = games.filter(g => g.badge === "New");
+
   gamesByCategory = {};
   games.forEach(g => {
-    const cat = g.category || 'Khác';
+    // Sửa: Lấy category theo ngôn ngữ hiện tại
+    const cat = getGameCategory(g, currentLang) || 'Khác';
     if (!gamesByCategory[cat]) gamesByCategory[cat] = [];
     gamesByCategory[cat].push(g);
   });
