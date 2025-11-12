@@ -1,6 +1,8 @@
 // public/admin-login.js
 
+// SỬA LỖI: Bọc toàn bộ code trong sự kiện này
 document.addEventListener('DOMContentLoaded', function() {
+  
   const BASE_API_URL = 'https://datn-socket.up.railway.app';
   const loginBtn = document.getElementById('login');
   const passInput = document.getElementById('p');
@@ -10,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Gán sự kiện
   loginBtn.addEventListener('click', handleLogin);
+  
   passInput.addEventListener('keypress', function(e) {
       if (e.key === 'Enter') handleLogin();
   });
