@@ -15,24 +15,24 @@ router.use((req, res, next) => {
 });
 
 // API tạo phòng
-router.post('/room', async (req, res, next) => {
+router.post('/room', async (req, res) => {
+  const { player, game, gameType, role } = req.body;
+
+  if (!player || !game || !gameType || !role) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  const newRoom = new Room({
+    code: roomCode,
+    host: player,
+    players: [{ name: player }],
+    game: { gameId: game, type: gameType }
+  });
+
   try {
-    const { player, game, gameType, role } = req.body || {};
-    if (!player || !game || !gameType || !role) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-    const newRoom = new Room({
-      code: roomCode,
-      host: player,
-      players: [{ name: player }],
-      game: { gameId: game, type: gameType }
-    });
-
     await newRoom.save();
-
     return res.status(201).json({
       roomCode: newRoom.code,
       room: {
@@ -44,39 +44,29 @@ router.post('/room', async (req, res, next) => {
       }
     });
   } catch (err) {
-    next(err);
+    console.error('[server] Error creating room:', err);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// API kiểm tra phòng
-router.get('/', async (req, res, next) => {
+// Endpoint kiểm tra phòng
+router.get('/room', async (req, res) => {
+  const { code, gameId } = req.query;
+
+  if (!code || !gameId) {
+    return res.status(400).json({ error: 'code and gameId are required' });
+  }
+
   try {
-    const { code, gameId } = req.query;
-
-    if (!code || !gameId) {
-      return res.status(400).json({ error: 'code and gameId are required' });
-    }
-
-    const room = await Room.findOne({ code, 'game.gameId': gameId })
-      .select('code game players status')
-      .exec();
-
+    const room = await Room.findOne({ code, 'game.gameId': gameId });
     if (!room) {
-      return res.status(404).json({ error: 'Room not found or game mismatch' });
+      return res.status(404).json({ found: false, message: 'Room not found' });
     }
 
-    return res.json({
-      found: true,
-      room: {
-        id: room._id,
-        code: room.code,
-        players: room.players.map(p => p.name),
-        game: room.game,
-        status: room.status
-      }
-    });
+    return res.status(200).json({ found: true, room });
   } catch (err) {
-    next(err);
+    console.error('[server] Error fetching room:', err);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 

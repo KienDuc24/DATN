@@ -40,8 +40,16 @@ function initSocket(token) {
 const socket = io(BASE_API_URL, { transports: ['websocket'] });
 
 const urlParams = new URLSearchParams(window.location.search);
-const roomCode = urlParams.get("code");
-const gameId = urlParams.get("gameId");
+const roomCode = urlParams.get('code');
+const gameId = urlParams.get('gameId');
+const gameName = urlParams.get('game');
+const username = urlParams.get('user');
+
+if (!roomCode || !gameId || !gameName || !username) {
+  alert('Thiếu thông tin phòng. Vui lòng kiểm tra lại!');
+} else {
+  console.log('Thông tin phòng:', { roomCode, gameId, gameName, username });
+}
 
 // Lấy tên người chơi
 let playerName = urlParams.get("user");

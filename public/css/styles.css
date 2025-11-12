@@ -8,7 +8,7 @@ body, html {
   min-height: 100vh;
 }
 body {
-  background: url(img/fav.png) no-repeat center center fixed;
+  background: url(../img/fav.png) no-repeat center center fixed;
   background-size: cover;
 }
 body::before {

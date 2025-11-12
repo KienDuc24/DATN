@@ -1071,11 +1071,13 @@ function handleGameClick(gameId, gameName) {
   };
 
   // Gán sự kiện cho nút "Xác nhận tham gia phòng"
+  // Khi xác nhận tham gia phòng
   modal.querySelector('#confirmJoinRoomBtn').onclick = async function() {
     const code = modal.querySelector('#inputJoinRoomCode').value.trim().toUpperCase();
     const gameId = window.selectedGameId || '';
+    
     if (!code || !gameId) {
-      alert('Thiếu mã phòng hoặc game!');
+      alert('Thiếu mã phòng hoặc gameId!');
       return;
     }
 
@@ -1085,6 +1087,7 @@ function handleGameClick(gameId, gameName) {
         alert('Không tìm thấy phòng. Vui lòng kiểm tra lại mã phòng.');
         return;
       }
+
       const data = await res.json();
       if (!data.found) {
         alert('Phòng không tồn tại hoặc không hợp lệ.');
