@@ -35,11 +35,11 @@ function el(id){return document.getElementById(id);}
 // ... (các hàm tiện ích giữ nguyên) ...
 function showOverlay(show){ el('popupOverlay').style.display = show ? 'block' : 'none'; }
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
-if (typeof escapeHtml === 'undefined') {
-  window.escapeHtml = function(s){
-    return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  };
-}
+// if (typeof escapeHtml === 'undefined') {
+//   window.escapeHtml = function(s){
+//     return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+//   };
+// }
 
 // --- LOGIC THANH XÁC NHẬN (MỚI) ---
 function updateConfirmBar() {

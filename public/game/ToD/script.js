@@ -1,4 +1,4 @@
-// publicscript.js
+// public/game/ToD/script.js
 (() => {
   // --- 1. KẾT NỐI SOCKET VÀ LẤY THÔNG TIN ---
   const SOCKET_URL = "https://datn-socket.up.railway.app";
@@ -51,7 +51,7 @@
   
   const socket = window.socket;
   let currentAskedPlayer = null; 
-  let currentHost = null; // --- THÊM MỚI: Biến lưu host ---
+  let currentHost = null;
 
   // --- 2. XỬ LÝ SỰ KIỆN SOCKET (ĐÃ GOM LẠI) ---
 
@@ -69,6 +69,7 @@
     alert(reason || 'Không thể vào phòng');
     window.location.href = '/';
   });
+
   socket.on('kicked', (data) => {
     alert(data.message || 'Bạn đã bị Admin kick khỏi phòng.');
     window.location.href = '/';
@@ -82,15 +83,16 @@
     return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
   }
 
-  // --- SỬA LỖI: Hàm Render Player (dùng CSS Grid) ---
-  function renderPlayers(players = [], askedName, host) { // Thêm 'host'
+  // --- HÀM RENDER ĐÃ SỬA LỖI (Dùng CSS Grid và loại bỏ tính toán) ---
+  function renderPlayers(players = [], askedName, host) { 
     if ($playersCount) $playersCount.textContent = `${players.length}`;
     if (!$avatars) return;
     $avatars.innerHTML = ''; 
     
+    // Thêm đống lửa
     const campfireEl = document.createElement('div');
     campfireEl.className = 'campfire';
-    campfireEl.innerHTML = `<img src="Img/campfire.gif" alt="Campfire" class="campfire-gif">`;
+    campfireEl.innerHTML = `<img src="/game/ToD/Img/campfire.gif" alt="Campfire" class="campfire-gif">`;
     $avatars.appendChild(campfireEl);
     
     if (!players.length) return;
@@ -100,15 +102,14 @@
       const imgUrl = pickAvatarFor(p);
       const el = document.createElement('div');
       
-      // Thêm class 'host'
       el.className = 'player' + 
                     (name === playerName ? ' you' : '') + 
                     (name === askedName ? ' asked' : '') +
-                    (name === host ? ' host' : ''); // Thêm class host
+                    (name === host ? ' host' : ''); 
       
-      // Thêm vương miện cho host
       const crown = (name === host) ? '<div class="crown">👑</div>' : '';
       
+      // SỬA: Bỏ left/top để CSS Grid tự sắp xếp
       el.innerHTML = `<div class="pic">${crown}<img src="${imgUrl}" alt="${name}"></div><div class="name">${name}</div>`;
       $avatars.appendChild(el);
     });
@@ -124,12 +125,12 @@
     const participantsCount = payload && (payload.participantsCount || (payload.data && payload.data.participantsCount)) || players.length || 0;
     const status = (payload && payload.status) || 'open';
     
-    currentHost = host; // --- THÊM MỚI: Lưu lại host ---
+    currentHost = host; 
 
     if ($room) $room.textContent = rc || '—';
     if ($playersCount) $playersCount.textContent = participantsCount;
 
-    renderPlayers(players, currentAskedPlayer, currentHost); // Truyền host vào
+    renderPlayers(players, currentAskedPlayer, currentHost);
 
     if (controls) {
       let startBtn = document.getElementById('startRoundBtn');
@@ -146,7 +147,11 @@
         controls.appendChild(startBtn);
       }
       
-      startBtn.style.display = (host && playerName === host && status === 'open') ? 'inline-block' : 'none';
+      // --- SỬA LỖI: LOGIC HIỂN THỊ NÚT BẮT ĐẦU ---
+      // Hiện nút NẾU: (Bạn là Host) VÀ (Game đang chờ hoặc chưa có lượt)
+      // Nút sẽ bị ẩn khi tod-your-turn được gọi.
+      startBtn.style.display = (host && playerName === host && status !== 'playing') ? 'inline-block' : 'none';
+      // --- HẾT SỬA LỖI ---
     }
   });
 
@@ -154,10 +159,12 @@
     currentAskedPlayer = player; 
     socket.emit('tod-who', { roomCode }); // Render lại (để highlight)
     
-    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thách thức' : `⏳ ${player} đang chọn...`;
+    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thử thách' : `⏳ ${player} đang chọn...`;
     
+    // --- SỬA LỖI: Ẩn nút "Bắt đầu" ngay khi lượt chơi đầu tiên bắt đầu ---
     const startBtn = document.getElementById('startRoundBtn');
-    if (startBtn) startBtn.style.display = 'none'; // Ẩn nút "Bắt đầu"
+    if (startBtn) startBtn.style.display = 'none'; 
+    // --- HẾT SỬA LỖI ---
 
     if (player === playerName) {
       if ($actionBtns) $actionBtns.innerHTML = '';

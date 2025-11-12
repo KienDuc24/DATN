@@ -191,7 +191,7 @@ body {
 /* --- THÊM MỚI: Style cho vương miện --- */
 .player .crown {
     position: absolute;
-    top: 0; /* Điều chỉnh vị trí vương miện */
+    top: -30px; /* Điều chỉnh vị trí vương miện */
     left: 50%;
     transform: translateX(-50%) rotate(15deg);
     font-size: 1.8rem;

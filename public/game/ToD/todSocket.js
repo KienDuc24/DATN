@@ -191,9 +191,6 @@ module.exports = (socket, io) => {
      try {
       const room = await Room.findOne({ code: roomCode });
       if (!room || !Array.isArray(room.players) || room.players.length < 1) return;
-      
-      // (Không cần cập nhật status='playing' ở đây nữa, vì socketServer.js đã làm)
-      
       const state = getRoomState(roomCode);
       if (typeof state.currentIndex !== 'number') state.currentIndex = 0;
 
