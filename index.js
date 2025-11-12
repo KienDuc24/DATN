@@ -1,10 +1,12 @@
+// index.js
+
 require('dotenv').config();
 const mongoose = require('mongoose');
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const path = require('path');
-const attachSocket = require('./socketServer');
+const attachSocket = require('./socketServer'); // File socket của bạn
 
 const app = express();
 const server = http.createServer(app);
@@ -30,7 +32,8 @@ try {
 }
 
 // --- 3. Khởi động Server ---
-const PORT = process.env.PORT || 3000;
+// Dòng này LẤY PORT TỪ RAILWAY
+const PORT = process.env.PORT || 3000; 
 
 async function start() {
   try {
@@ -46,7 +49,9 @@ async function start() {
       console.log('[index] Socket.IO attached.');
     }
 
+    // Server sẽ chạy trên port Railway cung cấp
     server.listen(PORT, () => {
+      // Dòng log này SẼ XUẤT HIỆN TRÊN RAILWAY khi thành công
       console.log(`[index] Server + Socket running on port ${PORT}`);
     });
     
