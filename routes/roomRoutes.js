@@ -29,19 +29,19 @@ router.post('/', async (req, res) => {
   if (!player || !game || !gameType || !role) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
-  
+
   const roomCode = generateRoomCode();
 
   const newRoom = new Room({
     code: roomCode,
-    host: player,
+    host: player, // [SỬA] Bây giờ là String
     players: [{ name: player }],
-    game: { gameId: game, type: gameType },
-    status: 'open' // Thêm status 'open' khi tạo phòng
+    game: { gameId: game, type: gameType }, // [SỬA] gameId bây giờ là String
+    status: 'open'
   });
 
   try {
-    await newRoom.save();
+    await newRoom.save(); // Lỗi CastError xảy ra ở đây
     return res.status(201).json({
       roomCode: newRoom.code,
       room: {
@@ -54,11 +54,15 @@ router.post('/', async (req, res) => {
     });
   } catch (err) {
     console.error('[server] Error creating room:', err);
+    // [SỬA] Trả về lỗi 400 nếu là lỗi Validation/Cast
+    if (err.name === 'ValidationError' || err.name === 'CastError') {
+         return res.status(400).json({ error: err._message || 'Validation failed' });
+    }
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Endpoint kiểm tra phòng (Dùng khi "Tham gia phòng" từ index.html)
+// Endpoint kiểm tra phòng (GET /api/room?code=...)
 router.get('/', async (req, res) => {
   const { code, gameId } = req.query;
 
@@ -72,14 +76,12 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ found: false, message: 'Room not found' });
     }
 
-    // --- LOGIC MỚI: CHẶN THAM GIA PHÒNG ĐANG CHƠI ---
     if (room.status === 'playing') {
-      return res.status(403).json({ // 403 = Forbidden (Cấm)
+      return res.status(403).json({ 
         found: false, 
         message: 'Phòng này đã bắt đầu. Không thể tham gia!' 
       });
     }
-    // ---------------------------------------------
 
     return res.status(200).json({ found: true, room });
   } catch (err) {
@@ -88,7 +90,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// API tham gia phòng (dùng cho 'tod-join' - logic này có vẻ không được dùng)
+// (Giữ nguyên các route khác...)
 router.post('/join', async (req, res, next) => {
   try {
     const { player, code, gameId } = req.body || {};
@@ -96,9 +98,8 @@ router.post('/join', async (req, res, next) => {
       return res.status(400).json({ error: 'player, code, and gameId are required' });
     }
 
-    // (Logic này cũng nên kiểm tra status, nhưng 'joinRoom' socket đã làm việc đó)
     const room = await Room.findOneAndUpdate(
-      { code, 'game.gameId': gameId, status: 'open' }, // Chỉ join nếu status là 'open'
+      { code, 'game.gameId': gameId, status: 'open' },
       { $addToSet: { players: { name: player } } },
       { new: true }
     ).select('code game players');
@@ -121,7 +122,6 @@ router.post('/join', async (req, res, next) => {
   }
 });
 
-// Middleware xử lý lỗi chung
 router.use((err, req, res, next) => {
   console.error('[roomRoutes] Unexpected error:', err.message);
   res.status(500).json({ error: 'Internal Server Error' });

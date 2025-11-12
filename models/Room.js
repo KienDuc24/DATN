@@ -1,34 +1,35 @@
-// Room.js
-const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+// models/Room.js (CẦN SỬA)
 
-const roomSchema = new Schema({
-  code: { // Mã phòng (A123) - Khóa nghiệp vụ
+const mongoose = require('mongoose');
+
+const playerSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  displayName: String,
+  avatar: String
+});
+
+const roomSchema = new mongoose.Schema({
+  code: { 
     type: String,
     required: true,
     unique: true,
-    default: () => {
-      const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
-      const number = Math.floor(100 + Math.random() * 900);
-      return letter + number;
-    }
+    uppercase: true,
+    trim: true
   },
-  host: { // Liên kết đến User (host)
-    type: Schema.Types.ObjectId, // <-- THAY ĐỔI: Dùng ObjectId
-    ref: 'User', // <-- GIỮ NGUYÊN: Liên kết đến model 'User'
+  host: { // Phải là String để lưu 'guest_xxx' hoặc 'username'
+    type: String, 
     required: true
   },
-  players: [{ name: String }],
+  players: [playerSchema], 
   game: {
-    gameId: { // Liên kết đến Game
-      type: Schema.Types.ObjectId, // <-- THAY ĐỔI: Dùng ObjectId
-      ref: 'Game', // <-- THÊM: Liên kết đến model 'Game'
-      required: true
-    },
-    type: { type: String } // "type" này có vẻ thừa nếu bạn đã có gameId
+    gameId: { type: String, required: true }, // Phải là String để lưu 'ToD', 'Draw'
+    type: { type: String } 
   },
-  status: { type: String, default: 'waiting' },
-  createdAt: { type: Date, default: Date.now }
-});
+  status: {
+    type: String,
+    enum: ['open', 'playing', 'closed'],
+    default: 'open'
+  }
+}, { timestamps: true });
 
 module.exports = mongoose.model('Room', roomSchema);
