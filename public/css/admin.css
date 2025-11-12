@@ -99,6 +99,13 @@ header{position:sticky;top:0;left:220px;right:0;/* height:72px; */ display:flex;
     font-weight: 700;
     color: #fff; /* Cho màu chữ header sáng hơn */
 }
+.admin-table tbody td {
+    padding: 14px 16px; /* Đồng bộ padding với <th> */
+    border: 1px solid rgba(255, 255, 255, 0.07); /* Đồng bộ viền với <th> */
+    
+    /* Tùy chọn: Giúp căn chỉnh nội dung đẹp hơn */
+    vertical-align: top; 
+}
 .admin-table .col-small:last-child,
 .admin-table .col-medium:last-child {
     text-align: center;
