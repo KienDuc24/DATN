@@ -1,31 +1,27 @@
 /* public/game/ToD/style.css */
 
-/* --- Biến CSS toàn cục --- */
 :root {
-    --bg-dark: #1a1a2e; /* Nền tối */
-    --bg-medium: #16213e; /* Nền trung bình */
-    --text-light: #e0e0e0; /* Chữ sáng */
-    --text-accent: #e94560; /* Màu nhấn */
-    --accent-orange: #ff7f50; /* Cam cháy */
-    --accent-yellow: #fddb3a; /* Vàng ấm */
-    --accent-green: #3CB371; /* Xanh lá cây */
-    --border-color: #0f3460; /* Màu viền */
-    --card-bg: #0f3460; /* Nền card */
-    --campfire-orange: #ffa500;
-    --campfire-red: #ff4500;
+    --bg-dark: #1a1a2e;
+    --bg-medium: #16213e;
+    --text-light: #e0e0e0;
+    --text-accent: #e94560;
+    --accent-orange: #ff7f50;
+    --accent-yellow: #fddb3a;
+    --accent-green: #3CB371;
+    --border-color: #0f3460;
+    --card-bg: #0f3460;
 }
 
-/* --- Thiết lập cơ bản --- */
 body {
     margin: 0;
     font-family: 'Poppins', sans-serif;
     color: var(--text-light);
-    overflow: hidden; /* Ngăn cuộn */
+    overflow: hidden;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: var(--bg-dark); /* Fallback */
+    background-color: var(--bg-dark);
 }
 
 .background-wrapper {
@@ -34,7 +30,8 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: url('./Img/fav.png'); /* Đảm bảo đường dẫn đúng */
+    /* Sửa đường dẫn: Dùng đường dẫn tuyệt đối từ gốc */
+    background-image: url('Img/fav.png'); 
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -52,12 +49,11 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6); /* Lớp phủ tối */
-    backdrop-filter: blur(3px); /* Hiệu ứng làm mờ nhẹ */
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
     z-index: 0;
 }
 
-/* --- Header --- */
 .game-header {
     position: relative;
     z-index: 1;
@@ -66,7 +62,35 @@ body {
     color: #fff;
     width: 100%;
     max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
 }
+
+/* --- THÊM MỚI: Style Nút Quay Lại --- */
+.back-btn {
+    position: absolute;
+    top: 1.5rem;
+    left: 1.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+.back-btn i {
+    margin-right: 0.5rem;
+}
+/* ---------------------------------- */
 
 .game-title {
     font-family: 'Pacifico', cursive;
@@ -78,7 +102,6 @@ body {
 
 .room-info {
     font-size: 1.1rem;
-    margin-top: 0.5rem;
     background-color: rgba(var(--card-bg), 0.7);
     padding: 0.5rem 1rem;
     border-radius: 20px;
@@ -93,7 +116,6 @@ body {
     gap: 0.5rem;
 }
 
-/* --- Main Content --- */
 .game-container {
     position: relative;
     z-index: 1;
@@ -107,7 +129,6 @@ body {
     align-items: center;
 }
 
-/* Player Camp */
 .player-camp {
     flex: 2;
     min-width: 300px;
@@ -123,9 +144,9 @@ body {
     width: 100%;
     height: 100%;
     max-width: 600px;
-    max-height: 400px; /* Chiều cao cố định tương đối */
+    max-height: 400px;
     min-height: 250px;
-    aspect-ratio: 3/2; /* Giữ tỉ lệ */
+    aspect-ratio: 3/2;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -148,7 +169,8 @@ body {
     overflow: hidden;
     border: 3px solid var(--border-color);
     box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
-    transition: transform 0.2s ease-in-out, border-color 0.2s ease-in-out;
+    transition: all 0.3s ease-in-out;
+    background-color: #fff;
 }
 
 .player .pic img {
@@ -158,11 +180,22 @@ body {
 }
 
 .player.you .pic {
-    border-color: var(--accent-yellow); /* Border cho người chơi hiện tại */
+    border-color: var(--accent-yellow);
+    box-shadow: 0 0 15px var(--accent-yellow);
+}
+
+/* --- THÊM MỚI: Hiệu ứng người đang trả lời --- */
+@keyframes glowing {
+  0% { box-shadow: 0 0 10px var(--accent-orange), 0 0 5px var(--accent-orange) inset; }
+  50% { box-shadow: 0 0 25px var(--accent-orange), 0 0 10px var(--accent-orange) inset; }
+  100% { box-shadow: 0 0 10px var(--accent-orange), 0 0 5px var(--accent-orange) inset; }
 }
 .player.asked .pic {
-    border-color: var(--accent-orange); /* Border cho người đang bị hỏi */
+    border-color: var(--accent-orange);
+    transform: scale(1.15);
+    animation: glowing 1.5s infinite ease-in-out;
 }
+/* -------------------------------------- */
 
 .player .name {
     margin-top: 5px;
@@ -189,10 +222,10 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    bottom: 0;
+    bottom: -20px; 
     left: 50%;
     transform: translateX(-50%);
-    z-index: -1; /* Đảm bảo lửa trại ở dưới */
+    z-index: -1;
 }
 
 .campfire-gif {
@@ -201,8 +234,6 @@ body {
     object-fit: contain;
 }
 
-
-/* Game Controls */
 .game-controls {
     flex: 1;
     min-width: 280px;
@@ -238,7 +269,7 @@ body {
 .action-buttons {
     display: flex;
     gap: 1rem;
-    flex-wrap: wrap; /* Cho phép xuống dòng trên màn hình nhỏ */
+    flex-wrap: wrap;
     justify-content: center;
     width: 100%;
 }
@@ -252,7 +283,7 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    min-width: 120px; /* Giới hạn chiều rộng nút */
+    min-width: 120px;
 }
 
 .btn-primary {
@@ -274,7 +305,7 @@ body {
 }
 
 .btn-reject {
-    background-color: var(--accent-text);
+    background-color: var(--text-accent);
     color: white;
 }
 .btn-reject:hover {
@@ -282,8 +313,13 @@ body {
     transform: translateY(-2px);
 }
 
+/* --- THÊM MỚI: Hiệu ứng lựa chọn (nhấn) --- */
+.btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+/* ------------------------------------- */
 
-/* Question Card */
 .question-card {
     background-color: var(--bg-medium);
     border-radius: 10px;
@@ -293,8 +329,8 @@ body {
     text-align: center;
     transition: all 0.4s ease-in-out;
     position: relative;
-    overflow: hidden; /* Để ẩn phần text khi collapsed */
-    max-height: 250px; /* Chiều cao tối đa khi mở */
+    overflow: hidden;
+    max-height: 250px;
 }
 
 .question-card.hidden {
@@ -302,12 +338,13 @@ body {
     visibility: hidden;
     transform: translateY(20px);
     max-height: 0;
-    padding: 0;
+    padding-top: 0;
+    padding-bottom: 0;
     margin-top: 0;
 }
 
 .question-card.collapsed {
-    max-height: 50px; /* Chiều cao khi thu gọn */
+    max-height: 50px;
     padding: 0.8rem 1.2rem;
 }
 .question-card.collapsed .q-text,
@@ -362,9 +399,9 @@ body {
     color: var(--text-light);
     opacity: 0.8;
     transition: all 0.3s ease;
+    margin-top: 0.5rem;
 }
 
-/* --- Footer --- */
 .game-footer {
     position: relative;
     z-index: 1;
@@ -375,11 +412,19 @@ body {
     width: 100%;
 }
 
-
-/* --- Responsive Design (Media Queries) --- */
-
-/* Tablet & Smaller Desktops */
 @media (max-width: 992px) {
+    .game-header {
+        padding: 0.5rem;
+    }
+    .back-btn {
+        top: 1rem;
+        left: 1rem;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.9rem;
+    }
+    .back-btn span {
+        display: none; /* Ẩn chữ 'Trang chủ' trên tablet */
+    }
     .game-title {
         font-size: 2.5rem;
     }
@@ -430,7 +475,6 @@ body {
     }
 }
 
-/* Mobile */
 @media (max-width: 576px) {
     .game-title {
         font-size: 2rem;
@@ -457,19 +501,19 @@ body {
         padding: 0.8rem;
     }
     .action-buttons {
-        flex-direction: column; /* Nút xếp chồng lên nhau */
+        flex-direction: column;
         gap: 0.8rem;
     }
     .btn {
         width: 100%;
-        max-width: 250px; /* Giới hạn chiều rộng nút trên mobile */
+        max-width: 250px;
         margin: 0 auto;
     }
     .question-card {
         padding: 0.8rem;
     }
     .question-header {
-        flex-direction: column; /* Loại và nút toggle xếp chồng */
+        flex-direction: column;
         gap: 0.5rem;
     }
     .toggle-btn {
@@ -478,11 +522,4 @@ body {
     .q-text {
         font-size: 0.95rem;
     }
-    .game-footer {
-        padding: 0.8rem;
-        font-size: 0.8rem;
-    }
 }
-
-/* Cập nhật lại vị trí player cho responsive */
-/* (Phần này sẽ được JS tính toán động) */

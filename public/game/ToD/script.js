@@ -28,7 +28,11 @@
   const $playersCount = document.getElementById('playersCount');
   const $avatars = document.getElementById('avatars');
   const $question = document.getElementById('questionCard');
+  
+  // Lấy các element đếm vote
   const $voteInfo = document.getElementById('voteInfo');
+  const $voteCount = document.getElementById('voteCount');
+  const $voteTotal = document.getElementById('voteTotal');
   
   const controls = document.getElementById('controls');
   let $actionBtns = document.getElementById('actionBtns');
@@ -47,6 +51,7 @@
   }
   
   const socket = window.socket;
+  let currentAskedPlayer = null; // Biến lưu người đang trả lời
 
   // --- 2. XỬ LÝ SỰ KIỆN SOCKET (ĐÃ GOM LẠI) ---
 
@@ -65,18 +70,29 @@
     window.location.href = '/';
   });
 
+  // --- SỬA: Đổi avatar 'bottts' thành 'micah' (giống người) ---
   function pickAvatarFor(playerObj) {
     const name = typeof playerObj === 'string' ? playerObj : (playerObj && playerObj.name) ? playerObj.name : String(playerObj || '');
     const providedAvatar = (playerObj && playerObj.avatar) ? playerObj.avatar : null;
     if (providedAvatar) return providedAvatar;
     if (name === playerName && avatarUrl) return avatarUrl;
-    return `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`;
+    // Đổi 'bottts' thành 'micah'
+    return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
   }
+  // --- HẾT SỬA ---
 
   function renderPlayers(players = [], askedName) {
-    if ($playersCount) $playersCount.textContent = `Người chơi: ${players.length}`;
+    if ($playersCount) $playersCount.textContent = `${players.length}`;
     if (!$avatars) return;
-    $avatars.innerHTML = '';
+    $avatars.innerHTML = ''; // Xóa avatar cũ
+    
+    // --- SỬA: Thêm đống lửa vào trước (sửa lỗi không hiển thị) ---
+    const campfireEl = document.createElement('div');
+    campfireEl.className = 'campfire';
+    campfireEl.innerHTML = `<img src="/game/ToD/Img/campfire.gif" alt="Campfire" class="campfire-gif">`;
+    $avatars.appendChild(campfireEl);
+    // --- HẾT SỬA ---
+    
     if (!players.length) return;
     const area = document.getElementById('camp');
     const w = area ? area.clientWidth : 600;
@@ -84,14 +100,20 @@
     const cx = w / 2;
     const cy = h * 0.46;
     const R = Math.min(w, h) * 0.30;
+    
     players.forEach((p, i) => {
       const name = p && p.name ? p.name : String(p);
       const imgUrl = pickAvatarFor(p);
       const el = document.createElement('div');
+      
+      // --- SỬA: Thêm class 'asked' ---
       el.className = 'player' + (name === playerName ? ' you' : '') + (name === askedName ? ' asked' : '');
-      const angle = (2 * Math.PI * i) / players.length - Math.PI / 2;
+      // --- HẾT SỬA ---
+      
+      const angle = (2 * Math.PI * i) / players.length - (Math.PI / 2);
       const x = cx + R * Math.cos(angle);
       const y = cy + R * Math.sin(angle);
+      
       el.style.left = `${x}px`;
       el.style.top = `${y}px`;
       el.innerHTML = `<div class="pic"><img src="${imgUrl}" alt="${name}"></div><div class="name">${name}</div>`;
@@ -108,9 +130,11 @@
     const participantsCount = payload && (payload.participantsCount || (payload.data && payload.data.participantsCount)) || players.length || 0;
 
     if ($room) $room.textContent = rc || '—';
-    if ($playersCount) $playersCount.textContent = 'Người chơi: ' + participantsCount;
+    if ($playersCount) $playersCount.textContent = participantsCount;
 
-    renderPlayers(players);
+    // --- SỬA: Truyền vào người đang bị hỏi ---
+    renderPlayers(players, currentAskedPlayer);
+    // --- HẾT SỬA ---
 
     if (controls) {
       let startBtn = document.getElementById('startRoundBtn');
@@ -131,7 +155,10 @@
   });
 
   socket.on('tod-your-turn', ({ player }) => {
-    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thử thách' : `⏳ ${player} đang chọn...`;
+    currentAskedPlayer = player; // Lưu lại người đang trả lời
+    socket.emit('tod-who', { roomCode }); // Yêu cầu render lại
+    
+    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thách thức' : `⏳ ${player} đang chọn...`;
     
     const startBtn = document.getElementById('startRoundBtn');
     if (startBtn) startBtn.style.display = 'none';
@@ -155,6 +182,9 @@
   toggleBtn && toggleBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleQuestionExpand(); });
 
   socket.on('tod-question', ({ player, choice, question }) => {
+    currentAskedPlayer = player; // Đảm bảo người chơi vẫn sáng
+    socket.emit('tod-who', { roomCode }); // Yêu cầu render lại
+
     if ($question) {
       $question.classList.remove('hidden');
       $question.classList.remove('collapsed');
@@ -174,10 +204,28 @@
         const r = document.createElement('button'); r.className='btn btn-reject'; r.textContent='Không thông qua'; r.onclick = () => { socket.emit('tod-vote', { roomCode, player: playerName, vote: 'reject' }); $actionBtns.innerHTML = ''; };
         $actionBtns.appendChild(a); $actionBtns.appendChild(r);
       }
+      // --- SỬA: Hiển thị và reset bộ đếm vote ---
+      if ($voteInfo) $voteInfo.style.display = 'block';
+      if ($voteCount) $voteCount.textContent = '0';
+      if ($voteTotal) $voteTotal.textContent = '?'; 
+      // --- HẾT SỬA ---
     }
   });
 
+  // --- THÊM MỚI: Cập nhật bộ đếm vote ---
+  socket.on('tod-voted', ({ player, vote, acceptCount, voted, total }) => {
+      console.log(`Vote received: ${player} voted ${vote}. Total: ${voted}/${total}`);
+      if ($voteInfo && $voteInfo.style.display !== 'none') {
+        if ($voteCount) $voteCount.textContent = voted;
+        if ($voteTotal) $voteTotal.textContent = total;
+      }
+  });
+  // --- HẾT THÊM MỚI ---
+
   socket.on('tod-result', ({ result }) => {
+    currentAskedPlayer = null; // Bỏ hiệu ứng
+    socket.emit('tod-who', { roomCode }); // Yêu cầu render lại
+    
     if ($voteInfo) $voteInfo.style.display = 'none';
     if ($turnText) $turnText.textContent = result === 'accepted' ? '✅ Đa số chấp nhận' : '❌ Không đủ, thử lại';
     if (result === 'accepted' && $question) $question.classList.add('hidden');
@@ -188,6 +236,14 @@
   window.addEventListener('resize', () => {
     socket.emit('tod-who', { roomCode });
   });
+
+  // --- THÊM MỚI: Xử lý rời phòng khi đóng tab/back ---
+  window.addEventListener('beforeunload', () => {
+    // Chỉ gửi 'disconnecting', backend (todSocket.js) sẽ tự xử lý
+    // (Không cần 'leaveRoom' vì 'disconnecting' đã xử lý)
+    console.log('[ToD][client] Disconnecting (beforeunload)');
+  });
+  // --- HẾT THÊM MỚI ---
 
   if (typeof window.ActionBtns === 'undefined') {
     window.ActionBtns = {
