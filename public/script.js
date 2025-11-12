@@ -1,7 +1,6 @@
 // Lấy dữ liệu game từ games.json
 let allGames = [];
 let featuredGames = [];
-let newGames = [];
 let gamesByCategory = {};
 
 
@@ -11,7 +10,6 @@ const API_BASE_URL = 'https://datn-socket.up.railway.app'; // Đường dẫn AP
 let sliderPage = {
   allGames: 0,
   featured: 0,
-  new: 0
 };
 
 let MAX_SHOW = getMaxShow();
@@ -96,7 +94,6 @@ function groupGames(games) {
   featuredGames = games.filter(g => g.featured === true);
   // ---------------------------------
   
-  newGames = games.filter(g => g.badge === "New");
   
   gamesByCategory = {};
   games.forEach(g => {
@@ -239,8 +236,6 @@ function sortGames(sectionKey, selectEl) {
     gamesArr = allGames.slice();
   } else if (sectionKey === 'featured') {
     gamesArr = featuredGames.slice();
-  } else if (sectionKey === 'new') {
-    gamesArr = newGames.slice();
   } else {
     return;
   }
@@ -335,10 +330,9 @@ fetch('games.json')
     showLoading(false);
     allGames = data;
     groupGames(allGames);
-    sliderPage = { all: 0, featured: 0, new: 0 };
+    sliderPage = { all: 0, featured: 0 };
     renderSlider(allGames, 'allSlider', 'all');
     renderSlider(featuredGames, 'featuredSlider', 'featured');
-    renderSlider(newGames, 'newSlider', 'new');
     renderGamesByCategory();
   });
 
@@ -426,7 +420,6 @@ function setLang(lang, firstLoad = false) {
   // Render lại các slider/game khi đổi ngôn ngữ
   renderSlider(allGames, 'allSlider', 'allShowMore', 'allShowMore-prev', 'all');
   renderSlider(featuredGames, 'featuredSlider', 'featuredShowMore', 'featuredShowMore-prev', 'featured');
-  renderSlider(newGames, 'newSlider', 'newShowMore', 'newShowMore-prev', 'new');
   renderGamesByCategory();
   updateLangUI(); // <-- Thêm dòng này
 }
@@ -1216,7 +1209,6 @@ function rerenderAllSliders() {
   MAX_SHOW = getMaxShow();
   renderSlider(allGames, 'allSlider', 'allShowMore', 'allShowMore-prev', 'all');
   renderSlider(featuredGames, 'featuredSlider', 'featuredShowMore', 'featuredShowMore-prev', 'featured');
-  renderSlider(newGames, 'newSlider', 'newShowMore', 'newShowMore-prev', 'new');
   renderGamesByCategory();
   updateLangUI(); // <-- Thêm dòng này để cập nhật lại select động
 }
