@@ -6,11 +6,11 @@
   <title>Admin Login</title>
   
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
-  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="icon" type="image/svg+xml" href="img/fav.svg" />
   <link rel="stylesheet" href="/css/admin.css">
 
   <style>
-    /* Sử dụng biến màu từ admin.css */
     :root {
         --bg:#071224; --card:#081726; --accent:#ff9f43; --muted:#9aa4b2;
         --panel:#0e1720; --glass: rgba(255,255,255,0.03); --success:#22c55e; --danger:#ef4444; --radius:10px;
@@ -35,6 +35,7 @@
       width: 340px;
       border: 1px solid rgba(255,255,255,0.03);
       text-align: center;
+      box-sizing: border-box;
     }
     .card h3 {
         font-family: "Pacifico", sans-serif;
@@ -43,10 +44,14 @@
         margin-top: 0;
         margin-bottom: 1rem;
     }
+    .input-wrapper {
+        position: relative;
+        width: 100%;
+        margin: 10px 0;
+    }
     .card input {
       width: 100%;
       padding: 12px;
-      margin: 10px 0;
       border: 1px solid rgba(255,255,255,0.04);
       border-radius: 8px;
       background: var(--glass);
@@ -59,7 +64,22 @@
         border-color: var(--accent);
         box-shadow: 0 0 10px rgba(255,159,67,0.2);
     }
-    .card button {
+    
+    /* --- THÊM MỚI: Nút hiện mật khẩu --- */
+    .toggle-password {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+    /* --------------------------------- */
+
+    .card button#login {
       width: 100%;
       padding: 12px;
       border: none;
@@ -72,7 +92,7 @@
       margin-top: 1rem;
       transition: all 0.3s ease;
     }
-    .card button:hover {
+    .card button#login:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 20px rgba(0,0,0,0.4);
     }
@@ -87,27 +107,48 @@
 <body>
   <div class="card">
     <h3>Admin Login</h3>
-    <input id="u" placeholder="Username" autocomplete="username" />
-    <input id="p" placeholder="Password" type="password" autocomplete="current-password" />
+    <div class="input-wrapper">
+        <input id="u" placeholder="Username" autocomplete="username" />
+    </div>
+    <div class="input-wrapper">
+        <input id="p" placeholder="Password" type="password" autocomplete="current-password" />
+        <button type="button" id="togglePass" class="toggle-password">
+            <i class="fa fa-eye"></i>
+        </button>
+        </div>
     <button id="login">Login</button>
     <p id="msg"></p>
   </div>
   <script>
-    // --- SỬA LỖI Ở ĐÂY ---
-    // Thêm URL backend của bạn
     const BASE_API_URL = 'https://datn-socket.up.railway.app';
-    // -------------------
-
     const loginBtn = document.getElementById('login');
     const passInput = document.getElementById('p');
+    const userIpnut = document.getElementById('u');
     
     loginBtn.addEventListener('click', handleLogin);
     
     passInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            handleLogin();
+        if (e.key === 'Enter') handleLogin();
+    });
+    userIpnut.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') handleLogin();
+    });
+
+    // --- THÊM MỚI: Logic hiện mật khẩu ---
+    const toggleBtn = document.getElementById('togglePass');
+    const icon = toggleBtn.querySelector('i');
+    toggleBtn.addEventListener('click', function() {
+        if (passInput.type === 'password') {
+            passInput.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            passInput.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
         }
     });
+    // --- HẾT THÊM MỚI ---
 
     async function handleLogin() {
       const u = document.getElementById('u').value.trim();
@@ -121,18 +162,14 @@
       }
 
       try {
-        // --- SỬA LỖI Ở ĐÂY ---
-        // Thêm BASE_API_URL vào trước
         const res = await fetch(`${BASE_API_URL}/admin/login`, { 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: u, password: p })
         });
-        // -------------------
         
         const j = await res.json();
         if (res.ok && j.ok) {
-          // Chuyển hướng đến /admin (trang này đã được bảo vệ)
           location.href = '/admin.html'; 
         } else {
           msg.textContent = j.message || 'Login failed';
