@@ -6,15 +6,15 @@ const path = require('path');
 // Endpoint hướng dẫn cách chơi
 router.get('/ai/get-instructions', async (req, res) => {
   try {
-    const filePath = path.join(__dirname, '../public/game/ToD/rule.json');
+    const filePath = path.join(__dirname, '../public/game/ToD/rule.json'); // Đường dẫn tuyệt đối đến rule.json
     const rules = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
-    // Kiểm tra nếu `rules.rules_summary` tồn tại
-    if (!rules.rules_summary) {
+    // Kiểm tra nếu `rules.summary.en` tồn tại
+    if (!rules.summary || !rules.summary.en) {
       return res.status(400).json({ error: 'Không tìm thấy hướng dẫn trong rule.json.' });
     }
 
-    res.json({ instructions: rules.rules_summary });
+    res.json({ instructions: rules.summary.en });
   } catch (error) {
     console.error('Lỗi khi đọc rule.json:', error);
     res.status(500).json({ error: 'Không thể lấy hướng dẫn.' });
