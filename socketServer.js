@@ -3,7 +3,7 @@ const { Server } = require('socket.io');
 const Room = require('./models/Room');
 
 // --- SỬA LỖI: Đường dẫn đúng là './' (thư mục hiện tại) ---
-const todHandler = require('./public/game/ToD/ToDSocket.js');
+const todHandler = require('./public/game/ToD/todSocket.js');
 // ----------------------------------------------------
 
 // Biến (map) để lưu trữ thông tin socket.id -> {player, code}
