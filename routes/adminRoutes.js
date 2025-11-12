@@ -3,12 +3,12 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Room = require('../models/Room');
-const Game = require('../models/Game'); // <-- THÊM MỚI: Import Game model
+const Game = require('../models/Game'); // Import Game model
 
-// SỬA: Bọc router trong một hàm để nhận 'io'
+// Bọc router trong một hàm để nhận 'io'
 module.exports = function(io) {
   // --- API NGƯỜI DÙNG (USERS) ---
-  // (Phần này giữ nguyên, đã đúng)
+  // (Phần này giữ nguyên)
   router.get('/users', async (req, res) => {
     try {
       const users = await User.find().select('-password');
@@ -39,7 +39,7 @@ module.exports = function(io) {
   });
 
   // --- API PHÒNG CHƠI (ROOMS) ---
-  // (Phần này giữ nguyên, đã đúng)
+  // (Phần này giữ nguyên)
   router.get('/rooms', async (req, res) => {
     try {
       const rooms = await Room.find();
@@ -64,9 +64,8 @@ module.exports = function(io) {
     }
   });
 
-  // --- API TRÒ CHƠI (GAMES) - ĐÃ SỬA ĐỂ DÙNG DATABASE ---
-  
-  // SỬA: Lấy game từ database
+  // --- API TRÒ CHƠI (GAMES) ---
+  // (Phần này giữ nguyên)
   router.get('/games', async (req, res) => {
     try {
         const games = await Game.find({});
@@ -76,7 +75,6 @@ module.exports = function(io) {
     }
   });
 
-  // SỬA: Thêm game mới vào database
   router.post('/games', async (req, res) => {
     try {
       const newGame = new Game(req.body);
@@ -88,13 +86,11 @@ module.exports = function(io) {
     }
   });
 
-  // SỬA: Cập nhật game trong database (dùng 'id' string)
   router.put('/games/:id', async (req, res) => {
     try {
-      const gameId = req.params.id; // Đây là 'id' string (ví dụ: "Draw")
+      const gameId = req.params.id; 
       const updates = req.body; 
       
-      // Tìm bằng 'id' string và cập nhật
       const updatedGame = await Game.findOneAndUpdate({ id: gameId }, updates, { new: true });
 
       if (!updatedGame) {
@@ -108,10 +104,9 @@ module.exports = function(io) {
     }
   });
 
-  // SỬA: Xóa game khỏi database (dùng 'id' string)
   router.delete('/games/:id', async (req, res) => {
     try {
-      const gameId = req.params.id; // Đây là 'id' string
+      const gameId = req.params.id; 
       const deletedGame = await Game.findOneAndDelete({ id: gameId });
 
       if (!deletedGame) {
@@ -125,7 +120,7 @@ module.exports = function(io) {
     }
   });
 
-  // --- THÊM MỚI: ROUTE ĐỂ ĐỒNG BỘ (SYNC) TỪ games.json ---
+  // --- SỬA ĐỔI LOGIC SYNC: Thay thế "Xóa/Tạo" bằng "Cập nhật/Tạo" ---
   router.post('/games/sync', async (req, res) => {
         const gamesData = req.body; // Dữ liệu này được gửi từ admin.js
 
@@ -133,22 +128,47 @@ module.exports = function(io) {
             return res.status(400).json({ message: 'Dữ liệu gửi lên không phải là một mảng (array).' });
         }
 
+        let updatedCount = 0;
+        let createdCount = 0;
+
         try {
-            // 1. Xóa tất cả game hiện có trong database
-            await Game.deleteMany({});
-            console.log('[Admin Sync] Đã xóa toàn bộ game cũ.');
+            // Lặp qua từng game trong tệp games.json
+            for (const game of gamesData) {
+                if (!game.id) {
+                    console.warn('[AdminSync] Bỏ qua game không có ID:', game.name);
+                    continue; // Bỏ qua nếu game không có ID
+                }
 
-            // 2. Thêm dữ liệu game mới từ mảng vừa nhận được
-            const newGames = await Game.insertMany(gamesData);
-            console.log(`[Admin Sync] Đã thêm ${newGames.length} game mới.`);
+                // Logic "Upsert":
+                // Tìm một game bằng 'id' string.
+                const existingGame = await Game.findOne({ id: game.id });
 
-            // 3. Gửi socket event để thông báo cho các admin client
-            io.emit('admin-games-changed');
+                if (existingGame) {
+                    // 1. Đã tồn tại -> Cập nhật (update)
+                    // (Chúng ta dùng updateOne để cập nhật nội dung mà không thay đổi _id của Mongoose)
+                    await Game.updateOne(
+                        { id: game.id }, // Điều kiện tìm
+                        game,            // Dữ liệu mới
+                        { runValidators: true } // Chạy kiểm tra schema
+                    );
+                    updatedCount++;
+                } else {
+                    // 2. Chưa tồn tại -> Tạo mới (insert)
+                    await Game.create(game);
+                    createdCount++;
+                }
+            }
+            
+            console.log(`[Admin Sync] Đồng bộ hoàn tất. Đã cập nhật ${updatedCount} và tạo mới ${createdCount} game.`);
+            
+            // Gửi thông báo socket tới TẤT CẢ admin đang kết nối
+            io.emit('admin-games-changed'); //
 
-            // 4. Trả về thành công
-            res.status(201).json({ 
-                message: `Đồng bộ thành công! Đã xóa game cũ và thêm ${newGames.length} game mới.`,
-                count: newGames.length 
+            // Trả về kết quả
+            res.json({ 
+                message: `Đồng bộ (Upsert) hoàn tất!`, 
+                updated: updatedCount, 
+                created: createdCount 
             });
 
         } catch (error) {
@@ -156,7 +176,7 @@ module.exports = function(io) {
             res.status(500).json({ message: 'Lỗi máy chủ khi đồng bộ game.', error: error.message });
         }
     });
-  // --- KẾT THÚC ROUTE MỚI ---
+  // --- KẾT THÚC ROUTE ĐÃ SỬA ---
 
   return router; // Trả về router
 };

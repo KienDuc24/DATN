@@ -443,12 +443,12 @@ async function onFeatureGame(e) {
 
 // +++ THÊM HÀM MỚI ĐỂ ĐỒNG BỘ GAMES.JSON +++
 async function syncGames() {
-    if (!confirm('Bạn có chắc muốn ĐỒNG BỘ (GHI ĐÈ) toàn bộ trò chơi từ tệp games.json không?\n\nHành động này sẽ XÓA TẤT CẢ game hiện tại và thay thế bằng nội dung của tệp games.json.\n\n(Lưu ý: Chức năng này yêu cầu máy chủ phải có API endpoint /api/admin/games/sync)')) {
+    if (!confirm('Bạn có chắc muốn ĐỒNG BỘ (Cập nhật/Thêm mới) toàn bộ trò chơi từ tệp games.json không?\n\nHành động này sẽ thêm TẤT CẢ game vào hàng chờ "Lưu thay đổi".\n\n(Nó sẽ KHÔNG XÓA các game đang có trên database mà không có trong tệp .json)')) {
         return;
     }
 
     try {
-        // 1. Lấy dữ liệu từ file games.json tĩnh (cùng thư mục public)
+        // 1. Lấy dữ liệu từ file games.json tĩnh
         const resJson = await fetch('/games.json');
         if (!resJson.ok) {
             throw new Error(`Không thể tải tệp /games.json. Status: ${resJson.status}`);
@@ -459,31 +459,38 @@ async function syncGames() {
             return alert('Tệp games.json rỗng hoặc không hợp lệ.');
         }
 
-        // 2. Gửi dữ liệu này đến API server để xử lý
-        // BẠN PHẢI TẠO ENDPOINT NÀY TRÊN SERVER
-        const resApi = await fetch(`${ADMIN_API}/api/admin/games/sync`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(gamesData) // Gửi toàn bộ mảng game
-        });
-
-        if (!resApi.ok) {
-            const errorText = await resApi.text();
-            throw new Error(`Lỗi từ máy chủ: ${errorText || resApi.statusText}`);
+        let addedCount = 0;
+        // 2. THAY ĐỔI LOGIC:
+        // Thay vì gọi /sync, chúng ta thêm từng game vào hàng chờ 'pendingChanges'
+        for (const game of gamesData) {
+            if (!game.id) {
+                console.warn('Bỏ qua game không có ID:', game);
+                continue;
+            }
+            
+            // Sử dụng logic 'save' hiện có.
+            // Chúng ta dùng 'id: game.id' để hàm executePendingChanges biết
+            // là cần dùng 'PUT' (update) thay vì 'POST' (create).
+            // Điều này giả định server của bạn xử lý "PUT /api/admin/game/:id" 
+            // như một lệnh "update or create" (upsert).
+            addChange({ 
+                type: 'game', 
+                action: 'save', 
+                id: game.id, // Dùng ID của game để server biết cần PUT
+                payload: game 
+            });
+            addedCount++;
         }
 
-        const result = await resApi.json();
-        alert(`Đồng bộ thành công! Đã xóa game cũ và thêm ${result.count || gamesData.length} game mới.`);
+        alert(`Đã thêm ${addedCount} game vào hàng chờ.\n\nHãy nhấn "Lưu thay đổi" (màu xanh lá) để bắt đầu quá trình cập nhật lên database.`);
         
-        loadData(); // Tải lại bảng game
+        // Không cần loadData() ngay, vì thay đổi chưa được thực thi
 
     } catch (err) {
-        console.error('Lỗi khi đồng bộ games:', err);
+        console.error('Lỗi khi chuẩn bị đồng bộ games:', err);
         alert(`Đã xảy ra lỗi: ${err.message}`);
     }
 }
-// +++ KẾT THÚC HÀM MỚI +++
 
 function logoutAdmin(){ 
   fetch(`${ADMIN_API}/admin/logout`, {method:'POST', credentials: 'include'})
@@ -501,10 +508,11 @@ async function loadData(){
         fetchApi(`${ADMIN_API}/api/admin/rooms${roomsQ?('?q='+encodeURIComponent(roomsQ)) : ''}`),
         fetchApi(`${ADMIN_API}/api/admin/games`)
     ]);
+    allGamesCache = gamesRes.games || [];
 
     renderUsersTable(usersRes.users || []);
     renderRoomsTable(roomsRes.rooms || []);
-    renderGamesTable(gamesRes.games || []);
+    renderGamesTable(allGamesCache);
   } catch (err) {
     console.error('loadData error:', err);
   }
