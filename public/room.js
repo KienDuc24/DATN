@@ -1,43 +1,13 @@
-const BASE_API_URL = 'https://datn-socket.up.railway.app'; // URL của socket server
-async function createRoom(payload) {
-  try {
-    const res = await fetch(`${BASE_API_URL}/api/room`, { // Đảm bảo URL đúng
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Failed to create room');
-    }
-    const room = await res.json();
-    console.log('[createRoom] Room created:', room);
+// js/room.js
 
-    // Chuyển hướng sang room.html với mã phòng
-    window.location.href = `room.html?code=${room.roomCode}&gameId=${payload.game}`;
-  } catch (err) {
-    console.error('[createRoom] Error:', err.message);
-    alert('Không thể tạo phòng. Vui lòng thử lại!');
-  }
-}
+const BASE_API_URL = 'https://datn-socket.up.railway.app'; // URL của socket server
 
 // Socket connect
-function initSocket(token) {
-  const socketUrl = window.__BASE_API__ || undefined; // undefined => same origin
-  const socket = io(socketUrl, {
-    path: '/socket.io',
-    transports: ['websocket', 'polling']
-  });
-  socket.on('connect', () => {
-    if (token) socket.emit('authenticate', token);
-  });
-  socket.on('auth_error', () => {
-    console.error('Socket auth failed');
-  });
-  return socket;
-}
-
-const socket = io(BASE_API_URL, { transports: ['websocket'] });
+// (Đoạn code initSocket cũ của bạn không được dùng, đoạn này đang được dùng)
+const socket = io(BASE_API_URL, { 
+  path: '/socket.io', // Thêm path nếu server bạn có cấu hình
+  transports: ['websocket', 'polling'] 
+});
 
 const urlParams = new URLSearchParams(window.location.search);
 const roomCode = urlParams.get('code');
@@ -47,12 +17,13 @@ const username = urlParams.get('user');
 
 if (!roomCode || !gameId || !gameName || !username) {
   alert('Thiếu thông tin phòng. Vui lòng kiểm tra lại!');
+  window.location.href = "index.html"; // Quay về trang chủ nếu thiếu
 } else {
   console.log('Thông tin phòng:', { roomCode, gameId, gameName, username });
 }
 
-// Lấy tên người chơi
-let playerName = urlParams.get("user");
+// Lấy tên người chơi (Ưu tiên từ URL)
+let playerName = username; 
 if (!playerName) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   playerName = user.username || user.displayName || user.name;
@@ -71,13 +42,15 @@ console.log("👤 Tên người dùng hiện tại:", playerName);
 // Hiển thị thông tin phòng
 if (document.getElementById("roomCode")) document.getElementById("roomCode").innerText = roomCode;
 if (document.getElementById("roomCodeDisplay")) document.getElementById("roomCodeDisplay").innerText = roomCode;
-if (document.getElementById("gameName")) document.getElementById("gameName").innerText = gameId;
+if (document.getElementById("gameName")) document.getElementById("gameName").innerText = gameName; // Lấy gameName từ URL
 if (document.getElementById("room-username")) document.getElementById("room-username").innerText = playerName;
 
+// --- SỬA LỖI 1 ---
 // Tham gia phòng qua socket
-socket.emit("joinRoom", { gameId, roomCode, user: playerName });
+// Backend mong đợi "code", không phải "roomCode"
+socket.emit("joinRoom", { code: roomCode, gameId: gameId, user: playerName });
 
-// Xử lý khi bị từ chối vào phòng do sai game
+// Xử lý khi bị từ chối vào phòng
 socket.on("room-error", ({ message }) => {
   alert(message || "Không thể vào phòng này!");
   window.location.href = "index.html";
@@ -102,20 +75,29 @@ socket.on("update-players", ({ list = [], host }) => {
     }
   }
 
+  // Hiển thị nút "Bắt đầu" nếu là chủ phòng
   const startBtn = document.querySelector(".start-btn");
   if (startBtn) startBtn.style.display = playerName === host ? "inline-block" : "none";
 });
 
+// Hàm rời phòng
 window.leaveRoom = function leaveRoom() {
-  socket.emit("leaveRoom", { roomCode, player: playerName });
+  // --- SỬA LỖI 2 ---
+  // Backend mong đợi "code", không phải "roomCode"
+  socket.emit("leaveRoom", { code: roomCode, player: playerName });
   window.location.href = "index.html";
 };
 
+// Tự động rời phòng khi đóng tab/trình duyệt
 window.addEventListener("beforeunload", () => {
-  socket.emit("leaveRoom", { roomCode, player: playerName });
+  // --- SỬA LỖI 3 ---
+  // Backend mong đợi "code", không phải "roomCode"
+  socket.emit("leaveRoom", { code: roomCode, player: playerName });
 });
 
+// Hàm sao chép mã phòng
 window.copyCode = function copyCode() {
   navigator.clipboard.writeText(roomCode);
   alert("📋 Mã phòng đã được sao chép!");
 };
+
