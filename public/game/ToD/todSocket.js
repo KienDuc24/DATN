@@ -7,9 +7,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 const Room = require('../../../models/Room');
 const User = require('../../../models/User');
 
-// --- THÊM MỚI: Map để theo dõi người chơi TRONG GAME ---
 const gameSocketMap = new Map();
-// -------------------------------------------------
 
 const QUESTIONS_PATH = path.resolve(__dirname, '../../../public/game/ToD/questions.json');
 let QUESTIONS = { truth: [], dare: [] };
@@ -22,7 +20,7 @@ try {
   QUESTIONS = { truth: ["Bạn có bí mật nào chưa kể với mọi người không?"], dare: ["Hát một đoạn bài hát trước mọi người."] };
 }
 
-// (Các hàm helper: getRoomState, getRandomQuestion, normalizePlayerInput, attachAvatarsToPlayers, getPlayersFromRoom)
+// (Giữ nguyên các hàm helper: getRoomState, getRandomQuestion, normalizePlayerInput, attachAvatarsToPlayers, getPlayersFromRoom)
 const ROOM_STATE = {}; 
 function getRoomState(code) {
   if (!ROOM_STATE[code]) ROOM_STATE[code] = { currentIndex: 0, lastQuestion: null, lastChoice: null, votes: [] };
@@ -139,11 +137,13 @@ module.exports = (socket, io) => {
     try {
       console.log('[ToD] tod-join received', { socketId: socket.id, roomCode, player });
       
-      const room = await Room.findOne({ code: roomCode, status: 'playing' }).lean(); 
+      const room = await Room.findOne({ code: roomCode }).lean(); 
 
       if (!room) {
         return socket.emit('tod-join-failed', { reason: 'Phòng không tồn tại, đã kết thúc, hoặc chưa bắt đầu.' });
       }
+      
+      // (Không cần kiểm tra status='playing' ở đây nữa, vì đã có logic ở socketServer.js)
 
       const normalizedInput = normalizePlayerInput(player);
       if (!normalizedInput) return socket.emit('tod-join-failed', { reason: 'Invalid player' });
@@ -181,10 +181,17 @@ module.exports = (socket, io) => {
     }
   });
 
+  // --- SỬA LỖI: Thêm logic cập nhật status (cho nút Bắt đầu) ---
   socket.on('tod-start-round', async ({ roomCode }) => {
      try {
-      const room = await Room.findOne({ code: roomCode }).lean();
+      const room = await Room.findOne({ code: roomCode }); // Bỏ .lean()
       if (!room || !Array.isArray(room.players) || room.players.length < 1) return;
+      
+      // Cập nhật status (quan trọng để ẩn nút "Bắt đầu")
+      if (room.status !== 'playing') {
+          room.status = 'playing';
+          await room.save();
+      }
       
       const state = getRoomState(roomCode);
       if (typeof state.currentIndex !== 'number') state.currentIndex = 0;
@@ -197,22 +204,29 @@ module.exports = (socket, io) => {
       console.error('[ToD] tod-start-round error', e);
     }
   });
+  // --- HẾT SỬA ---
 
+  // --- SỬA LỖI: Gửi 'totalVoters' cho bộ đếm vote ---
   socket.on('tod-choice', async ({ roomCode, player, choice }) => {
      try {
       const room = await Room.findOne({ code: roomCode });
       if (!room || !Array.isArray(room.players) || room.players.length < 1) return;
       const state = getRoomState(roomCode);
+      
+      const playersNorm = getPlayersFromRoom(room);
+      const totalVoters = Math.max(0, (playersNorm.length - 1)); // Tính tổng
+      
       const question = getRandomQuestion(choice || 'truth');
       state.lastChoice = choice;
       state.lastQuestion = question;
       state.votes = [];
-      io.to(roomCode).emit('tod-question', { player, choice, question });
+      io.to(roomCode).emit('tod-question', { player, choice, question, totalVoters }); // Gửi totalVoters
     } catch (e) {
       console.error('[ToD] tod-choice error', e);
       io.to(roomCode).emit('tod-question', { player, choice, question: 'Không lấy được câu hỏi!' });
     }
   });
+  // --- HẾT SỬA ---
 
   socket.on('tod-vote', async ({ roomCode, player, vote }) => {
      try {
@@ -240,7 +254,7 @@ module.exports = (socket, io) => {
           state.votes = [];
           state.currentIndex = (state.currentIndex + 1) % playersNorm.length;
           setTimeout(() => {
-            const nextPlayer = playersNorm[state.currentIndex].name;
+            const nextPlayer = playersNorm[state.currentIndex % playersNorm.length].name;
             io.to(roomCode).emit('tod-your-turn', { player: nextPlayer });
           }, 800);
         } else {
@@ -251,9 +265,10 @@ module.exports = (socket, io) => {
           state.votes = [];
           setTimeout(() => {
             io.to(roomCode).emit('tod-question', {
-              player: playersNorm[state.currentIndex].name,
+              player: playersNorm[state.currentIndex % playersNorm.length].name,
               choice: lastChoice,
-              question: newQ
+              question: newQ,
+              totalVoters: total // Gửi lại totalVoters
             });
           }, 700);
         }

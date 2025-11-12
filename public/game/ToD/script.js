@@ -1,4 +1,3 @@
-// publicscript.js
 (() => {
   // --- 1. KẾT NỐI SOCKET VÀ LẤY THÔNG TIN ---
   const SOCKET_URL = "https://datn-socket.up.railway.app";
@@ -77,7 +76,7 @@
     return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
   }
 
-  // --- HÀM RENDER ĐÃ SỬA LỖI ---
+  // --- HÀM RENDER ĐÃ SỬA LỖI (Dùng CSS Grid) ---
   function renderPlayers(players = [], askedName) {
     if ($playersCount) $playersCount.textContent = `${players.length}`;
     if (!$avatars) return;
@@ -90,16 +89,6 @@
     $avatars.appendChild(campfireEl);
     
     if (!players.length) return;
-
-    // --- SỬA LỖI: Lấy kích thước từ $avatars (player-grid) ---
-    const area = $avatars; 
-    const w = area ? area.clientWidth : 500; 
-    const h = area ? area.clientHeight : 350; 
-    // --- HẾT SỬA ---
-
-    const cx = w / 2; // Tâm X
-    const cy = h / 2; // Tâm Y
-    const R = Math.min(w, h) * 0.38; // Bán kính
     
     players.forEach((p, i) => {
       const name = p && p.name ? p.name : String(p);
@@ -108,14 +97,9 @@
       
       el.className = 'player' + (name === playerName ? ' you' : '') + (name === askedName ? ' asked' : '');
       
-      const angle = (2 * Math.PI * i) / players.length - (Math.PI / 2); 
+      // --- SỬA LỖI: Xóa toàn bộ tính toán vị trí (left, top) ---
+      // CSS Grid sẽ tự động sắp xếp
       
-      // SỬA: Tính toán X, Y và đã trừ đi 50% (transform)
-      const x = cx + R * Math.cos(angle);
-      const y = cy + R * Math.sin(angle);
-      
-      el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
       el.innerHTML = `<div class="pic"><img src="${imgUrl}" alt="${name}"></div><div class="name">${name}</div>`;
       $avatars.appendChild(el);
     });
@@ -129,11 +113,15 @@
     const host = (payload && (payload.host || (payload.data && payload.data.host))) || '';
     const players = (payload && (payload.players || (payload.data && payload.data.participants))) || [];
     const participantsCount = payload && (payload.participantsCount || (payload.data && payload.data.participantsCount)) || players.length || 0;
+    
+    // --- SỬA LỖI: Lấy trạng thái game ---
+    const status = (payload && payload.status) || 'open';
+    // ---------------------------------
 
     if ($room) $room.textContent = rc || '—';
     if ($playersCount) $playersCount.textContent = participantsCount;
 
-    renderPlayers(players, currentAskedPlayer); // Truyền người đang bị hỏi
+    renderPlayers(players, currentAskedPlayer);
 
     if (controls) {
       let startBtn = document.getElementById('startRoundBtn');
@@ -149,18 +137,20 @@
         });
         controls.appendChild(startBtn);
       }
-      startBtn.style.display = (host && playerName && String(host) === String(playerName)) ? 'inline-block' : 'none';
+      // --- SỬA LỖI: Chỉ hiện nút "Bắt đầu" khi game CHƯA bắt đầu ---
+      startBtn.style.display = (host && playerName === host && status === 'open') ? 'inline-block' : 'none';
+      // ----------------------------------------------------
     }
   });
 
   socket.on('tod-your-turn', ({ player }) => {
     currentAskedPlayer = player; 
-    socket.emit('tod-who', { roomCode }); // Render lại
+    socket.emit('tod-who', { roomCode }); 
     
-    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thử thách' : `⏳ ${player} đang chọn...`;
+    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thách thức' : `⏳ ${player} đang chọn...`;
     
     const startBtn = document.getElementById('startRoundBtn');
-    if (startBtn) startBtn.style.display = 'none';
+    if (startBtn) startBtn.style.display = 'none'; // Ẩn nút "Bắt đầu"
 
     if (player === playerName) {
       if ($actionBtns) $actionBtns.innerHTML = '';
@@ -180,7 +170,9 @@
   const toggleBtn = document.getElementById('toggleQuestion');
   toggleBtn && toggleBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleQuestionExpand(); });
 
-  socket.on('tod-question', ({ player, choice, question }) => {
+  // --- SỬA LỖI: Nhận 'totalVoters' từ server ---
+  socket.on('tod-question', ({ player, choice, question, totalVoters }) => {
+  // ------------------------------------------
     currentAskedPlayer = player; 
     socket.emit('tod-who', { roomCode }); 
 
@@ -204,9 +196,11 @@
         $actionBtns.appendChild(a); $actionBtns.appendChild(r);
       }
       
+      // --- SỬA LỖI: Hiển thị bộ đếm vote ---
       if ($voteInfo) $voteInfo.style.display = 'block';
       if ($voteCount) $voteCount.textContent = '0';
-      if ($voteTotal) $voteTotal.textContent = '?'; 
+      if ($voteTotal) $voteTotal.textContent = totalVoters || '?'; // Hiển thị tổng số
+      // --- HẾT SỬA ---
     }
   });
 
@@ -230,18 +224,15 @@
   socket.onAny((ev,p) => console.debug('evt',ev,p));
 
   window.addEventListener('resize', () => {
-    // Gọi lại 'tod-who' để render lại vị trí avatar
     socket.emit('tod-who', { roomCode }); 
   });
 
   // --- THÊM MỚI: Xử lý rời phòng khi đóng tab/back ---
   window.addEventListener('beforeunload', () => {
-    // socket.disconnect() sẽ kích hoạt sự kiện 'disconnecting' trên server
     socket.disconnect();
     console.log('[ToD][client] Disconnecting (beforeunload)');
   });
   
-  // (Gán sự kiện cho nút "Quay lại trang chủ")
   const backBtn = document.querySelector('.back-btn');
   if (backBtn) {
       backBtn.addEventListener('click', (e) => {
