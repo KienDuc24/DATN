@@ -35,9 +35,12 @@ try {
   app.use('/api/auth', require('./routes/authRoutes'));
   app.use('/api/debug', require('./routes/debugRoutes'));
   app.use('/admin', require('./routes/adminAuthRoutes')); 
-  // --- SỬA: Truyền 'io' vào adminRoutes ---
+  
+  // --- Dòng này đã chính xác ---
+  // Nó tải file adminRoutes và truyền 'io' vào
   app.use('/api/admin', adminAuth, require('./routes/adminRoutes')(io)); 
   // ------------------------------------
+  
   console.log('[index] All routes mounted successfully.');
 } catch (e) {
   console.error('[index] Error mounting routes:', e.message);
@@ -82,8 +85,7 @@ async function start() {
     });
     console.log('[index] Connected to MongoDB.');
 
-    // --- THÊM MỚI: Logic trạng thái người chơi 'Online' ---
-    // (Phải nằm sau khi 'io' được khởi tạo)
+    // --- Logic trạng thái người chơi 'Online' ---
     io.on('connection', (socket) => {
         socket.on('registerSocket', async (username) => {
           if (!username || username.startsWith('guest_')) return;
