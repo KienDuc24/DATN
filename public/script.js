@@ -982,7 +982,6 @@ function closeAuthModal() {
 function handleGameClick(gameId, gameName) {
   window.selectedGameId = gameId;
   window.selectedGameName = gameName;
-  const modal = document.getElementById('roomModal');
   modal.style.display = 'flex';
 
   // Lấy thông tin game từ allGames
@@ -1002,6 +1001,12 @@ function handleGameClick(gameId, gameName) {
     `;
   }
 
+  const modal = document.getElementById('roomModal');
+  if (!modal) {
+    console.error('Element #roomModal không tồn tại');
+    return;
+  }
+
   // Render lại nội dung modal
   modal.innerHTML = `
     <div class="modal-content">
@@ -1019,8 +1024,17 @@ function handleGameClick(gameId, gameName) {
     </div>
   `;
 
+  const createRoomBtn = modal.querySelector('#createRoomBtn');
+  const joinRoomBtn = modal.querySelector('#joinRoomBtn');
+  const confirmJoinRoomBtn = modal.querySelector('#confirmJoinRoomBtn');
+
+  if (!createRoomBtn || !joinRoomBtn || !confirmJoinRoomBtn) {
+    console.error('Các nút trong modal không tồn tại');
+    return;
+  }
+
   // Gán sự kiện cho nút "Tạo phòng"
-  modal.querySelector('#createRoomBtn').onclick = async function() {
+  createRoomBtn.onclick = async function() {
     const gameIdLocal = window.selectedGameId || '';
     const gameNameLocal = window.selectedGameName || '';
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -1050,7 +1064,6 @@ function handleGameClick(gameId, gameName) {
         return;
       }
 
-      // Chuyển hướng sang room.html với các tham số
       const qs = new URLSearchParams({
         code: roomCode,
         gameId: gameIdLocal,
@@ -1066,16 +1079,15 @@ function handleGameClick(gameId, gameName) {
   };
 
   // Gán sự kiện cho nút "Tham gia phòng"
-  modal.querySelector('#joinRoomBtn').onclick = function() {
+  joinRoomBtn.onclick = function() {
     modal.querySelector('#joinRoomBox').style.display = 'block';
   };
 
   // Gán sự kiện cho nút "Xác nhận tham gia phòng"
-  // Khi xác nhận tham gia phòng
-  modal.querySelector('#confirmJoinRoomBtn').onclick = async function() {
+  confirmJoinRoomBtn.onclick = async function() {
     const code = modal.querySelector('#inputJoinRoomCode').value.trim().toUpperCase();
     const gameId = window.selectedGameId || '';
-    
+
     if (!code || !gameId) {
       alert('Thiếu mã phòng hoặc gameId!');
       return;
@@ -1089,7 +1101,7 @@ function handleGameClick(gameId, gameName) {
       }
 
       const data = await res.json();
-      if (!data.found) {
+      if (!data.found || !data.room) {
         alert('Phòng không tồn tại hoặc không hợp lệ.');
         return;
       }
@@ -1097,7 +1109,6 @@ function handleGameClick(gameId, gameName) {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const username = user.username || user.displayName || 'Guest';
 
-      // Chuyển hướng sang room.html với các tham số
       const qs = new URLSearchParams({
         code: code,
         gameId: data.room.game.gameId,
@@ -1113,7 +1124,7 @@ function handleGameClick(gameId, gameName) {
   };
 }
 
-  modal.querySelector('#joinRoomBtn').onclick = function() {
+    modal.querySelector('#joinRoomBtn').onclick = function() {
     modal.querySelector('#joinRoomBox').style.display = 'block';
     modal.querySelector('#roomCodeBox').style.display = 'none';
   };
