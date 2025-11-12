@@ -32,16 +32,12 @@ try {
 // ------------------------------------
 
 function el(id){return document.getElementById(id);}
-// ... (các hàm tiện ích giữ nguyên) ...
 function showOverlay(show){ el('popupOverlay').style.display = show ? 'block' : 'none'; }
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
-if (typeof escapeHtml === 'undefined') {
-  window.escapeHtml = function(s){
-    return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  };
-}
 
-// --- LOGIC THANH XÁC NHẬN (MỚI) ---
+// ĐÃ XÓA: Định nghĩa hàm escapeHtml
+
+// --- LOGIC THANH XÁC NHẬN ---
 function updateConfirmBar() {
     const bar = el('confirmBar');
     const countEl = el('pendingChangesCount');
@@ -71,30 +67,17 @@ async function executePendingChanges() {
         try {
             const { type, action, id, payload } = change;
             
-            // --- THÊM DÒNG NÀY ---
-            // Sửa lỗi: server route cho 'game' là 'games' (số nhiều)
-            // trong khi 'user' và 'room' là số ít.
+            // SỬA LỖI LOGIC ENDPOINT: 'game' -> 'games'
             const resourceType = (type === 'game') ? 'games' : type;
-            // ---------------------
 
             let res;
             if (action === 'delete') {
-                // SỬA: dùng resourceType
                 res = await fetch(`${ADMIN_API}/api/admin/${resourceType}/${id}`, { method: 'DELETE', credentials: 'include' });
-            } else if (action === 'save') {
-                const method = id ? 'PUT' : 'POST';
-                // SỬA: dùng resourceType
+            } else if (action === 'save' || action === 'update') {
+                const method = (action === 'update' || id) ? 'PUT' : 'POST'; // Sử dụng PUT nếu là update hoặc có ID
                 const url = id ? `${ADMIN_API}/api/admin/${resourceType}/${id}` : `${ADMIN_API}/api/admin/${resourceType}`;
                 res = await fetch(url, {
                     method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify(payload)
-                });
-            } else if (action === 'update') { // Dùng cho "featured"
-                // SỬA: dùng resourceType (Đây là cái bị lỗi của bạn)
-                 res = await fetch(`${ADMIN_API}/api/admin/${resourceType}/${id}`, {
-                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify(payload)
@@ -133,7 +116,7 @@ function showTab(tabId){
   document.querySelectorAll('.sidebar nav a').forEach(a=>{ if(a.getAttribute('data-tab')===tabId) a.classList.add('active') });
 }
 
-// --- HÀM fetchApi ĐÃ SỬA LỖI VÀ THÊM LOGS ---
+// --- HÀM fetchApi ---
 async function fetchApi(url) {
     console.log(`[fetchApi] Đang gọi: ${url}`);
     const res = await fetch(url, { credentials: 'include' }); 
@@ -187,7 +170,7 @@ async function fetchGames(q){
   return allGamesCache;
 }
 
-// --- Render (Đã sửa logic Status và thêm kiểm tra tbody) ---
+// --- Render (ĐÃ XÓA escapeHtml) ---
 function renderUsersTable(users){
   const tbody = el('adminUsersList');
   if (!tbody) { console.warn('adminUsersList tbody not found'); return; }
@@ -198,7 +181,7 @@ function renderUsersTable(users){
   }
   users.forEach(u => {
     const id = u._id || u.id || '';
-    const username = escapeHtml(u.username || u.displayName || '');
+    const username = u.username || u.displayName || ''; // Đã xóa escapeHtml
     let gh = '-';
     if (Array.isArray(u.gameHistory) && u.gameHistory.length) {
       gh = `Đã chơi ${u.gameHistory.length} game`;
@@ -215,12 +198,10 @@ function renderUsersTable(users){
     }
 
     const tr = document.createElement('tr');
-    tr.id = `user-row-${id}`; // Thêm ID
+    tr.id = `user-row-${id}`;
     tr.innerHTML = `
       <td><div style="font-weight:600">${username}</div></td>
-      <td>${escapeHtml(gh)}</td>
-      <td><span style="color:${statusColor}; font-weight:600;">${escapeHtml(statusText)}</span></td>
-      <td style="display:flex;gap:8px;align-items:center">
+      <td>${gh}</td>       <td><span style="color:${statusColor}; font-weight:600;">${statusText}</span></td>       <td style="display:flex;gap:8px;align-items:center">
         <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
         <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
       </td>
@@ -251,15 +232,10 @@ function renderRoomsTable(rooms){
     if (status === 'closed') status = 'Đã đóng';
 
     const tr = document.createElement('tr');
-    tr.id = `room-row-${roomId}`; // Thêm ID
+    tr.id = `room-row-${roomId}`;
     tr.innerHTML = `
-      <td><div style="font-weight:600">${escapeHtml(gameName)}</div></td>
-      <td>${escapeHtml(String(roomId))}</td>
-      <td>${escapeHtml(owner)}</td>
-      <td style="max-width:360px">${escapeHtml(participants || '-')}</td>
-      <td>${escapeHtml(status)}</td>
-      <td style="display:flex;gap:6px">
-        <button class="icon-btn icon-delete" title="Xóa" data-id="${escapeHtml(roomId)}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+      <td><div style="font-weight:600">${gameName}</div></td>       <td>${String(roomId)}</td>       <td>${owner}</td>       <td style="max-width:360px">${participants || '-'}</td>       <td>${status}</td>       <td style="display:flex;gap:6px">
+        <button class="icon-btn icon-delete" title="Xóa" data-id="${roomId}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -276,27 +252,22 @@ function renderGamesTable(games){
     return;
   }
   games.forEach(g => {
-    const id = g.id || ''; // Đảm bảo lấy 'id' string ở đây
+    const id = g.id || '';
     const title = (g.name && (g.name.vi || g.name.en)) ? (g.name.vi || g.name.en) : (g.title || g.name || '');
     const desc = (g.desc && (g.desc.vi || g.desc.en)) ? (g.desc.vi || g.desc.en) : (g.desc || '');
     const category = (g.category && (g.category.vi || g.category.en)) ? (g.category.vi || g.category.en) : (g.category || '');
     const players = g.players || '';
     const featuredChecked = g.featured ? 'checked' : '';
     const tr = document.createElement('tr');
-    tr.id = `game-row-${id}`; // Thêm ID
+    tr.id = `game-row-${id}`;
     tr.innerHTML = `
       <td>
-        <div style="font-weight:600">${escapeHtml(title)}</div>
-        <div style="color:var(--muted);font-size:12px">${escapeHtml(String(desc).slice(0,120))}</div>
-      </td>
-      <td>${escapeHtml(category)}</td>
-      <td>${escapeHtml(players)}</td>
-      <td style="text-align:center">
-        <input type="checkbox" class="game-feature-checkbox" data-id="${escapeHtml(id)}" ${featuredChecked} aria-label="Nổi bật"/>
-      </td>
+        <div style="font-weight:600">${title}</div>         <div style="color:var(--muted);font-size:12px">${String(desc).slice(0,120)}</div>       </td>
+      <td>${category}</td>       <td>${players}</td>       <td style="text-align:center">
+        <input type="checkbox" class="game-feature-checkbox" data-id="${id}" ${featuredChecked} aria-label="Nổi bật"/>       </td>
       <td style="display:flex;gap:6px">
-        <button class="icon-btn icon-edit" title="Sửa" data-id="${escapeHtml(id)}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-        <button class="icon-btn icon-delete" title="Xóa" data-id="${escapeHtml(id)}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+        <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+        <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -323,11 +294,11 @@ async function saveUser(e){
   e.preventDefault(); 
   const id = el('userId').value; 
   
-  // ÁP DỤNG escapeHtml cho tất cả các trường nhập liệu từ form người dùng
+  // ĐÃ XÓA: escapeHtml cho dữ liệu gửi lên
   const payload = { 
-    username: escapeHtml(el('userUsername').value.trim()), 
-    email: escapeHtml(el('userEmail').value.trim()), 
-    role: el('userRole').value // Giữ nguyên, vì đây là giá trị chọn (select)
+    username: el('userUsername').value.trim(), 
+    email: el('userEmail').value.trim(), 
+    role: el('userRole').value
   }; 
   
   if(!payload.username) return alert('Username không được để trống'); 
@@ -344,43 +315,60 @@ async function onDeleteUser(e){
   el(`user-row-${id}`).classList.add('row-to-be-deleted');
 }
 
+// SỬA: Hàm openRoomForm (Chuẩn bị dữ liệu cho form)
 function openRoomForm(room){ 
   showOverlay(true); 
   el('roomFormPopup').style.display = 'block'; 
   el('roomFormTitle').innerText = room ? 'Sửa phòng' : 'Thêm phòng'; 
+  
+  // Gán code/id vào roomId
   el('roomId').value = room? (room.code || room.id || room._id || '') : ''; 
+  
   el('roomName').value = room? (room.name || '') : ''; 
   const sel = el('roomGame');
-  const gameId = room ? ( (room.game && (room.game.id || room.game.name || room.game.type)) || room.game || room.gameName ) : '';
+  // Lấy ID game từ object game.
+  const gameId = room ? ( (room.game && (room.game.id || room.game.type)) || '' ) : '';
   if(sel) sel.value = gameId || '';
+  
+  // roomOwner là trường Host
   el('roomOwner').value = room? (room.owner || room.host || '') : ''; 
   el('roomStatus').value = room? (room.status || 'Đang chờ') : 'Đang chờ'; 
 }
 function closeRoomForm(){ el('roomFormPopup').style.display='none'; showOverlay(false); }
 async function onEditRoom(e){ const id = e.currentTarget.dataset.id; try{ const rooms = await fetchRooms(); const r = rooms.find(x=>x.code===id); if(!r) return alert('Room not found'); openRoomForm(r); }catch(err){ console.error(err); alert('Lỗi'); } }
 
+// SỬA: Hàm saveRoom (Sử dụng các trường ID/Name/Owner đúng)
 async function saveRoom(e){
   e.preventDefault();
   
-  // ÁP DỤNG escapeHtml cho ID phòng và các giá trị form
-  const id = escapeHtml(el('roomId').value.trim()); 
-  const idOrig = el('roomIdOrig').value.trim();
+  // ĐÃ XÓA: escapeHtml cho dữ liệu gửi lên
+  const id = el('roomId').value.trim(); 
+  const roomName = el('roomName').value.trim();
+  const roomOwner = el('roomOwner').value.trim();
   
-  if (!id) return alert('Room ID không được để trống');
+  if (!roomName) return alert('Tên phòng không được để trống');
+  
+  const selGame = el('roomGame');
+  if(!selGame || !selGame.value) return alert('Vui lòng chọn trò chơi.');
+  
+  const gameName = selGame.options[selGame.selectedIndex].text;
   
   const payload = {
-    id: id,
-    gameId: escapeHtml(el('roomGameId').value.trim()), // Game ID
-    password: escapeHtml(el('roomPassword').value), // Mật khẩu (nếu có)
-    host: escapeHtml(el('roomHost').value.trim()),   // Host
-    status: el('roomStatus').value,                  // Status (select/dropdown)
-    participantsCount: el('roomParticipantsCount').value.trim() // Số lượng người chơi
+    code: id || undefined, 
+    name: roomName,
+    host: roomOwner,
+    status: el('roomStatus').value,
+    
+    game: { 
+        id: selGame.value, 
+        name: gameName, 
+        type: selGame.value 
+    }
   };
 
-  if(!payload.gameId) return alert('Game ID không được để trống');
-
-  const action = idOrig ? 'update' : 'save';
-  addChange({ type: 'room', action: action, id: id, payload: payload, idOrig: idOrig });
+  const action = id ? 'update' : 'save';
+  addChange({ type: 'room', action: action, id: id, payload: payload }); 
+  
   alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
   closeRoomForm();
 }
@@ -409,34 +397,33 @@ function openGameForm(game){
 function closeGameForm(){ el('gameFormPopup').style.display='none'; showOverlay(false); }
 async function onEditGame(e){
   const id = e.currentTarget.dataset.id;
-  const g = allGamesCache.find(x => (x.id||x._id) === id); // Thêm x._id để phòng hờ
+  const g = allGamesCache.find(x => (x.id||x._id) === id);
   if (!g) return alert('Game not found');
   openGameForm(g);
 }
 async function saveGame(e){
   e.preventDefault();
   
-  // ÁP DỤNG escapeHtml cho ID game
-  const id = escapeHtml(el('gameId').value.trim()); 
+  // ĐÃ XÓA: escapeHtml cho dữ liệu gửi lên
+  const id = el('gameId').value.trim(); 
   const idOrig = el('gameIdOrig').value.trim();
   
   if (!id) return alert('Game ID không được để trống');
   
-  // ÁP DỤNG escapeHtml cho tất cả các trường trong payload
   const payload = {
-    id: id, // Đã được escapeHtml ở trên
+    id: id,
     name: { 
-      vi: escapeHtml(el('gameNameVI').value.trim()), 
-      en: escapeHtml(el('gameNameEN').value.trim()) 
+      vi: el('gameNameVI').value.trim(), 
+      en: el('gameNameEN').value.trim() 
     },
     desc: { 
-      vi: escapeHtml(el('gameDescVI').value.trim()), 
-      en: escapeHtml(el('gameDescEN').value.trim()) 
+      vi: el('gameDescVI').value.trim(), 
+      en: el('gameDescEN').value.trim() 
     },
-    players: escapeHtml(el('gamePlayers').value.trim()),
+    players: el('gamePlayers').value.trim(),
     category: { 
-      vi: escapeHtml(el('gameCatVI').value.trim()), 
-      en: escapeHtml(el('gameCatEN').value.trim()) 
+      vi: el('gameCatVI').value.trim(), 
+      en: el('gameCatEN').value.trim() 
     }
   };
   
@@ -462,7 +449,7 @@ async function onFeatureGame(e) {
   console.log('Giá trị checked:', checked);
   console.log('allGamesCache hiện tại:', allGamesCache);
 
-  const originalGame = allGamesCache.find(g => g.id === id); // Chỉ tìm bằng 'id' string
+  const originalGame = allGamesCache.find(g => g.id === id);
   if (!originalGame) {
     console.error('Lỗi: Không tìm thấy game trong cache với ID:', id);
     return alert('Không tìm thấy game. Kiểm tra console để debug.');
@@ -494,23 +481,17 @@ async function syncGames() {
         }
 
         let addedCount = 0;
-        // 2. THAY ĐỔI LOGIC:
-        // Thay vì gọi /sync, chúng ta thêm từng game vào hàng chờ 'pendingChanges'
+        // 2. LOGIC: Thêm từng game vào hàng chờ 'pendingChanges'
         for (const game of gamesData) {
             if (!game.id) {
                 console.warn('Bỏ qua game không có ID:', game);
                 continue;
             }
             
-            // Sử dụng logic 'save' hiện có.
-            // Chúng ta dùng 'id: game.id' để hàm executePendingChanges biết
-            // là cần dùng 'PUT' (update) thay vì 'POST' (create).
-            // Điều này giả định server của bạn xử lý "PUT /api/admin/game/:id" 
-            // như một lệnh "update or create" (upsert).
             addChange({ 
                 type: 'game', 
                 action: 'save', 
-                id: game.id, // Dùng ID của game để server biết cần PUT
+                id: game.id, 
                 payload: game 
             });
             addedCount++;
@@ -518,7 +499,6 @@ async function syncGames() {
 
         alert(`Đã thêm ${addedCount} game vào hàng chờ.\n\nHãy nhấn "Lưu thay đổi" (màu xanh lá) để bắt đầu quá trình cập nhật lên database.`);
         
-        // Không cần loadData() ngay, vì thay đổi chưa được thực thi
 
     } catch (err) {
         console.error('Lỗi khi chuẩn bị đồng bộ games:', err);
@@ -532,7 +512,6 @@ function logoutAdmin(){
 }
 
 async function loadData(){
-  // ... (hàm giữ nguyên) ...
   try{
     const usersQ = el('usersSearch') && el('usersSearch').value.trim();
     const roomsQ = el('roomsSearch') && el('roomsSearch').value.trim();
@@ -553,7 +532,6 @@ async function loadData(){
 }
 
 async function populateGameOptions(){
-  // ... (hàm giữ nguyên) ...
   const sel = el('roomGame');
   if(!sel) return;
   sel.innerHTML = '<option value="">-- Chọn trò chơi --</option>';
@@ -579,15 +557,13 @@ async function populateGameOptions(){
 document.addEventListener('DOMContentLoaded', ()=>{
   document.querySelectorAll('.tab-btn').forEach(b=> b.addEventListener('click', ()=> showTab(b.getAttribute('data-tab'))));
   
-  // SỬA LẠI LOGIC NÀY
   document.querySelectorAll('.sidebar nav a').forEach(a=>{
     a.addEventListener('click', (e)=>{
       const t = a.getAttribute('data-tab');
-      if (t) { // Nếu có 'data-tab' (tức là không phải link 'Trang chủ')
+      if (t) {
         showTab(t);
-        e.preventDefault(); // Ngăn hành vi link mặc định
+        e.preventDefault();
       }
-      // Nếu không có 'data-tab', nó sẽ là một link bình thường (href="/")
     });
   });
 
