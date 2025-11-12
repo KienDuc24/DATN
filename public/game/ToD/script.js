@@ -76,19 +76,24 @@
     return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
   }
 
-  // --- HÀM RENDER ĐÃ SỬA LỖI (Dùng CSS Grid) ---
   function renderPlayers(players = [], askedName) {
     if ($playersCount) $playersCount.textContent = `${players.length}`;
     if (!$avatars) return;
-    $avatars.innerHTML = ''; // Xóa avatar cũ
+    $avatars.innerHTML = ''; 
     
-    // Thêm đống lửa vào trước
     const campfireEl = document.createElement('div');
     campfireEl.className = 'campfire';
     campfireEl.innerHTML = `<img src="Img/campfire.gif" alt="Campfire" class="campfire-gif">`;
     $avatars.appendChild(campfireEl);
     
     if (!players.length) return;
+
+    const area = $avatars; 
+    const w = area ? area.clientWidth : 500; 
+    const h = area ? area.clientHeight : 350; 
+    const cx = w / 2;
+    const cy = h / 2;
+    const R = Math.min(w, h) * 0.38;
     
     players.forEach((p, i) => {
       const name = p && p.name ? p.name : String(p);
@@ -97,14 +102,16 @@
       
       el.className = 'player' + (name === playerName ? ' you' : '') + (name === askedName ? ' asked' : '');
       
-      // --- SỬA LỖI: Xóa toàn bộ tính toán vị trí (left, top) ---
-      // CSS Grid sẽ tự động sắp xếp
+      const angle = (2 * Math.PI * i) / players.length - (Math.PI / 2); 
+      const x = cx + R * Math.cos(angle);
+      const y = cy + R * Math.sin(angle);
       
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
       el.innerHTML = `<div class="pic"><img src="${imgUrl}" alt="${name}"></div><div class="name">${name}</div>`;
       $avatars.appendChild(el);
     });
   }
-  // --- HẾT HÀM RENDER ---
 
   socket.on('tod-joined', (payload) => {
     console.log('[ToD][client] evt tod-joined', payload);
@@ -114,10 +121,6 @@
     const players = (payload && (payload.players || (payload.data && payload.data.participants))) || [];
     const participantsCount = payload && (payload.participantsCount || (payload.data && payload.data.participantsCount)) || players.length || 0;
     
-    // --- SỬA LỖI: Lấy trạng thái game ---
-    const status = (payload && payload.status) || 'open';
-    // ---------------------------------
-
     if ($room) $room.textContent = rc || '—';
     if ($playersCount) $playersCount.textContent = participantsCount;
 
@@ -137,9 +140,12 @@
         });
         controls.appendChild(startBtn);
       }
-      // --- SỬA LỖI: Chỉ hiện nút "Bắt đầu" khi game CHƯA bắt đầu ---
-      startBtn.style.display = (host && playerName === host && status === 'open') ? 'inline-block' : 'none';
-      // ----------------------------------------------------
+      
+      // --- SỬA LỖI Ở ĐÂY ---
+      // Chỉ hiện nút "Bắt đầu" cho chủ phòng.
+      // Sự kiện 'tod-your-turn' (ở dưới) sẽ ẩn nó đi khi game thực sự bắt đầu.
+      startBtn.style.display = (host && playerName === host) ? 'inline-block' : 'none';
+      // --- HẾT SỬA ---
     }
   });
 
@@ -149,8 +155,9 @@
     
     if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thách thức' : `⏳ ${player} đang chọn...`;
     
+    // Nút "Bắt đầu" sẽ bị ẩn đi khi vòng đầu tiên bắt đầu
     const startBtn = document.getElementById('startRoundBtn');
-    if (startBtn) startBtn.style.display = 'none'; // Ẩn nút "Bắt đầu"
+    if (startBtn) startBtn.style.display = 'none'; 
 
     if (player === playerName) {
       if ($actionBtns) $actionBtns.innerHTML = '';
@@ -170,9 +177,7 @@
   const toggleBtn = document.getElementById('toggleQuestion');
   toggleBtn && toggleBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleQuestionExpand(); });
 
-  // --- SỬA LỖI: Nhận 'totalVoters' từ server ---
   socket.on('tod-question', ({ player, choice, question, totalVoters }) => {
-  // ------------------------------------------
     currentAskedPlayer = player; 
     socket.emit('tod-who', { roomCode }); 
 
@@ -196,11 +201,9 @@
         $actionBtns.appendChild(a); $actionBtns.appendChild(r);
       }
       
-      // --- SỬA LỖI: Hiển thị bộ đếm vote ---
       if ($voteInfo) $voteInfo.style.display = 'block';
       if ($voteCount) $voteCount.textContent = '0';
-      if ($voteTotal) $voteTotal.textContent = totalVoters || '?'; // Hiển thị tổng số
-      // --- HẾT SỬA ---
+      if ($voteTotal) $voteTotal.textContent = totalVoters || '?'; 
     }
   });
 
@@ -227,7 +230,6 @@
     socket.emit('tod-who', { roomCode }); 
   });
 
-  // --- THÊM MỚI: Xử lý rời phòng khi đóng tab/back ---
   window.addEventListener('beforeunload', () => {
     socket.disconnect();
     console.log('[ToD][client] Disconnecting (beforeunload)');
@@ -238,12 +240,11 @@
       backBtn.addEventListener('click', (e) => {
           e.preventDefault();
           if (confirm('Bạn có chắc muốn rời khỏi phòng game?')) {
-              socket.disconnect(); // Kích hoạt 'disconnecting'
-              window.location.href = '/'; // Quay về trang chủ
+              socket.disconnect(); 
+              window.location.href = '/'; 
           }
       });
   }
-  // --- HẾT THÊM MỚI ---
 
   if (typeof window.ActionBtns === 'undefined') {
     window.ActionBtns = {
