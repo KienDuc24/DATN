@@ -5,32 +5,20 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
 const path = require('path');
-const bodyParser = require('body-parser');
 const attachSocket = require('./socketServer');
-const roomRoutes = require('./routes/roomRoutes');
-
 const app = express();
 const server = http.createServer(app);
 
-// Cấu hình CORS
+// Cấu hình CORS (Đã đúng)
 app.use(cors({
   origin: 'https://datn-smoky.vercel.app', // Cho phép nguồn gốc từ Vercel
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
+app.options('*', cors()); // Xử lý preflight
 
-// Xử lý preflight request
-app.options('*', cors());
-
-// Thêm middleware CORS
+// Thêm middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use('/api/room', require('./routes/roomRoutes'));
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/debug', require('./routes/debugRoutes'));
-
-// static and routes (keep your existing mounts)
 app.use(express.static(path.join(__dirname, 'public')));
 
 console.log('[server] NODE_ENV=', process.env.NODE_ENV);
@@ -43,9 +31,9 @@ if (!MONGODB_URI) {
   console.log('[server] connecting to MongoDB...');
 }
 
-// mount routes with try/catch and logs
+// mount routes
 try { app.use('/api/auth', require('./routes/authRoutes')); console.log('[server] authRoutes mounted at /api/auth'); } catch (e) { console.error('[server] authRoutes not mounted', e && e.message || e); }
-try { app.use('/api/room', require('./routes/roomRoutes')); console.log('[server] roomRoutes mounted at /api/room'); } catch (e) { console.error('[server] roomRoutes not mounted', e && e.message || e); }
+
 try { app.use('/api/debug', require('./routes/debugRoutes')); console.log('[server] debugRoutes mounted at /api/debug'); } catch (e) { console.error('[server] debugRoutes not mounted', e && e.message || e); }
 
 // MongoDB connection
@@ -62,7 +50,7 @@ server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-// global error handler - đặt sau routes
+// global error handler
 app.use((err, req, res, next) => {
   console.error('[server][ERROR]', err && (err.stack || err.message));
   res.status(err.status || 500).json({
@@ -71,19 +59,22 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Định nghĩa route POST /api/room
 app.post('/api/room', (req, res) => {
+  console.log('>>> Đã nhận được yêu cầu POST /api/room (test route)');
   const { player, game } = req.body;
   if (!player || !game) {
+    console.log('>>> Yêu cầu bị từ chối: Thiếu player hoặc game');
     return res.status(400).json({ error: 'Missing player or game' });
   }
 
   const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  console.log(`>>> Tạo phòng thành công: ${roomCode}`);
   res.json({ roomCode });
 });
 
 // Định nghĩa route GET /api/room (nếu cần)
 app.get('/api/room', (req, res) => {
+  console.log('>>> Đã nhận được yêu cầu GET /api/room (test route)');
   res.status(200).json({ message: 'GET /api/room is working!' });
 });
 
