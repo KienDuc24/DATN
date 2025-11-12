@@ -1,4 +1,4 @@
-// index.js
+// index.js (Đã sửa lỗi)
 
 require('dotenv').config();
 const mongoose = require('mongoose');
@@ -14,18 +14,14 @@ const app = express();
 const server = http.createServer(app);
 
 // --- 1. Cấu hình Middleware ---
-
-// --- SỬA LỖI: Cập nhật CORS cho phép cookie ---
 const frontendURL = process.env.FRONTEND_URL || 'https://datn-smoky.vercel.app';
 app.use(cors({
   origin: frontendURL,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true // <-- Rất quan trọng: Cho phép gửi cookie
+  credentials: true // <-- Cho phép cookie
 }));
-// ------------------------------------
 
 app.use(cookieParser());
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -46,6 +42,8 @@ try {
 app.get('/admin-login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/admin-login.html'));
 });
+
+// Trang Dashboard (Bảo vệ)
 app.get('/admin', adminAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public/admin.html'));
 });
@@ -55,9 +53,12 @@ app.get('/admin.html', adminAuth, (req, res) => {
 app.get('/admin.js', adminAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public/admin.js'));
 });
-app.get('/css/admin.css', adminAuth, (req, res) => { // Sửa đường dẫn CSS
+
+// --- SỬA LỖI: Gỡ bỏ 'adminAuth' khỏi file CSS ---
+app.get('/css/admin.css', (req, res) => { 
   res.sendFile(path.join(__dirname, 'public/css/admin.css'));
 });
+// ------------------------------------------
 
 // --- Health Check Route ---
 app.get('/', (req, res) => {
