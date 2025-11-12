@@ -1,14 +1,12 @@
-// socketServer.js
-
 const { Server } = require('socket.io');
-const Room = require('./models/Room'); // Đảm bảo bạn có file model này
+const Room = require('./models/Room');
 
 module.exports = function attachSocket(server) {
   const io = new Server(server, {
     path: '/socket.io',
     transports: ['polling', 'websocket'],
     cors: {
-      origin: process.env.FRONTEND_URL || 'https://datn-smoky.vercel.app', // Cho phép Vercel
+      origin: process.env.FRONTEND_URL || 'https://datn-smoky.vercel.app',
       methods: ['GET', 'POST'],
       credentials: true
     }
