@@ -70,4 +70,20 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Định nghĩa route POST /api/room
+app.post('/api/room', (req, res) => {
+  const { player, game } = req.body;
+  if (!player || !game) {
+    return res.status(400).json({ error: 'Missing player or game' });
+  }
+
+  const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  res.json({ roomCode });
+});
+
+// Định nghĩa route GET /api/room (nếu cần)
+app.get('/api/room', (req, res) => {
+  res.status(200).json({ message: 'GET /api/room is working!' });
+});
+
 module.exports = app;
