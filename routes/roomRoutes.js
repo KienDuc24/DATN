@@ -1,3 +1,4 @@
+// routes/roomRoutes.js
 const express = require('express');
 const mongoose = require('mongoose');
 const Room = require('../models/Room');
@@ -5,7 +6,7 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-// Middleware kiểm tra trạng thái MongoDB
+// Middleware kiểm tra trạng thái MongoDB (Cách làm này rất tốt!)
 router.use((req, res, next) => {
   if (mongoose.connection.readyState !== 1) {
     console.error('[roomRoutes] Database not ready');
@@ -14,8 +15,9 @@ router.use((req, res, next) => {
   next();
 });
 
-// API tạo phòng
-router.post('/room', async (req, res) => {
+// SỬA LỖI: Đường dẫn từ '/room' đổi thành '/'
+// Route này bây giờ sẽ lắng nghe ở: POST /api/room
+router.post('/', async (req, res) => {
   const { player, game, gameType, role } = req.body;
 
   if (!player || !game || !gameType || !role) {
@@ -49,8 +51,9 @@ router.post('/room', async (req, res) => {
   }
 });
 
-// Endpoint kiểm tra phòng
-router.get('/room', async (req, res) => {
+// SỬA LỖI: Đường dẫn từ '/room' đổi thành '/'
+// Route này bây giờ sẽ lắng nghe ở: GET /api/room
+router.get('/', async (req, res) => {
   const { code, gameId } = req.query;
 
   if (!code || !gameId) {
@@ -70,7 +73,8 @@ router.get('/room', async (req, res) => {
   }
 });
 
-// API tham gia phòng
+// Route này sẽ lắng nghe ở: POST /api/room/join
+// (Frontend của bạn hiện chưa dùng route này, nhưng nó đã đúng về mặt kỹ thuật)
 router.post('/join', async (req, res, next) => {
   try {
     const { player, code, gameId } = req.body || {};
@@ -98,11 +102,11 @@ router.post('/join', async (req, res, next) => {
       }
     });
   } catch (err) {
-    next(err);
+    next(err); // Chuyển lỗi đến middleware xử lý lỗi
   }
 });
 
-// Middleware xử lý lỗi chung
+// Middleware xử lý lỗi chung (Cách làm này rất tốt!)
 router.use((err, req, res, next) => {
   console.error('[roomRoutes] Unexpected error:', err.message);
   res.status(500).json({ error: 'Internal Server Error' });
