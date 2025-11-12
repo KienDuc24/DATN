@@ -1,6 +1,5 @@
 // Lấy dữ liệu game từ games.json
 let allGames = [];
-let topGames = [];
 let featuredGames = [];
 let newGames = [];
 let gamesByCategory = {};
@@ -11,7 +10,6 @@ const API_BASE_URL = 'https://datn-socket.up.railway.app'; // Đường dẫn AP
 // Lưu vị trí trang hiện tại cho từng slider
 let sliderPage = {
   allGames: 0,
-  top: 0,
   featured: 0,
   new: 0
 };
@@ -98,7 +96,6 @@ function groupGames(games) {
   featuredGames = games.filter(g => g.featured === true);
   // ---------------------------------
   
-  topGames = games.filter(g => g.badge === "Hot" || g.badge === "Top");
   newGames = games.filter(g => g.badge === "New");
   
   gamesByCategory = {};
@@ -240,8 +237,6 @@ function sortGames(sectionKey, selectEl) {
     gamesArr = allGames.filter(g => (getGameCategory(g) || '').toLowerCase().includes(catName.toLowerCase()));
   } else if (sectionKey === 'all') {
     gamesArr = allGames.slice();
-  } else if (sectionKey === 'top') {
-    gamesArr = topGames.slice();
   } else if (sectionKey === 'featured') {
     gamesArr = featuredGames.slice();
   } else if (sectionKey === 'new') {
@@ -340,9 +335,8 @@ fetch('games.json')
     showLoading(false);
     allGames = data;
     groupGames(allGames);
-    sliderPage = { all: 0, top: 0, featured: 0, new: 0 };
+    sliderPage = { all: 0, featured: 0, new: 0 };
     renderSlider(allGames, 'allSlider', 'all');
-    renderSlider(topGames, 'topSlider', 'top');
     renderSlider(featuredGames, 'featuredSlider', 'featured');
     renderSlider(newGames, 'newSlider', 'new');
     renderGamesByCategory();
@@ -431,7 +425,6 @@ function setLang(lang, firstLoad = false) {
   updateLangUI();
   // Render lại các slider/game khi đổi ngôn ngữ
   renderSlider(allGames, 'allSlider', 'allShowMore', 'allShowMore-prev', 'all');
-  renderSlider(topGames, 'topSlider', 'topShowMore', 'topShowMore-prev', 'top');
   renderSlider(featuredGames, 'featuredSlider', 'featuredShowMore', 'featuredShowMore-prev', 'featured');
   renderSlider(newGames, 'newSlider', 'newShowMore', 'newShowMore-prev', 'new');
   renderGamesByCategory();
@@ -1222,7 +1215,6 @@ function getMaxShow() {
 function rerenderAllSliders() {
   MAX_SHOW = getMaxShow();
   renderSlider(allGames, 'allSlider', 'allShowMore', 'allShowMore-prev', 'all');
-  renderSlider(topGames, 'topSlider', 'topShowMore', 'topShowMore-prev', 'top');
   renderSlider(featuredGames, 'featuredSlider', 'featuredShowMore', 'featuredShowMore-prev', 'featured');
   renderSlider(newGames, 'newSlider', 'newShowMore', 'newShowMore-prev', 'new');
   renderGamesByCategory();
@@ -1416,7 +1408,7 @@ if (settingsBtn) {
     pop = document.createElement('div');
     pop.id = 'profile-center-popup';
     Object.assign(pop.style, {
-      position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, zIndex: 1500,
+      position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 1500,
       display: 'none', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(0,0,0,0.35)'
     });
