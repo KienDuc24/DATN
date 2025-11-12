@@ -1,34 +1,43 @@
-// Room.js
+// /app/models/User.js
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+const { Schema } = mongoose;
 
-const roomSchema = new Schema({
-  code: { // Mã phòng (A123) - Khóa nghiệp vụ
+// Schema con cho lịch sử chơi
+const playHistorySchema = new Schema({
+  gameId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Game' // Tham chiếu đến model 'Game'
+  },
+  // Bạn có thể thêm các trường khác như:
+  // result: String, // 'win', 'loss'
+  // score: Number,
+  playedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { _id: false });
+
+// Schema chính cho User
+const userSchema = new Schema({
+  username: {
     type: String,
     required: true,
     unique: true,
-    default: () => {
-      const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
-      const number = Math.floor(100 + Math.random() * 900);
-      return letter + number;
-    }
+    trim: true
   },
-  host: { // Liên kết đến User (host)
-    type: Schema.Types.ObjectId, // <-- THAY ĐỔI: Dùng ObjectId
-    ref: 'User', // <-- GIỮ NGUYÊN: Liên kết đến model 'User'
+  displayName: {
+    type: String,
     required: true
   },
-  players: [{ name: String }],
-  game: {
-    gameId: { // Liên kết đến Game
-      type: Schema.Types.ObjectId, // <-- THAY ĐỔI: Dùng ObjectId
-      ref: 'Game', // <-- THÊM: Liên kết đến model 'Game'
-      required: true
-    },
-    type: { type: String } // "type" này có vẻ thừa nếu bạn đã có gameId
-  },
-  status: { type: String, default: 'waiting' },
-  createdAt: { type: Date, default: Date.now }
+  // Thêm các trường khác của bạn ở đây (ví dụ: password, avatar...)
+
+  playHistory: {
+    type: [playHistorySchema],
+    default: []
+  }
+}, {
+  timestamps: true // Tự động thêm createdAt và updatedAt
 });
 
-module.exports = mongoose.model('Room', roomSchema);
+// Dòng quan trọng: Export model 'User', KHÔNG PHẢI 'Room'
+module.exports = mongoose.model('User', userSchema);
