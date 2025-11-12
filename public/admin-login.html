@@ -1,47 +1,146 @@
 <!doctype html>
-<html>
+<html lang="vi">
 <head>
   <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Login</title>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/css/admin.css">
+
   <style>
-    body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;background:#f6f7fb}
-    .card{background:#fff;padding:20px;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.08);width:320px}
-    .card input{width:100%;padding:8px;margin:8px 0;border:1px solid #ddd;border-radius:6px}
-    .card button{width:100%;padding:10px;border:none;background:#007bff;color:#fff;border-radius:6px;cursor:pointer}
+    /* Sử dụng biến màu từ admin.css */
+    :root {
+        --bg:#071224; --card:#081726; --accent:#ff9f43; --muted:#9aa4b2;
+        --panel:#0e1720; --glass: rgba(255,255,255,0.03); --success:#22c55e; --danger:#ef4444; --radius:10px;
+        font-family: "Quicksand", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    body {
+      font-family: "Quicksand", sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(180deg, #061022 0%, #07131c 100%);
+      color: #e6eef8;
+      margin: 0;
+    }
+    .card {
+      background: linear-gradient(180deg, #071426, #071a29);
+      padding: 2.5rem 2rem;
+      border-radius: var(--radius);
+      box-shadow: 0 20px 50px rgba(2,6,23,0.8);
+      width: 340px;
+      border: 1px solid rgba(255,255,255,0.03);
+      text-align: center;
+    }
+    .card h3 {
+        font-family: "Pacifico", sans-serif;
+        color: var(--accent);
+        font-size: 2.5rem;
+        margin-top: 0;
+        margin-bottom: 1rem;
+    }
+    .card input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 8px;
+      background: var(--glass);
+      color: inherit;
+      font-size: 1rem;
+      box-sizing: border-box; 
+    }
+    .card input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 10px rgba(255,159,67,0.2);
+    }
+    .card button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      background: linear-gradient(90deg,var(--accent),#ff7a2f);
+      color: #061022;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 1rem;
+      margin-top: 1rem;
+      transition: all 0.3s ease;
+    }
+    .card button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+    #msg {
+        color: var(--danger);
+        font-size: 0.9rem;
+        margin-top: 1rem;
+        height: 1.2em;
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <h3>Admin Login</h3>
-    <input id="u" placeholder="username" />
-    <input id="p" placeholder="password" type="password" />
+    <input id="u" placeholder="Username" autocomplete="username" />
+    <input id="p" placeholder="Password" type="password" autocomplete="current-password" />
     <button id="login">Login</button>
-    <p id="msg" style="color:#c00;font-size:0.9rem"></p>
+    <p id="msg"></p>
   </div>
   <script>
-    document.getElementById('login').addEventListener('click', async () => {
+    // --- SỬA LỖI Ở ĐÂY ---
+    // Thêm URL backend của bạn
+    const BASE_API_URL = 'https://datn-socket.up.railway.app';
+    // -------------------
+
+    const loginBtn = document.getElementById('login');
+    const passInput = document.getElementById('p');
+    
+    loginBtn.addEventListener('click', handleLogin);
+    
+    passInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            handleLogin();
+        }
+    });
+
+    async function handleLogin() {
       const u = document.getElementById('u').value.trim();
       const p = document.getElementById('p').value;
       const msg = document.getElementById('msg');
       msg.textContent = '';
+      
+      if (!u || !p) {
+          msg.textContent = 'Vui lòng nhập cả username và password.';
+          return;
+      }
+
       try {
-        // SỬA: URL đăng nhập
-        const res = await fetch('/admin/login', { 
+        // --- SỬA LỖI Ở ĐÂY ---
+        // Thêm BASE_API_URL vào trước
+        const res = await fetch(`${BASE_API_URL}/admin/login`, { 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: u, password: p })
         });
+        // -------------------
+        
         const j = await res.json();
         if (res.ok && j.ok) {
-          // SỬA: Chuyển hướng đến /admin (route được bảo vệ)
-          location.href = '/admin'; 
+          // Chuyển hướng đến /admin (trang này đã được bảo vệ)
+          location.href = '/admin.html'; 
         } else {
           msg.textContent = j.message || 'Login failed';
         }
       } catch (e) {
         msg.textContent = 'Network error';
       }
-    });
+    };
   </script>
 </body>
 </html>
