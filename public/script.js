@@ -978,7 +978,7 @@ function closeAuthModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// Hiện modal khi click vào game
+// Hàm xử lý khi click vào game
 function handleGameClick(gameId, gameName) {
   window.selectedGameId = gameId;
   window.selectedGameName = gameName;
@@ -1012,10 +1012,6 @@ function handleGameClick(gameId, gameName) {
         <button id="createRoomBtn" style="padding:10px 28px;border-radius:10px;background:linear-gradient(90deg,#ff9800 60%,#ffc107 100%);color:#fff;font-weight:700;font-size:1.05rem;box-shadow:0 2px 8px #ff980033;transition:background 0.18s,transform 0.12s;">${LANGS[currentLang]?.room_create || 'Create Room'}</button>
         <button id="joinRoomBtn" style="padding:10px 28px;border-radius:10px;background:linear-gradient(90deg,#ff9800 60%,#ffc107 100%);color:#fff;font-weight:700;font-size:1.05rem;box-shadow:0 2px 8px #ff980033;transition:background 0.18s,transform 0.12s;">${LANGS[currentLang]?.room_join || 'Join Room'}</button>
       </div>
-      <div id="roomCodeBox" style="display:none;margin-top:18px;text-align:center;">
-        ${LANGS[currentLang]?.room_code || 'Room code'}: <span id="generatedRoomCode" style="font-size:1.1rem;font-weight:bold;color:#43cea2;margin:0 8px;letter-spacing:2px;"></span>
-        <button id="goToRoomBtn" style="margin-left:10px;padding:8px 18px;border-radius:8px;background:#ff9800;color:#fff;font-weight:600;">${LANGS[currentLang]?.room_enter || 'Enter Room'}</button>
-      </div>
       <div id="joinRoomBox" style="display:none;margin-top:18px;text-align:center;">
         <input id="inputJoinRoomCode" placeholder="${LANGS[currentLang]?.room_input_placeholder || 'Enter room code'}" style="padding:8px 12px;border-radius:8px;border:1.5px solid #ffd54f;margin-right:8px;font-size:1rem;">
         <button id="confirmJoinRoomBtn" style="padding:8px 18px;border-radius:8px;background:#ff9800;color:#fff;font-weight:600;">${LANGS[currentLang]?.room_enter || 'Enter Room'}</button>
@@ -1023,66 +1019,96 @@ function handleGameClick(gameId, gameName) {
     </div>
   `;
 
-  // Gán lại sự kiện cho các nút (sau khi render)
-  modal.querySelector('.close-btn').onclick = function() {
-    modal.style.display = 'none';
-  };
-
-    modal.querySelector('#createRoomBtn').onclick = async function() {
+  // Gán sự kiện cho nút "Tạo phòng"
+  modal.querySelector('#createRoomBtn').onclick = async function() {
+    const gameIdLocal = window.selectedGameId || '';
+    const gameNameLocal = window.selectedGameName || '';
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const selectedGame = allGames.find(game => game.id === window.selectedGameId);
+    const username = user.username || user.displayName || 'Guest';
 
-    const payload = {
-      player: user.username || user._id || 'Guest',
-      game: selectedGame?.id || '',
-      gameType: selectedGame?.category?.en || 'default',
-      role: 'host'
-    };
-
-    createRoom(payload);
-  };
-
-  // join button handler (check code)
-  modal.querySelector('#confirmJoinRoomBtn').onclick = async function() {
-    const code = modal.querySelector('#inputJoinRoomCode').value.trim().toUpperCase();
-    if (!/^[A-Za-z0-9\-]+$/.test(code)) {
-      alert('Mã phòng không hợp lệ.');
+    if (!gameIdLocal || !username) {
+      alert('Thiếu thông tin game hoặc người chơi. Vui lòng kiểm tra lại!');
       return;
     }
 
     try {
-      const res = await fetch(`${BASE_API}/api/room?code=${encodeURIComponent(code)}`);
-      if (res.status === 404) {
-        alert('Không tìm thấy phòng.');
+      const res = await fetch(`${BASE_API_URL}/api/room`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player: username, game: gameIdLocal })
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || 'Failed to create room');
+      }
+
+      const data = await res.json();
+      const roomCode = data.roomCode || data.code || (data.room && (data.room.id || data.room._id));
+      if (!roomCode) {
+        alert('Server không trả về mã phòng.');
         return;
       }
+
+      // Chuyển hướng sang room.html với các tham số
+      const qs = new URLSearchParams({
+        code: roomCode,
+        gameId: gameIdLocal,
+        game: gameNameLocal,
+        user: username
+      }).toString();
+
+      window.location.href = `/room.html?${qs}`;
+    } catch (err) {
+      console.error('[client] create room error', err);
+      alert('Lỗi khi tạo phòng: ' + (err && err.message));
+    }
+  };
+
+  // Gán sự kiện cho nút "Tham gia phòng"
+  modal.querySelector('#joinRoomBtn').onclick = function() {
+    modal.querySelector('#joinRoomBox').style.display = 'block';
+  };
+
+  // Gán sự kiện cho nút "Xác nhận tham gia phòng"
+  modal.querySelector('#confirmJoinRoomBtn').onclick = async function() {
+    const code = modal.querySelector('#inputJoinRoomCode').value.trim().toUpperCase();
+    const gameId = window.selectedGameId || '';
+    if (!code || !gameId) {
+      alert('Thiếu mã phòng hoặc game!');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${BASE_API_URL}/api/room?code=${encodeURIComponent(code)}&gameId=${encodeURIComponent(gameId)}`);
       if (!res.ok) {
-        console.error('[client] check room failed', res.status);
-        alert('Lỗi khi kiểm tra phòng.');
+        alert('Không tìm thấy phòng. Vui lòng kiểm tra lại mã phòng.');
         return;
       }
       const data = await res.json();
       if (!data.found) {
-        alert('Room not found');
+        alert('Phòng không tồn tại hoặc không hợp lệ.');
         return;
       }
 
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const username = user.username || user.displayName || 'Guest';
 
+      // Chuyển hướng sang room.html với các tham số
       const qs = new URLSearchParams({
-        code,
-        gameId: window.selectedGameId || '',
-        game: window.selectedGameName || '',
+        code: code,
+        gameId: data.room.game.gameId,
+        game: data.room.game.type,
         user: username
       }).toString();
 
       window.location.href = `/room.html?${qs}`;
     } catch (err) {
       console.error('[client] join room error', err);
-      alert('Lỗi khi tham gia phòng.');
+      alert('Lỗi khi tham gia phòng: ' + (err && err.message));
     }
   };
+}
 
   modal.querySelector('#joinRoomBtn').onclick = function() {
     modal.querySelector('#joinRoomBox').style.display = 'block';
@@ -1097,7 +1123,7 @@ function handleGameClick(gameId, gameName) {
     const username = user.username || user.displayName || 'Guest';
     window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
   };
-}
+
 
 const SOCKET_URL = window.SOCKET_URL || window.__BASE_API__ || window.location.origin;
 const socket = (typeof io === 'function') ? io(SOCKET_URL, {
