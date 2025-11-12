@@ -1,8 +1,12 @@
 // socketServer.js
 const { Server } = require('socket.io');
 const Room = require('./models/Room');
-const todHandler = require('../public/game/ToD/ToDSocket.js');
 
+// --- SỬA LỖI: Đường dẫn đúng là './' (thư mục hiện tại) ---
+const todHandler = require('./public/game/ToD/ToDSocket.js');
+// ----------------------------------------------------
+
+// Biến (map) để lưu trữ thông tin socket.id -> {player, code}
 const socketUserMap = new Map();
 
 module.exports = function attachSocket(server) {
@@ -35,7 +39,9 @@ module.exports = function attachSocket(server) {
         }
 
         socket.join(code);
+        
         socketUserMap.set(socket.id, { player: name, code: code });
+        
         io.to(code).emit('update-players', { list: room.players.map(p => p.name), host: room.host?.username || room.host });
 
         if (gameId === 'ToD' || gameId === 'ToD1' || gameId === 'ToD2') {
@@ -49,7 +55,6 @@ module.exports = function attachSocket(server) {
     });
 
     socket.on('leaveRoom', async ({ code, player }) => {
-      // (Giữ nguyên logic leaveRoom của bạn)
       try {
         const room = await Room.findOne({ code });
         if (!room) return;
@@ -78,10 +83,8 @@ module.exports = function attachSocket(server) {
       }
     });
     
-    // --- THÊM MỚI: XỬ LÝ SỰ KIỆN KICK ---
     socket.on('kickPlayer', async ({ code, playerToKick }) => {
       const kickerInfo = socketUserMap.get(socket.id);
-      // Kiểm tra xem người gửi request có ở trong phòng không
       if (!kickerInfo || kickerInfo.code !== code) return;
 
       const kickerName = kickerInfo.player;
@@ -90,20 +93,16 @@ module.exports = function attachSocket(server) {
         const room = await Room.findOne({ code });
         if (!room) return;
 
-        // 1. Kiểm tra quyền: Người kick có phải là host không?
         if (room.host !== kickerName) {
           socket.emit('room-error', { message: 'Chỉ chủ phòng mới có quyền kick!' });
           return;
         }
 
-        // 2. Không cho host tự kick mình
         if (kickerName === playerToKick) return;
 
-        // 3. Xóa người chơi bị kick
         room.players = room.players.filter(p => p.name !== playerToKick);
         await room.save();
 
-        // 4. Tìm socket của người chơi bị kick
         let kickedSocketId = null;
         for (const [id, info] of socketUserMap.entries()) {
           if (info.player === playerToKick && info.code === code) {
@@ -113,10 +112,8 @@ module.exports = function attachSocket(server) {
         }
 
         if (kickedSocketId) {
-          // 5. Gửi sự kiện 'kicked' CHỈ cho người chơi bị kick
           io.to(kickedSocketId).emit('kicked');
           
-          // 6. Buộc họ rời khỏi room socket và xóa khỏi map
           const kickedSocket = io.sockets.sockets.get(kickedSocketId);
           if (kickedSocket) {
             kickedSocket.leave(code);
@@ -125,7 +122,6 @@ module.exports = function attachSocket(server) {
           console.log(`[SocketServer] Host ${kickerName} kicked ${playerToKick} from room ${code}.`);
         }
 
-        // 7. Cập nhật danh sách mới cho những người còn lại
         io.to(code).emit('update-players', {
           list: room.players.map(p => p.name),
           host: room.host
@@ -135,7 +131,6 @@ module.exports = function attachSocket(server) {
         console.error('[SocketServer] kickPlayer error:', err.message);
       }
     });
-    // -------------------------------------
 
     socket.on('startGame', async ({ code }) => {
       try {
@@ -150,7 +145,6 @@ module.exports = function attachSocket(server) {
     });
 
     socket.on('disconnect', async () => {
-      // (Giữ nguyên logic disconnect của bạn)
       console.log('[socketServer] client disconnected', socket.id);
       const userInfo = socketUserMap.get(socket.id);
       if (!userInfo) {
