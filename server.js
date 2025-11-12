@@ -15,7 +15,6 @@ const server = http.createServer(app);
 app.use(cors({
   origin: 'https://datn-smoky.vercel.app', // Cho phép nguồn gốc từ Vercel
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
 }));
 
 // Xử lý preflight request

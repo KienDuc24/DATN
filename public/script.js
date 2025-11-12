@@ -8,7 +8,7 @@ let gamesByCategory = {};
 
 
 // Use same origin API by default (safer). If you need cross-domain, set this env.
-const BASE_API_URL = 'https://datn-smoky.vercel.app'; // URL của socket server
+const API_BASE_URL = 'https://datn-socket.up.railway.app'; // Đường dẫn tuyệt đối đến server API
 // Lưu vị trí trang hiện tại cho từng slider
 let sliderPage = {
   recent: 0,
@@ -1049,7 +1049,7 @@ function handleGameClick(gameId, gameName) {
     }
 
     try {
-      const res = await fetch(`${BASE_API_URL}/api/room`, {
+      const res = await fetch(`${API_BASE_URL}/api/room`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ player: username, game: gameIdLocal })
@@ -1097,7 +1097,7 @@ function handleGameClick(gameId, gameName) {
     }
 
     try {
-      const res = await fetch(`${BASE_API_URL}/api/room?code=${encodeURIComponent(code)}&gameId=${encodeURIComponent(gameId)}`);
+      const res = await fetch(`${API_BASE_URL}/api/room?code=${encodeURIComponent(code)}&gameId=${encodeURIComponent(gameId)}`);
       if (!res.ok) {
         alert('Không tìm thấy phòng. Vui lòng kiểm tra lại mã phòng.');
         return;
@@ -1666,7 +1666,7 @@ async function updateUserOnServer(user) {
 
 async function createRoom(payload) {
   try {
-    const res = await fetch(`${BASE_API_URL}/api/room`, {
+    const res = await fetch(`${API_BASE_URL}/api/room`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
