@@ -128,6 +128,7 @@
 
     if (controls) {
       let startBtn = document.getElementById('startRoundBtn');
+       startBtn = document.createElement('button');
       startBtn.addEventListener('click', () => {
         console.log('[ToD][client] start clicked by', playerName);
         socket.emit('tod-start-round', { roomCode: rc });
