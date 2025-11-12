@@ -10,6 +10,7 @@ try {
   socket.on('connect', () => {
     console.log('Admin socket connected');
   });
+  // ... (các hàm socket.on giữ nguyên) ...
   socket.on('admin-rooms-changed', () => {
     console.log('Admin: Rooms changed, reloading data...');
     loadData();
@@ -32,6 +33,7 @@ try {
 // ------------------------------------
 
 function el(id){return document.getElementById(id);}
+// ... (các hàm tiện ích giữ nguyên) ...
 function showOverlay(show){ el('popupOverlay').style.display = show ? 'block' : 'none'; }
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
 if (typeof escapeHtml === 'undefined') {
@@ -41,6 +43,7 @@ if (typeof escapeHtml === 'undefined') {
 }
 
 // --- LOGIC THANH XÁC NHẬN (MỚI) ---
+// ... (toàn bộ logic confirm bar giữ nguyên) ...
 function updateConfirmBar() {
     const bar = el('confirmBar');
     const countEl = el('pendingChangesCount');
@@ -53,7 +56,7 @@ function updateConfirmBar() {
         bar.style.display = 'none';
     }
 }
-
+// ... (các hàm addChange, executePendingChanges, cancelPendingChanges giữ nguyên) ...
 function addChange(change) {
     // Xóa các thay đổi cũ cho cùng 1 ID (nếu có)
     pendingChanges = pendingChanges.filter(c => c.id !== change.id);
@@ -95,12 +98,9 @@ async function executePendingChanges() {
         } catch (err) {
             console.error('Failed to execute change:', change, err);
             alert(`Lỗi khi thực thi ${change.action} ${change.type} ${change.id}: ${err.message}`);
-            // (Nếu lỗi, không tải lại dữ liệu để người dùng không mất các thay đổi khác)
-            // Tạm thời chỉ báo lỗi
         }
     }
     
-    // Tải lại dữ liệu sau khi xong (nếu không có lỗi)
     alert('Đã lưu tất cả thay đổi!');
     loadData(); // Tải lại toàn bộ
 }
@@ -115,6 +115,7 @@ function cancelPendingChanges() {
 // ------------------------------------
 
 function showTab(tabId){
+  // ... (hàm giữ nguyên) ...
   document.querySelectorAll('.admin-tab-content').forEach(e=>e.style.display='none');
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.sidebar nav a').forEach(a=>a.classList.remove('active'));
@@ -127,6 +128,7 @@ function showTab(tabId){
 }
 
 async function fetchApi(url) {
+  // ... (hàm giữ nguyên) ...
   const res = await fetch(url, { credentials: 'include' }); 
   if (!res.ok) {
     if (res.status === 401) {
@@ -138,6 +140,7 @@ async function fetchApi(url) {
   }
   return res.json();
 }
+// ... (các hàm fetchUsers, fetchRooms, fetchGames giữ nguyên) ...
 async function fetchUsers(q){
   const url = new URL(`${ADMIN_API}/api/admin/users`);
   if (q) url.searchParams.set('q', q);
@@ -159,6 +162,7 @@ async function fetchGames(q){
 }
 
 // --- Render (Đã sửa logic Status) ---
+// ... (các hàm renderUsersTable, renderRoomsTable, renderGamesTable giữ nguyên) ...
 function renderUsersTable(users){
   const tbody = document.getElementById('adminUsersList');
   if (!tbody) return;
@@ -168,6 +172,7 @@ function renderUsersTable(users){
     return;
   }
   users.forEach(u => {
+    // ... (nội dung hàm giữ nguyên) ...
     const id = u._id || u.id || '';
     const username = escapeHtml(u.username || u.displayName || '');
     let gh = '-';
@@ -203,6 +208,7 @@ function renderUsersTable(users){
 }
 
 function renderRoomsTable(rooms){
+  // ... (nội dung hàm giữ nguyên) ...
   const tbody = document.getElementById('adminRoomsList');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -211,6 +217,7 @@ function renderRoomsTable(rooms){
     return;
   }
   rooms.forEach(r => {
+    // ... (nội dung hàm giữ nguyên) ...
     const roomId = r.code || r.id || r._id || '';
     const gameName = (r.game && (r.game.name || r.game.type)) ? (r.game.name || r.game.type) : (r.game || '');
     const owner = r.host || '';
@@ -239,6 +246,7 @@ function renderRoomsTable(rooms){
 }
 
 function renderGamesTable(games){
+  // ... (nội dung hàm giữ nguyên) ...
   const tbody = document.getElementById('adminGamesList');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -247,6 +255,7 @@ function renderGamesTable(games){
     return;
   }
   games.forEach(g => {
+    // ... (nội dung hàm giữ nguyên) ...
     const id = g.id || '';
     const title = (g.name && (g.name.vi || g.name.en)) ? (g.name.vi || g.name.en) : (g.title || g.name || '');
     const desc = (g.desc && (g.desc.vi || g.desc.en)) ? (g.desc.vi || g.desc.en) : (g.desc || '');
@@ -279,7 +288,7 @@ function renderGamesTable(games){
 }
 
 // --- Handlers (Đã sửa để dùng hàng chờ) ---
-
+// ... (các hàm open/close/save/delete cho User và Room giữ nguyên) ...
 function openUserForm(user){ 
   showOverlay(true); el('userFormPopup').style.display = 'block'; 
   el('userFormTitle').innerText = user ? 'Sửa người dùng' : 'Thêm người dùng'; 
@@ -355,6 +364,7 @@ async function onDeleteRoom(e){
   el(`room-row-${id}`).classList.add('row-to-be-deleted');
 }
 
+// ... (các hàm open/close/save/delete cho Game giữ nguyên) ...
 function openGameForm(game){
   showOverlay(true);
   el('gameFormPopup').style.display = 'block';
@@ -413,12 +423,57 @@ async function onFeatureGame(e) {
   addChange({ type: 'game', action: 'update', id: id, payload: payload });
 }
 
+// +++ THÊM HÀM MỚI ĐỂ ĐỒNG BỘ GAMES.JSON +++
+async function syncGames() {
+    if (!confirm('Bạn có chắc muốn ĐỒNG BỘ (GHI ĐÈ) toàn bộ trò chơi từ tệp games.json không?\n\nHành động này sẽ XÓA TẤT CẢ game hiện tại và thay thế bằng nội dung của tệp games.json.\n\n(Lưu ý: Chức năng này yêu cầu máy chủ phải có API endpoint /api/admin/games/sync)')) {
+        return;
+    }
+
+    try {
+        // 1. Lấy dữ liệu từ file games.json tĩnh (cùng thư mục public)
+        const resJson = await fetch('/games.json');
+        if (!resJson.ok) {
+            throw new Error(`Không thể tải tệp /games.json. Status: ${resJson.status}`);
+        }
+        const gamesData = await resJson.json();
+
+        if (!Array.isArray(gamesData) || gamesData.length === 0) {
+            return alert('Tệp games.json rỗng hoặc không hợp lệ.');
+        }
+
+        // 2. Gửi dữ liệu này đến API server để xử lý
+        // BẠN PHẢI TẠO ENDPOINT NÀY TRÊN SERVER
+        const resApi = await fetch(`${ADMIN_API}/api/admin/games/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(gamesData) // Gửi toàn bộ mảng game
+        });
+
+        if (!resApi.ok) {
+            const errorText = await resApi.text();
+            throw new Error(`Lỗi từ máy chủ: ${errorText || resApi.statusText}`);
+        }
+
+        const result = await resApi.json();
+        alert(`Đồng bộ thành công! Đã xóa game cũ và thêm ${result.count || gamesData.length} game mới.`);
+        
+        loadData(); // Tải lại bảng game
+
+    } catch (err) {
+        console.error('Lỗi khi đồng bộ games:', err);
+        alert(`Đã xảy ra lỗi: ${err.message}`);
+    }
+}
+// +++ KẾT THÚC HÀM MỚI +++
+
 function logoutAdmin(){ 
   fetch(`${ADMIN_API}/admin/logout`, {method:'POST', credentials: 'include'})
     .finally(()=> location.href='/admin-login.html'); 
 }
 
 async function loadData(){
+  // ... (hàm giữ nguyên) ...
   try{
     const usersQ = el('usersSearch') && el('usersSearch').value.trim();
     const roomsQ = el('roomsSearch') && el('roomsSearch').value.trim();
@@ -438,6 +493,7 @@ async function loadData(){
 }
 
 async function populateGameOptions(){
+  // ... (hàm giữ nguyên) ...
   const sel = el('roomGame');
   if(!sel) return;
   sel.innerHTML = '<option value="">-- Chọn trò chơi --</option>';
@@ -462,13 +518,16 @@ async function populateGameOptions(){
 
 document.addEventListener('DOMContentLoaded', ()=>{
   document.querySelectorAll('.tab-btn').forEach(b=> b.addEventListener('click', ()=> showTab(b.getAttribute('data-tab'))));
+  
+  // SỬA LẠI LOGIC NÀY
   document.querySelectorAll('.sidebar nav a').forEach(a=>{
     a.addEventListener('click', (e)=>{
       const t = a.getAttribute('data-tab');
-      if (t) {
+      if (t) { // Nếu có 'data-tab' (tức là không phải link 'Trang chủ')
         showTab(t);
-        e.preventDefault();
+        e.preventDefault(); // Ngăn hành vi link mặc định
       }
+      // Nếu không có 'data-tab', nó sẽ là một link bình thường (href="/")
     });
   });
 
