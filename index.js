@@ -7,18 +7,24 @@ const http = require('http');
 const cors = require('cors');
 const path = require('path');
 const attachSocket = require('./socketServer');
-const cookieParser = require('cookie-parser'); // <-- THÊM DÒNG NÀY
-const adminAuth = require('./middleware/adminAuth'); // <-- THÊM DÒNG NÀY
+const cookieParser = require('cookie-parser');
+const adminAuth = require('./middleware/adminAuth');
 
 const app = express();
 const server = http.createServer(app);
 
 // --- 1. Cấu hình Middleware ---
+
+// --- SỬA LỖI: Cập nhật CORS cho phép cookie ---
+const frontendURL = process.env.FRONTEND_URL || 'https://datn-smoky.vercel.app';
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://datn-smoky.vercel.app',
+  origin: frontendURL,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true // <-- Rất quan trọng: Cho phép gửi cookie
 }));
-app.use(cookieParser()); // <-- THÊM DÒNG NÀY
+// ------------------------------------
+
+app.use(cookieParser());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -29,27 +35,17 @@ try {
   app.use('/api/room', require('./routes/roomRoutes'));
   app.use('/api/auth', require('./routes/authRoutes'));
   app.use('/api/debug', require('./routes/debugRoutes'));
-
-  // --- THÊM CÁC ROUTE ADMIN ---
-  // API Đăng nhập (không cần bảo vệ)
   app.use('/admin', require('./routes/adminAuthRoutes')); 
-  // API Dữ liệu (phải được bảo vệ)
   app.use('/api/admin', adminAuth, require('./routes/adminRoutes')); 
-  // -------------------------
-
   console.log('[index] All routes mounted successfully.');
 } catch (e) {
   console.error('[index] Error mounting routes:', e.message);
 }
 
-// --- THÊM MỚI: CÁC ROUTE TRANG ADMIN ---
-// Trang Login (Không bảo vệ)
+// --- 3. Các Route Trang Admin ---
 app.get('/admin-login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/admin-login.html'));
 });
-
-// Trang Dashboard (BẮT BUỘC phải đăng nhập)
-// 'adminAuth' sẽ chạy trước, nếu OK mới phục vụ file
 app.get('/admin', adminAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public/admin.html'));
 });
@@ -59,19 +55,16 @@ app.get('/admin.html', adminAuth, (req, res) => {
 app.get('/admin.js', adminAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public/admin.js'));
 });
-app.get('/admin.css', adminAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/admin.css'));
+app.get('/css/admin.css', adminAuth, (req, res) => { // Sửa đường dẫn CSS
+  res.sendFile(path.join(__dirname, 'public/css/admin.css'));
 });
-// ---------------------------------
 
-// --- SỬA LỖI: Health Check Route ---
+// --- Health Check Route ---
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
 });
-// ------------------------------------------
 
-// --- 3. Khởi động Server ---
-// (Giữ nguyên code start() của bạn)
+// --- 4. Khởi động Server ---
 const PORT = process.env.PORT || 3000;
 async function start() {
   try {

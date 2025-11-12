@@ -3,43 +3,32 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 
-// Xử lý POST /admin/login (từ admin-login.html)
 router.post('/login', (req, res) => {
-  try { // Thêm try...catch để an toàn
+  try {
     const { username, password } = req.body;
-
-    // Sửa: Dùng ADMIN_USER và ADMIN_PASS (khớp với Railway)
     const adminUser = process.env.ADMIN_USER;
     const adminPass = process.env.ADMIN_PASS;
-    
-    // SỬA LỖI: Dùng ADMIN_SECRET (khớp với Railway)
-    const jwtSecret = process.env.ADMIN_SECRET; 
-    // const jwtSecret = process.env.JWT_SECRET; // (Code cũ bị lỗi)
+    const jwtSecret = process.env.ADMIN_SECRET;
 
-    if (!adminUser || !adminPass) {
-        return res.status(500).json({ message: 'Lỗi server: ADMIN_USER hoặc ADMIN_PASS chưa được gán.' });
-    }
-    
-    if (!jwtSecret) {
-        return res.status(500).json({ message: 'Lỗi server: ADMIN_SECRET (JWT) chưa được gán.' });
+    if (!adminUser || !adminPass || !jwtSecret) {
+      return res.status(500).json({ message: 'Lỗi server: Biến môi trường admin chưa được gán.' });
     }
 
-    // Kiểm tra tài khoản
     if (username === adminUser && password === adminPass) {
-      // Tạo token
       const token = jwt.sign(
         { user: 'admin', role: 'admin' },
-        jwtSecret, // Dùng biến đã sửa
+        jwtSecret,
         { expiresIn: '1d' }
       );
 
-      // Gửi token về client qua cookie
+      // --- SỬA LỖI: Cấu hình cookie cho cross-site ---
       res.cookie('admin_token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: true, // Bắt buộc khi dùng sameSite: 'none'
+        sameSite: 'none', // <-- Cho phép gửi cookie từ Vercel -> Railway
         maxAge: 24 * 60 * 60 * 1000 // 1 ngày
       });
+      // -----------------------------------------
 
       res.json({ ok: true, message: 'Login successful' });
     } else {
@@ -51,9 +40,14 @@ router.post('/login', (req, res) => {
   }
 });
 
-// Xử lý POST /admin/logout
 router.post('/logout', (req, res) => {
-  res.clearCookie('admin_token');
+  // --- SỬA LỖI: Cấu hình cookie khi xóa ---
+  res.clearCookie('admin_token', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none'
+  });
+  // ---------------------------------
   res.json({ ok: true, message: 'Logged out' });
 });
 
