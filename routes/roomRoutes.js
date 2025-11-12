@@ -15,19 +15,12 @@ router.use((req, res, next) => {
   next();
 });
 
-// --- THÊM MỚI: HÀM TẠO MÃ PHÒNG (A123) ---
 function generateRoomCode() {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  // 1. Lấy 1 chữ cái ngẫu nhiên
   const letter = letters.charAt(Math.floor(Math.random() * letters.length));
-  
-  // 2. Lấy 3 chữ số ngẫu nhiên (từ 000 đến 999)
   const number = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  
-  // 3. Ghép lại
-  return `${letter}${number}`; // Ví dụ: A123, K007, Z981
+  return `${letter}${number}`;
 }
-// ----------------------------------------
 
 // API tạo phòng
 router.post('/', async (req, res) => {
@@ -36,16 +29,15 @@ router.post('/', async (req, res) => {
   if (!player || !game || !gameType || !role) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
-
-  // --- SỬA ĐỔI: Sử dụng hàm tạo mã mới ---
+  
   const roomCode = generateRoomCode();
-  // const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase(); // Code cũ
 
   const newRoom = new Room({
     code: roomCode,
     host: player,
     players: [{ name: player }],
-    game: { gameId: game, type: gameType }
+    game: { gameId: game, type: gameType },
+    status: 'open' // Thêm status 'open' khi tạo phòng
   });
 
   try {
@@ -66,7 +58,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Endpoint kiểm tra phòng
+// Endpoint kiểm tra phòng (Dùng khi "Tham gia phòng" từ index.html)
 router.get('/', async (req, res) => {
   const { code, gameId } = req.query;
 
@@ -80,6 +72,15 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ found: false, message: 'Room not found' });
     }
 
+    // --- LOGIC MỚI: CHẶN THAM GIA PHÒNG ĐANG CHƠI ---
+    if (room.status === 'playing') {
+      return res.status(403).json({ // 403 = Forbidden (Cấm)
+        found: false, 
+        message: 'Phòng này đã bắt đầu. Không thể tham gia!' 
+      });
+    }
+    // ---------------------------------------------
+
     return res.status(200).json({ found: true, room });
   } catch (err) {
     console.error('[server] Error fetching room:', err);
@@ -87,7 +88,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// API tham gia phòng
+// API tham gia phòng (dùng cho 'tod-join' - logic này có vẻ không được dùng)
 router.post('/join', async (req, res, next) => {
   try {
     const { player, code, gameId } = req.body || {};
@@ -95,14 +96,15 @@ router.post('/join', async (req, res, next) => {
       return res.status(400).json({ error: 'player, code, and gameId are required' });
     }
 
+    // (Logic này cũng nên kiểm tra status, nhưng 'joinRoom' socket đã làm việc đó)
     const room = await Room.findOneAndUpdate(
-      { code, 'game.gameId': gameId },
+      { code, 'game.gameId': gameId, status: 'open' }, // Chỉ join nếu status là 'open'
       { $addToSet: { players: { name: player } } },
       { new: true }
     ).select('code game players');
 
     if (!room) {
-      return res.status(404).json({ error: 'Room not found or game mismatch' });
+      return res.status(404).json({ error: 'Room not found or is already playing' });
     }
 
     return res.json({
