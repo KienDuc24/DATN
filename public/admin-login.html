@@ -25,14 +25,16 @@
       const msg = document.getElementById('msg');
       msg.textContent = '';
       try {
-        const res = await fetch('/admin/login', {
+        // SỬA: URL đăng nhập
+        const res = await fetch('/admin/login', { 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: u, password: p })
         });
         const j = await res.json();
         if (res.ok && j.ok) {
-          location.href = '/admin.html';
+          // SỬA: Chuyển hướng đến /admin (route được bảo vệ)
+          location.href = '/admin'; 
         } else {
           msg.textContent = j.message || 'Login failed';
         }

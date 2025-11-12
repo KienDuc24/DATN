@@ -1,15 +1,23 @@
-module.exports = function adminAuth(req, res, next) {
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret) {
-    return res.status(500).json({ ok: false, message: 'Admin not configured' });
+// middleware/adminAuth.js
+const jwt = require('jsonwebtoken');
+
+const adminAuth = (req, res, next) => {
+  const token = req.cookies.admin_token; // Lấy token từ cookie
+
+  if (!token) {
+    // Nếu truy cập API mà không có token
+    return res.status(401).json({ message: 'Unauthorized: No token provided' });
   }
 
-  const val = req.cookies && req.cookies.admin_auth;
-  if (val === secret) return next();
-
-  // nếu request HTML admin thì redirect tới login page
-  if (req.method === 'GET' && req.originalUrl && req.originalUrl.startsWith('/admin')) {
-    return res.redirect('/admin-login.html');
+  try {
+    // Xác thực token
+    const decoded = jwt.verify(token, process.env.ADMIN_SECRET);
+    req.user = decoded; // Lưu thông tin user (là "admin") vào request
+    next(); // Cho phép đi tiếp
+  } catch (ex) {
+    // Token không hợp lệ
+    res.status(401).json({ message: 'Unauthorized: Invalid token' });
   }
-  return res.status(401).json({ ok: false, message: 'Unauthorized' });
 };
+
+module.exports = adminAuth;

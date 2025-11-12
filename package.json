@@ -22,7 +22,7 @@
     "express-session": "^1.18.2",
     "formidable": "^3.5.4",
     "get": "^1.4.0",
-    "jsonwebtoken": "^9.0.0",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.3",
     "multer": "^2.0.2",
     "passport": "^0.7.0",
