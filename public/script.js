@@ -89,36 +89,30 @@ function showAllGames(pageKey) {
 
 // Sắp xếp và phân nhóm game
 function groupGames(games) {
-  // Sắp xếp (Bạn có thể giữ logic sắp xếp cũ hoặc dùng logic mới)
-  games.sort((a, b) => {
-    // Ưu tiên game có ngày tạo mới nhất
-    if (a.createdAt && b.createdAt) {
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    }
-    // Nếu không có, sắp xếp theo tên
-    return (getGameName(a, 'vi')).localeCompare(getGameName(b, 'vi'));
-  });
+  // Sắp xếp
+  games.sort((a, b) => (getGameName(a, 'vi')).localeCompare(getGameName(b, 'vi')));
   
-  recentGames = [...games]; // Giữ nguyên 'Gần đây' là tất cả game
+  recentGames = [...games]; // 'Gần đây'
   
-  // --- SỬA LỖI Ở ĐÂY ---
+  // --- PHẦN QUAN TRỌNG LÀ ĐÂY ---
   // Lọc 'featuredGames' theo trường 'featured: true'
   featuredGames = games.filter(g => g.featured === true);
-  // --- HẾT SỬA LỖI ---
+  // ---------------------------------
   
-  // (Giữ logic cũ cho Top và New nếu bạn vẫn dùng 'badge')
   topGames = games.filter(g => g.badge === "Hot" || g.badge === "Top");
   newGames = games.filter(g => g.badge === "New");
   
   gamesByCategory = {};
   games.forEach(g => {
-    const cats = (getGameCategory(g, 'vi') || 'Khác').split(',').map(c => c.trim());
-    cats.forEach(cat => {
-      if (!gamesByCategory[cat]) gamesByCategory[cat] = [];
-      gamesByCategory[cat].push(g);
+    const cat = getGameCategory(g, 'vi') || 'Khác'; 
+    const cats = cat.split(',').map(c => c.trim());
+    cats.forEach(c => {
+        if (!gamesByCategory[c]) gamesByCategory[c] = [];
+        gamesByCategory[c].push(g);
     });
   });
 }
+
 
 // Hiển thị các slider theo thể loại (có nút < > và logic "Xem thêm")
 function renderCategorySliders() {
@@ -347,12 +341,12 @@ fetch('games.json')
     showLoading(false);
     allGames = data;
     groupGames(allGames);
-    sliderPage.recent = 0; sliderPage.top = 0; sliderPage.featured = 0; sliderPage.new = 0;
-    renderSlider(recentGames, 'recentSlider', 'recentShowMore', 'recentShowMore-prev', 'recent');
-    renderSlider(topGames, 'topSlider', 'topShowMore', 'topShowMore-prev', 'top');
-    renderSlider(featuredGames, 'featuredSlider', 'featuredShowMore', 'featuredShowMore-prev', 'featured');
-    renderSlider(newGames, 'newSlider', 'newShowMore', 'newShowMore-prev', 'new');
-    renderGamesByCategory(); // <-- chỉ gọi hàm này cho mục "Game theo thể loại"
+    sliderPage = { recent: 0, top: 0, featured: 0, new: 0 };
+    renderSlider(recentGames, 'recentSlider', 'recent');
+    renderSlider(topGames, 'topSlider', 'top');
+    renderSlider(featuredGames, 'featuredSlider', 'featured');
+    renderSlider(newGames, 'newSlider', 'new');
+    renderGamesByCategory();
   });
 
 // Hàm bật/tắt sidebar
