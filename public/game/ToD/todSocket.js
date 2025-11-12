@@ -2,16 +2,16 @@
 
 const fs = require('fs');
 const path = require('path');
-// Sửa đường dẫn: Lùi 3 cấp để về thư mục gốc
+// Sửa đường dẫn: Lùi 3 cấp (public/game/ToD -> gốc)
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
 // models
-// Sửa đường dẫn: Lùi 3 cấp để về thư mục gốc
+// Sửa đường dẫn: Lùi 3 cấp
 const Room = require('../../../models/Room');
 const User = require('../../../models/User');
 
-// load questions.json (sync to ensure availability on startup)
-// Sửa đường dẫn: Lùi 3 cấp để về thư mục gốc
+// load questions.json
+// Sửa đường dẫn: Lùi 3 cấp, rồi vào public...
 const QUESTIONS_PATH = path.resolve(__dirname, '../../../public/game/ToD/questions.json');
 let QUESTIONS = { truth: [], dare: [] };
 try {
@@ -36,7 +36,6 @@ function getRandomQuestion(type = 'truth') {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// normalize various player representations into a { name, displayName?, avatar?, email? } object
 function normalizePlayerInput(input) {
   if (!input) return null;
   if (typeof input === 'string') {
@@ -375,7 +374,6 @@ module.exports = (socket, io) => {
         try {
           const room = await Room.findOne({ code: rc });
           if (!room) continue;
-          // no destructive default behavior here
         } catch (err) {
           console.error('[ToD] disconnect cleanup error for', rc, err);
         }
