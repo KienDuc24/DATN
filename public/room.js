@@ -2,10 +2,8 @@
 
 const BASE_API_URL = 'https://datn-socket.up.railway.app'; // URL của socket server
 
-// Socket connect
-// (Đoạn code initSocket cũ của bạn không được dùng, đoạn này đang được dùng)
 const socket = io(BASE_API_URL, { 
-  path: '/socket.io', // Thêm path nếu server bạn có cấu hình
+  path: '/socket.io',
   transports: ['websocket', 'polling'] 
 });
 
@@ -17,12 +15,11 @@ const username = urlParams.get('user');
 
 if (!roomCode || !gameId || !gameName || !username) {
   alert('Thiếu thông tin phòng. Vui lòng kiểm tra lại!');
-  window.location.href = "index.html"; // Quay về trang chủ nếu thiếu
+  window.location.href = "index.html"; 
 } else {
   console.log('Thông tin phòng:', { roomCode, gameId, gameName, username });
 }
 
-// Lấy tên người chơi (Ưu tiên từ URL)
 let playerName = username; 
 if (!playerName) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -42,15 +39,11 @@ console.log("👤 Tên người dùng hiện tại:", playerName);
 // Hiển thị thông tin phòng
 if (document.getElementById("roomCode")) document.getElementById("roomCode").innerText = roomCode;
 if (document.getElementById("roomCodeDisplay")) document.getElementById("roomCodeDisplay").innerText = roomCode;
-if (document.getElementById("gameName")) document.getElementById("gameName").innerText = gameName; // Lấy gameName từ URL
+if (document.getElementById("gameName")) document.getElementById("gameName").innerText = gameName; 
 if (document.getElementById("room-username")) document.getElementById("room-username").innerText = playerName;
 
-// --- SỬA LỖI 1 ---
-// Tham gia phòng qua socket
-// Backend mong đợi "code", không phải "roomCode"
 socket.emit("joinRoom", { code: roomCode, gameId: gameId, user: playerName });
 
-// Xử lý khi bị từ chối vào phòng
 socket.on("room-error", ({ message }) => {
   alert(message || "Không thể vào phòng này!");
   window.location.href = "index.html";
@@ -60,6 +53,7 @@ let currentHost = null;
 
 socket.on("update-players", ({ list = [], host }) => {
   currentHost = host;
+  const isHost = (playerName === host); // Kiểm tra xem bạn có phải chủ phòng không
   console.log("👥 Danh sách người chơi hiện tại:", list);
 
   const listEl = document.getElementById("playerList");
@@ -67,37 +61,71 @@ socket.on("update-players", ({ list = [], host }) => {
     if (list.length === 0) {
       listEl.innerHTML = `<li>Chưa có người chơi nào.</li>`;
     } else {
-      // Đảm bảo host luôn đứng đầu danh sách
       const sortedList = list.sort((a, b) => (a === host ? -1 : b === host ? 1 : 0));
-      listEl.innerHTML = sortedList.map(name =>
-        `<li>${name} ${name === host ? "(👑 Chủ phòng)" : ""}</li>`
-      ).join("");
+      
+      // --- CẬP NHẬT GIAO DIỆN ---
+      // Thêm nút "Kick" nếu bạn là chủ phòng
+      listEl.innerHTML = sortedList.map(name => {
+        // Nút Kick chỉ hiển thị nếu BẠN là host VÀ người chơi này KHÔNG PHẢI là bạn
+        const kickButton = (isHost && name !== host) 
+          ? `<button class="kick-btn" onclick="kickPlayer('${name}')">Kick</button>`
+          : "";
+          
+        return `<li>
+                  ${name} ${name === host ? "(👑 Chủ phòng)" : ""}
+                  ${kickButton}
+                </li>`;
+      }).join("");
+      // ----------------------------
     }
   }
 
-  // Hiển thị nút "Bắt đầu" nếu là chủ phòng
   const startBtn = document.querySelector(".start-btn");
-  if (startBtn) startBtn.style.display = playerName === host ? "inline-block" : "none";
+  if (startBtn) startBtn.style.display = isHost ? "inline-block" : "none";
 });
 
-// Hàm rời phòng
 window.leaveRoom = function leaveRoom() {
-  // --- SỬA LỖI 2 ---
-  // Backend mong đợi "code", không phải "roomCode"
   socket.emit("leaveRoom", { code: roomCode, player: playerName });
   window.location.href = "index.html";
 };
 
-// Tự động rời phòng khi đóng tab/trình duyệt
 window.addEventListener("beforeunload", () => {
-  // --- SỬA LỖI 3 ---
-  // Backend mong đợi "code", không phải "roomCode"
   socket.emit("leaveRoom", { code: roomCode, player: playerName });
 });
 
-// Hàm sao chép mã phòng
 window.copyCode = function copyCode() {
   navigator.clipboard.writeText(roomCode);
   alert("📋 Mã phòng đã được sao chép!");
 };
 
+window.startGame = function startGame() {
+  console.log('Chủ phòng yêu cầu bắt đầu game...');
+  socket.emit('startGame', { code: roomCode });
+}
+
+// --- THÊM MỚI (1/2): HÀM GỬI SỰ KIỆN KICK ---
+window.kickPlayer = function kickPlayer(playerToKick) {
+  if (confirm(`Bạn có chắc muốn kick người chơi "${playerToKick}" không?`)) {
+    console.log(`Yêu cầu kick: ${playerToKick}`);
+    socket.emit('kickPlayer', { code: roomCode, playerToKick: playerToKick });
+  }
+}
+// ----------------------------------------
+
+// --- THÊM MỚI (2/2): LẮNG NGHE SỰ KIỆN KHI BẠN BỊ KICK ---
+socket.on('kicked', () => {
+  alert('Bạn đã bị chủ phòng kick ra khỏi phòng!');
+  window.location.href = 'index.html';
+});
+// ------------------------------------------------
+
+socket.on('game-started', (data) => {
+  console.log(`Server đã bắt đầu game. Chuyển hướng tới: game/${data.gameId}/index.html`);
+  const params = new URLSearchParams({
+    code: roomCode,
+    gameId: gameId,
+    game: gameName,
+    user: playerName
+  }).toString();
+  window.location.href = `game/${data.gameId}/index.html?${params}`;
+});

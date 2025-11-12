@@ -1,13 +1,18 @@
+// public/game/ToD/ToDSocket.js
+
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+// Sửa đường dẫn: Lùi 3 cấp để về thư mục gốc
+require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
 // models
-const Room = require('../../models/Room');
-const User = require('../../models/User');
+// Sửa đường dẫn: Lùi 3 cấp để về thư mục gốc
+const Room = require('../../../models/Room');
+const User = require('../../../models/User');
 
 // load questions.json (sync to ensure availability on startup)
-const QUESTIONS_PATH = path.resolve(__dirname, '../../public/game/ToD/questions.json');
+// Sửa đường dẫn: Lùi 3 cấp để về thư mục gốc
+const QUESTIONS_PATH = path.resolve(__dirname, '../../../public/game/ToD/questions.json');
 let QUESTIONS = { truth: [], dare: [] };
 try {
   const raw = fs.readFileSync(QUESTIONS_PATH, 'utf8');
@@ -58,11 +63,9 @@ async function attachAvatarsToPlayers(players) {
   const emails = normalized.map(p => p.email).filter(Boolean);
 
   if (!names.length && !displayNames.length && !emails.length) {
-    // return normalized structure even if no db info
     return normalized.map(p => ({ name: p.name, displayName: p.displayName || null, avatar: p.avatar || null }));
   }
 
-  // build query to find matching users by multiple possible fields
   const ors = [];
   if (names.length) ors.push({ username: { $in: names } });
   if (displayNames.length) ors.push({ displayName: { $in: displayNames } });
@@ -85,7 +88,6 @@ async function attachAvatarsToPlayers(players) {
   });
 
   return normalized.map(p => {
-    // prefer exact name match, then displayName, then email
     const user = map[p.name] || map[p.displayName] || (p.email ? map[p.email] : null);
     const avatar = p.avatar || (user ? (user.avatarUrl || user.avatar || null) : null);
     const outDisplayName = p.displayName || (user ? (user.displayName || user.name || null) : null);
@@ -93,10 +95,8 @@ async function attachAvatarsToPlayers(players) {
   });
 }
 
-// helper: normalize players list from room document
 function getPlayersFromRoom(room) {
   if (!room) return [];
-  // support different possible field names and types (string/object/map)
   let raw = [];
   if (Array.isArray(room.players) && room.players.length) raw = room.players;
   else if (Array.isArray(room.participants) && room.participants.length) raw = room.participants;
@@ -104,7 +104,6 @@ function getPlayersFromRoom(room) {
   else if (room.players && typeof room.players === 'object' && !Array.isArray(room.players)) raw = Object.values(room.players).filter(Boolean);
   else return [];
 
-  // normalize each entry
   return raw.map(p => {
     const np = normalizePlayerInput(p);
     if (!np) return null;
@@ -112,7 +111,6 @@ function getPlayersFromRoom(room) {
   }).filter(Boolean);
 }
 
-// when creating/updating room, ensure both fields exist (keep data compatible)
 async function ensureRoomPlayersField(roomDoc) {
   let changed = false;
   if (!Array.isArray(roomDoc.players) && Array.isArray(roomDoc.participants)) {
@@ -170,7 +168,6 @@ module.exports = (socket, io) => {
       const playersArr = getPlayersFromRoom(room);
       const playersWithAvt = await attachAvatarsToPlayers(playersArr);
 
-      // normalize room status
       const roomStatus = room && (room.status || (room.isPlaying ? 'playing' : (room.isOpen ? 'open' : 'closed'))) || 'open';
 
       const payload = {
@@ -184,7 +181,6 @@ module.exports = (socket, io) => {
         state
       };
 
-      // emit single normalized payload
       socket.emit('tod-joined', payload);
       io.to(roomCode).emit('tod-joined', payload);
     } catch (e) { console.error('[ToD] tod-who error', e); }
@@ -200,7 +196,6 @@ module.exports = (socket, io) => {
       const playerDisplay = normalizedInput.displayName;
       const playerAvatarCandidate = normalizedInput.avatar;
 
-      // try to resolve user by several fields (best-effort)
       let user = null;
       try {
         user = await User.findOne({ $or: [{ username: playerName }, { displayName: playerName }, { email: normalizedInput.email }] }).lean();
@@ -214,7 +209,6 @@ module.exports = (socket, io) => {
         avatar: (user && (user.avatarUrl || user.avatar)) || playerAvatarCandidate || null
       };
 
-      // atomic upsert + addToSet to avoid save/version conflicts
       const room = await Room.findOneAndUpdate(
         { code: roomCode },
         {
@@ -224,7 +218,6 @@ module.exports = (socket, io) => {
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
 
-      // ensure participants mirrors players (best-effort, atomic update)
       try {
         await Room.updateOne({ _id: room._id }, { $set: { participants: room.players, host: room.host || playerName } });
       } catch (e) {
@@ -261,7 +254,6 @@ module.exports = (socket, io) => {
 
   socket.on('tod-start-round', async ({ roomCode }) => {
     try {
-      // fetch only for validation / players list, update locked atomically
       const room = await Room.findOne({ code: roomCode }).lean();
       if (!room || !Array.isArray(room.players) || room.players.length < 1) return;
       await Room.updateOne({ _id: room._id }, { $set: { locked: true } }).catch(err => console.warn('[ToD] set locked failed', err && err.message));
@@ -344,7 +336,6 @@ module.exports = (socket, io) => {
   socket.on('profile-updated', async ({ roomCode, oldName, newName, avatar }) => {
     try {
       if (!roomCode || !oldName) return;
-      // atomic update: update first matching player by name
       const updates = {};
       if (newName) {
         updates['players.$.name'] = newName;
@@ -353,10 +344,8 @@ module.exports = (socket, io) => {
       if (typeof avatar !== 'undefined') updates['players.$.avatar'] = avatar;
 
       await Room.updateOne({ code: roomCode, 'players.name': oldName }, { $set: updates }).catch(err => { console.warn('[ToD] profile update failed', err && err.message); return null; });
-      // if host matches oldName, update host field too
       await Room.updateOne({ code: roomCode, host: oldName }, { $set: { host: newName || oldName } }).catch(() => {});
 
-      // emit fresh players list normalized
       const fresh = await Room.findOne({ code: roomCode }).lean();
       if (!fresh) return;
       const playersWithAvt = await attachAvatarsToPlayers(fresh.players || []);
@@ -394,16 +383,5 @@ module.exports = (socket, io) => {
     } catch (e) {
       console.error('[ToD] disconnecting handler error', e);
     }
-  });
-};
-
-module.exports.init = (io, socket) => {
-  console.log('[ToD] Socket initialized for client:', socket.id);
-
-  // Example: Handle a custom event
-  socket.on('todEvent', (data) => {
-    console.log('[ToD] Received event:', data);
-    // Emit a response
-    socket.emit('todResponse', { message: 'Event received!' });
   });
 };

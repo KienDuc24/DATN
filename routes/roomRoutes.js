@@ -1,3 +1,4 @@
+// routes/roomRoutes.js
 const express = require('express');
 const mongoose = require('mongoose');
 const Room = require('../models/Room');
@@ -5,6 +6,7 @@ const User = require('../models/User');
 
 const router = express.Router();
 
+// Middleware kiểm tra trạng thái MongoDB
 router.use((req, res, next) => {
   if (mongoose.connection.readyState !== 1) {
     console.error('[roomRoutes] Database not ready');
@@ -13,6 +15,21 @@ router.use((req, res, next) => {
   next();
 });
 
+// --- THÊM MỚI: HÀM TẠO MÃ PHÒNG (A123) ---
+function generateRoomCode() {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  // 1. Lấy 1 chữ cái ngẫu nhiên
+  const letter = letters.charAt(Math.floor(Math.random() * letters.length));
+  
+  // 2. Lấy 3 chữ số ngẫu nhiên (từ 000 đến 999)
+  const number = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  
+  // 3. Ghép lại
+  return `${letter}${number}`; // Ví dụ: A123, K007, Z981
+}
+// ----------------------------------------
+
+// API tạo phòng
 router.post('/', async (req, res) => {
   const { player, game, gameType, role } = req.body;
 
@@ -20,7 +37,9 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  // --- SỬA ĐỔI: Sử dụng hàm tạo mã mới ---
+  const roomCode = generateRoomCode();
+  // const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase(); // Code cũ
 
   const newRoom = new Room({
     code: roomCode,
@@ -47,6 +66,7 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Endpoint kiểm tra phòng
 router.get('/', async (req, res) => {
   const { code, gameId } = req.query;
 
@@ -67,6 +87,7 @@ router.get('/', async (req, res) => {
   }
 });
 
+// API tham gia phòng
 router.post('/join', async (req, res, next) => {
   try {
     const { player, code, gameId } = req.body || {};
@@ -98,6 +119,7 @@ router.post('/join', async (req, res, next) => {
   }
 });
 
+// Middleware xử lý lỗi chung
 router.use((err, req, res, next) => {
   console.error('[roomRoutes] Unexpected error:', err.message);
   res.status(500).json({ error: 'Internal Server Error' });
