@@ -35,8 +35,6 @@ function el(id){return document.getElementById(id);}
 function showOverlay(show){ el('popupOverlay').style.display = show ? 'block' : 'none'; }
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
 
-// ĐÃ XÓA: Định nghĩa hàm escapeHtml
-
 // --- LOGIC THANH XÁC NHẬN ---
 function updateConfirmBar() {
     const bar = el('confirmBar');
@@ -170,7 +168,6 @@ async function fetchGames(q){
   return allGamesCache;
 }
 
-// --- Render (ĐÃ XÓA escapeHtml) ---
 function renderUsersTable(users){
   const tbody = el('adminUsersList');
   if (!tbody) { console.warn('adminUsersList tbody not found'); return; }
@@ -181,7 +178,7 @@ function renderUsersTable(users){
   }
   users.forEach(u => {
     const id = u._id || u.id || '';
-    const username = u.username || u.displayName || ''; // Đã xóa escapeHtml
+    const username = u.username || u.displayName || ''; 
     let gh = '-';
     if (Array.isArray(u.gameHistory) && u.gameHistory.length) {
       gh = `Đã chơi ${u.gameHistory.length} game`;
@@ -294,7 +291,6 @@ async function saveUser(e){
   e.preventDefault(); 
   const id = el('userId').value; 
   
-  // ĐÃ XÓA: escapeHtml cho dữ liệu gửi lên
   const payload = { 
     username: el('userUsername').value.trim(), 
     email: el('userEmail').value.trim(), 
@@ -341,7 +337,6 @@ async function onEditRoom(e){ const id = e.currentTarget.dataset.id; try{ const 
 async function saveRoom(e){
   e.preventDefault();
   
-  // ĐÃ XÓA: escapeHtml cho dữ liệu gửi lên
   const id = el('roomId').value.trim(); 
   const roomName = el('roomName').value.trim();
   const roomOwner = el('roomOwner').value.trim();
@@ -403,9 +398,7 @@ async function onEditGame(e){
 }
 async function saveGame(e){
   e.preventDefault();
-  
-  // ĐÃ XÓA: escapeHtml cho dữ liệu gửi lên
-  const id = el('gameId').value.trim(); 
+    const id = el('gameId').value.trim(); 
   const idOrig = el('gameIdOrig').value.trim();
   
   if (!id) return alert('Game ID không được để trống');
