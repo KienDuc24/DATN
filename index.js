@@ -35,11 +35,8 @@ try {
   app.use('/api/auth', require('./routes/authRoutes'));
   app.use('/api/debug', require('./routes/debugRoutes'));
   app.use('/admin', require('./routes/adminAuthRoutes')); 
-  
-  // --- Dòng này đã chính xác ---
-  // Nó tải file adminRoutes và truyền 'io' vào
   app.use('/api/admin', adminAuth, require('./routes/adminRoutes')(io)); 
-  // ------------------------------------
+  app.use('/api', require('./routes/publicRoutes'));
   
   console.log('[index] All routes mounted successfully.');
 } catch (e) {

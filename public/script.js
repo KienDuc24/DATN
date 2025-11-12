@@ -324,9 +324,14 @@ function showLoading(show = true) {
 }
 // Sử dụng khi fetch dữ liệu:
 showLoading(true);
-fetch('games.json')
+// Gọi API từ database thay vì file tĩnh
+fetch(`${API_BASE_URL}/api/games`) 
   .then(res => res.json())
   .then(data => {
+    if (!Array.isArray(data)) {
+        console.error('API did not return an array of games:', data);
+        data = []; // Ngăn lỗi nếu API hỏng
+    }
     showLoading(false);
     allGames = data;
     groupGames(allGames);
