@@ -128,18 +128,11 @@
 
     if (controls) {
       let startBtn = document.getElementById('startRoundBtn');
-      if (!startBtn) {
-        startBtn = document.createElement('button');
-        startBtn.id = 'startRoundBtn';
-        startBtn.className = 'btn btn-primary';
-        startBtn.textContent = '🚀 Bắt đầu';
-        startBtn.style.margin = '0.5rem';
-        startBtn.addEventListener('click', () => {
-          console.log('[ToD][client] start clicked by', playerName);
-          socket.emit('tod-start-round', { roomCode: rc });
-        });
-        controls.appendChild(startBtn);
-      }
+      startBtn.addEventListener('click', () => {
+        console.log('[ToD][client] start clicked by', playerName);
+        socket.emit('tod-start-round', { roomCode: rc });
+        startBtn.style.display = 'none';
+      });
       
       // --- SỬA LỖI Ở ĐÂY ---
       // Chỉ hiện nút "Bắt đầu" cho chủ phòng.
@@ -154,10 +147,7 @@
     socket.emit('tod-who', { roomCode }); 
     
     if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thách thức' : `⏳ ${player} đang chọn...`;
-    
-    // Nút "Bắt đầu" sẽ bị ẩn đi khi vòng đầu tiên bắt đầu
-    const startBtn = document.getElementById('startRoundBtn');
-    if (startBtn) startBtn.style.display = 'none'; 
+
 
     if (player === playerName) {
       if ($actionBtns) $actionBtns.innerHTML = '';
