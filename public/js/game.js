@@ -1,6 +1,6 @@
 // js/game.js
 import { getGameName, getGameDesc, getGameCategory } from './utils.js';
-import { handleGameClick } from './room.js';
+import { handleGameClick } from './toRoom.js';
 import { 
   allGames, recentGames, topGames, featuredGames, newGames, gamesByCategory,
   sliderPage, MAX_SHOW, currentLang, LANGS
