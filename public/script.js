@@ -977,9 +977,18 @@ function closeAuthModal() {
   const modal = document.querySelector('.auth-form-modal, .auth-modal, .modal');
   if (modal) modal.style.display = 'none';
 }
-
+// Khai báo roomModal bên ngoài hàm
+const roomModal = document.getElementById('roomModal');
+if (!roomModal) {
+  console.error('Element #roomModal không tồn tại');
+}
 // Hàm xử lý khi click vào game
 function handleGameClick(gameId, gameName) {
+  const modal = document.getElementById('roomModal');
+  if (!modal) {
+    console.error('Element #roomModal không tồn tại');
+    return;
+  }
   window.selectedGameId = gameId;
   window.selectedGameName = gameName;
   modal.style.display = 'flex';
@@ -999,12 +1008,6 @@ function handleGameClick(gameId, gameName) {
         <div class="modal-game-players" style="font-size:0.98rem;color:#43cea2;">👥 ${players} ${LANGS[currentLang]?.room_players || 'players'}</div>
       </div>
     `;
-  }
-
-  const modal = document.getElementById('roomModal');
-  if (!modal) {
-    console.error('Element #roomModal không tồn tại');
-    return;
   }
 
   // Render lại nội dung modal
@@ -1129,14 +1132,23 @@ function handleGameClick(gameId, gameName) {
     modal.querySelector('#roomCodeBox').style.display = 'none';
   };
 
-  modal.querySelector('#goToRoomBtn').onclick = function() {
-    const code = window.generatedRoomCode;
-    const gameId = window.selectedGameId || '';
-    const gameName = window.selectedGameName || '';
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const username = user.username || user.displayName || 'Guest';
-    window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
-  };
+  const goToRoomBtn = modal.querySelector('#goToRoomBtn');
+  if (goToRoomBtn) {
+    goToRoomBtn.onclick = function() {
+      const code = window.generatedRoomCode;
+      const gameId = window.selectedGameId || '';
+      const gameName = window.selectedGameName || '';
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const username = user.username || user.displayName || 'Guest';
+
+      if (!code || !gameId || !gameName || !username) {
+        alert('Thiếu thông tin phòng hoặc người chơi!');
+        return;
+      }
+
+      window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
+    };
+  }
 
 
 const SOCKET_URL = window.SOCKET_URL || window.__BASE_API__ || window.location.origin;
