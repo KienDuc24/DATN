@@ -8,7 +8,7 @@ let gamesByCategory = {};
 
 
 // Use same origin API by default (safer). If you need cross-domain, set this env.
-const API_BASE_URL = 'https://datn-socket.up.railway.app'; // Đường dẫn tuyệt đối đến server API
+const API_BASE_URL = 'https://datn-socket.up.railway.app'; // Đường dẫn API
 // Lưu vị trí trang hiện tại cho từng slider
 let sliderPage = {
   recent: 0,
@@ -1684,5 +1684,36 @@ async function createRoom(payload) {
   } catch (err) {
     console.error('[createRoom] Error:', err.message);
     alert('Không thể tạo phòng. Vui lòng thử lại!');
+  }
+}
+
+async function createRoomAndRedirect() {
+  const name = document.getElementById('playerName').value.trim();
+  if (!name) {
+    alert("Vui lòng nhập tên hiển thị.");
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/room`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player: name, game: selectedGame })
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || 'Failed to create room');
+    }
+
+    const data = await res.json();
+    if (data.roomCode) {
+      console.log('Redirecting to room:', data.roomCode);
+      window.location.href = `room.html?code=${data.roomCode}&game=${encodeURIComponent(selectedGame)}`;
+    } else {
+      alert('Lỗi tạo phòng!');
+    }
+  } catch (error) {
+    console.error('Error creating room:', error);
+    alert('Lỗi kết nối!');
   }
 }

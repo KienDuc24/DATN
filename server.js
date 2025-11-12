@@ -7,6 +7,7 @@ const http = require('http');
 const path = require('path');
 const bodyParser = require('body-parser');
 const attachSocket = require('./socketServer');
+const roomRoutes = require('./routes/roomRoutes');
 
 const app = express();
 const server = http.createServer(app);
