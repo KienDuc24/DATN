@@ -12,7 +12,7 @@ const roomSchema = new Schema({
       return letter + number;
     }
   },
-  host: { type: mongoose.Types.ObjectId, ref: 'User', required: true },
+  host: { type: String, ref: 'User', required: true },
   players: [{ name: String }], // Danh sách người chơi
   game: {
     gameId: { type: String, required: true },
