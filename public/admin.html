@@ -20,6 +20,7 @@
       <a href="#" class="active" data-tab="gamesTab"><span class="icon">🎮</span> Trò chơi</a>
       <a href="#" data-tab="roomsTab"><span class="icon">🛋️</span> Phòng chơi</a>
       <a href="#" data-tab="usersTab"><span class="icon">👥</span> Người dùng</a>
+      <a href="#" data-tab="analyticsTab"><span class="icon">📈</span> Web Analytics</a>
       <div class="sidebar-auth">
         <button onclick="logoutAdmin()">Đăng xuất</button>
       </div>
@@ -46,7 +47,8 @@
       <button class="tab-btn active" data-tab="gamesTab">Trò chơi</button>
       <button class="tab-btn" data-tab="roomsTab">Phòng chơi</button>
       <button class="tab-btn" data-tab="usersTab">Người dùng</button>
-    </div>
+      <button class="tab-btn" data-tab="analyticsTab">Web Analytics</button>
+      </div>
 
     <section id="gamesTab" class="admin-tab-content">
       <div class="section-title-row">
@@ -107,12 +109,43 @@
         </table>
       </div>
     </section>
-  </main>
+
+    <section id="analyticsTab" class="admin-tab-content" style="display:none">
+      <div class="section-title-row">
+        <div class="section-title">Vercel Web Analytics & Core Web Vitals</div>
+        <div>
+          <button class="btn btn-primary" onclick="window.open('https://vercel.com/docs/analytics', '_blank')" style="background:linear-gradient(90deg,#00b0ff,#007aff);color:#fff">
+            <span class="icon">📚</span> Xem tài liệu Vercel
+          </button>
+        </div>
+      </div>
+      <div class="table-wrap" style="padding: 20px;">
+        <p style="margin-bottom: 20px; color: var(--muted);">Công cụ này giúp bạn theo dõi hiệu suất thực tế của ứng dụng (Core Web Vitals) và lưu lượng truy cập từ người dùng.</p>
+        
+        <h4>⚙️ Trạng thái Tích hợp (Tải trên Client)</h4>
+        <div id="analyticsStatusContainer" style="display: flex; flex-direction: column; gap: 10px; max-width: 500px; padding: 10px; border: 1px dashed rgba(255,255,255,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dotted var(--muted); padding-bottom: 8px;">
+                <span style="font-weight: 600;">Trạng thái Script:</span>
+                <span id="analyticsScriptStatus" style="color: var(--danger); font-weight: 700;">CHƯA TÌM THẤY</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px;">
+                <span style="font-weight: 600;">Vercel Project ID (data-sd-id):</span>
+                <input type="text" id="vercelAnalyticsId" placeholder="ID (e.g., xxxxxx)" style="width: 150px; padding: 6px; border-radius: 4px; background: rgba(0,0,0,0.3); border: 1px solid var(--muted);" readonly/>
+            </div>
+        </div>
+
+        <h4 style="margin-top: 30px;">⚠️ Hướng dẫn Cài đặt (Client-side)</h4>
+        <p style="color: var(--muted); font-size: 13px;">Để kích hoạt, bạn cần thêm đoạn mã sau vào tệp HTML chính (ví dụ: `index.html`) ngay trước thẻ đóng `</head>` hoặc `</body>`:</p>
+        <pre style="background: var(--bg); border: 1px solid var(--card); padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 13px; color: #a0f;">
+&lt;script defer src="/_vercel/insights/script.js" data-sd-id="prj_K93NSohEwlL2OqPPUorXIa1SR7ld"&gt;&lt;/script&gt;</pre>
+      </div>
+    </section>
+    </main>
 
   <footer style="margin-left:220px;padding:14px;color:var(--muted)">© 2025 Camping Game Admin</footer>
 
   <div id="popupOverlay" class="popup-overlay"></div>
-
+  
   <div id="roomFormPopup" class="auth-popup">
     <form id="roomForm" class="auth-form" onsubmit="return saveRoom(event)">
       <h2 id="roomFormTitle">Chỉnh sửa phòng</h2>

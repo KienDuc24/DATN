@@ -35,7 +35,7 @@ function el(id){return document.getElementById(id);}
 function showOverlay(show){ el('popupOverlay').style.display = show ? 'block' : 'none'; }
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
 
-// --- LOGIC THANH XÁC NHẬN ---
+// --- LOGIC THANH XÁC NHẬN (Giữ nguyên) ---
 function updateConfirmBar() {
     const bar = el('confirmBar');
     const countEl = el('pendingChangesCount');
@@ -112,9 +112,38 @@ function showTab(tabId){
   
   document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.getAttribute('data-tab')===tabId) b.classList.add('active') });
   document.querySelectorAll('.sidebar nav a').forEach(a=>{ if(a.getAttribute('data-tab')===tabId) a.classList.add('active') });
+  
+  // Kiểm tra trạng thái Analytics khi chuyển sang tab này
+  if (tabId === 'analyticsTab') {
+    checkAnalyticsStatus();
+  }
 }
 
-// --- HÀM fetchApi ---
+// --- HÀM checkAnalyticsStatus (MỚI) ---
+function checkAnalyticsStatus() {
+    const scriptStatusEl = el('analyticsScriptStatus');
+    const idInput = el('vercelAnalyticsId');
+    if (!scriptStatusEl) return;
+    
+    // Kiểm tra xem script Vercel Analytics đã được tải chưa
+    const isLoaded = document.querySelector('script[src*="/_vercel/insights/script.js"]');
+    
+    if (isLoaded) {
+        scriptStatusEl.textContent = 'ĐÃ TÍCH HỢP';
+        scriptStatusEl.style.color = 'var(--success)';
+        const sdId = isLoaded.getAttribute('data-sd-id');
+        if (idInput && sdId) {
+            idInput.value = sdId;
+        }
+    } else {
+        scriptStatusEl.textContent = 'CHƯA TÌM THẤY';
+        scriptStatusEl.style.color = 'var(--danger)';
+        if (idInput) idInput.value = '';
+    }
+}
+// ---------------------------------------
+
+// --- HÀM fetchApi (Giữ nguyên) ---
 async function fetchApi(url) {
     console.log(`[fetchApi] Đang gọi: ${url}`);
     const res = await fetch(url, { credentials: 'include' }); 
@@ -275,7 +304,7 @@ function renderGamesTable(games){
   tbody.querySelectorAll('.icon-delete').forEach(b=>b.addEventListener('click', onDeleteGame));
 }
 
-// --- Handlers ---
+// --- Handlers (Giữ nguyên) ---
 function openUserForm(user){ 
   showOverlay(true); el('userFormPopup').style.display = 'block'; 
   el('userFormTitle').innerText = user ? 'Sửa người dùng' : 'Thêm người dùng'; 
@@ -388,6 +417,7 @@ function openGameForm(game){
   el('gamePlayers').value = game ? (game.players||'') : '';
   el('gameCatVI').value = (game && game.category && game.category.vi) ? game.category.vi : '';
   el('gameCatEN').value = (game && game.category && game.category.en) ? game.category.en : '';
+  el('gameId').value = game ? (game.id || '') : '';
 }
 function closeGameForm(){ el('gameFormPopup').style.display='none'; showOverlay(false); }
 async function onEditGame(e){
@@ -577,4 +607,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   showTab('gamesTab');
   loadData();
   populateGameOptions();
+  
+  // Gọi lần đầu khi tải trang
+  checkAnalyticsStatus(); 
 });
