@@ -6,7 +6,7 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const path = require('path');
-const attachSocket = require('./socketServer'); // File socket của bạn
+const attachSocket = require('./socketServer');
 
 const app = express();
 const server = http.createServer(app);
@@ -31,9 +31,14 @@ try {
   console.error('[index] Error mounting routes:', e.message);
 }
 
+// --- SỬA LỖI: Thêm Health Check Route cho Railway ---
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Server is running' });
+});
+// ------------------------------------------
+
 // --- 3. Khởi động Server ---
-// Dòng này LẤY PORT TỪ RAILWAY
-const PORT = process.env.PORT || 3000; 
+const PORT = process.env.PORT || 3000;
 
 async function start() {
   try {
@@ -49,9 +54,7 @@ async function start() {
       console.log('[index] Socket.IO attached.');
     }
 
-    // Server sẽ chạy trên port Railway cung cấp
     server.listen(PORT, () => {
-      // Dòng log này SẼ XUẤT HIỆN TRÊN RAILWAY khi thành công
       console.log(`[index] Server + Socket running on port ${PORT}`);
     });
     
