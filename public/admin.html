@@ -111,34 +111,28 @@
     </section>
 
     <section id="analyticsTab" class="admin-tab-content" style="display:none">
-      <div class="section-title-row">
-        <div class="section-title">Vercel Web Analytics & Core Web Vitals</div>
-        <div>
-          <button class="btn btn-primary" onclick="window.open('https://vercel.com/docs/analytics', '_blank')" style="background:linear-gradient(90deg,#00b0ff,#007aff);color:#fff">
-            <span class="icon">📚</span> Xem tài liệu Vercel
-          </button>
+        <div class="section-title-row">
+            <div class="section-title">Vercel Web Analytics & Core Web Vitals</div>
+            <div>
+                <button class="btn btn-primary" onclick="window.open('YOUR_VERCEL_PROJECT_ANALYTICS_URL', '_blank')" style="background:linear-gradient(90deg,#00b0ff,#007aff);color:#fff">
+                    <span class="icon">🔗</span> Mở Analytics trong Tab mới
+                </button>
+            </div>
         </div>
-      </div>
-      <div class="table-wrap" style="padding: 20px;">
-        <p style="margin-bottom: 20px; color: var(--muted);">Công cụ này giúp bạn theo dõi hiệu suất thực tế của ứng dụng (Core Web Vitals) và lưu lượng truy cập từ người dùng.</p>
         
-        <h4>⚙️ Trạng thái Tích hợp (Tải trên Client)</h4>
-        <div id="analyticsStatusContainer" style="display: flex; flex-direction: column; gap: 10px; max-width: 500px; padding: 10px; border: 1px dashed rgba(255,255,255,0.1);">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dotted var(--muted); padding-bottom: 8px;">
-                <span style="font-weight: 600;">Trạng thái Script:</span>
-                <span id="analyticsScriptStatus" style="color: var(--danger); font-weight: 700;">CHƯA TÌM THẤY</span>
+        <div class="table-wrap" style="padding: 0; flex-grow: 1; height: 80vh; overflow: hidden;">
+            <p style="padding: 20px; color: var(--danger); font-weight: 600;">⚠️ Lưu ý: Vì lý do bảo mật, Vercel Dashboard thường chặn việc nhúng (iframe) từ các tên miền khác. Vui lòng sử dụng nút bên trên để xem dữ liệu.</p>
+            
+            <iframe 
+                src="YOUR_VERCEL_PROJECT_ANALYTICS_URL" 
+                style="width: 100%; height: 100%; border: none; margin-top: 10px;" 
+                allowfullscreen 
+                frameborder="0"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                title="Vercel Web Analytics Dashboard"
+            ></iframe>
+            
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px;">
-                <span style="font-weight: 600;">Vercel Project ID (data-sd-id):</span>
-                <input type="text" id="vercelAnalyticsId" placeholder="ID (e.g., xxxxxx)" style="width: 150px; padding: 6px; border-radius: 4px; background: rgba(0,0,0,0.3); border: 1px solid var(--muted);" readonly/>
-            </div>
-        </div>
-
-        <h4 style="margin-top: 30px;">⚠️ Hướng dẫn Cài đặt (Client-side)</h4>
-        <p style="color: var(--muted); font-size: 13px;">Để kích hoạt, bạn cần thêm đoạn mã sau vào tệp HTML chính (ví dụ: `index.html`) ngay trước thẻ đóng `</head>` hoặc `</body>`:</p>
-        <pre style="background: var(--bg); border: 1px solid var(--card); padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 13px; color: #a0f;">
-&lt;script defer src="/_vercel/insights/script.js" data-sd-id="prj_K93NSohEwlL2OqPPUorXIa1SR7ld"&gt;&lt;/script&gt;</pre>
-      </div>
     </section>
     </main>
 

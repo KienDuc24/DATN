@@ -113,32 +113,34 @@ function showTab(tabId){
   document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.getAttribute('data-tab')===tabId) b.classList.add('active') });
   document.querySelectorAll('.sidebar nav a').forEach(a=>{ if(a.getAttribute('data-tab')===tabId) a.classList.add('active') });
   
-  // Kiểm tra trạng thái Analytics khi chuyển sang tab này
+  // GỌI HÀM CHECK ANALYTICS STATUS (nếu muốn)
   if (tabId === 'analyticsTab') {
-    checkAnalyticsStatus();
+    // Nếu bạn muốn hiển thị lại trạng thái tích hợp script tĩnh, hãy uncomment hàm này
+    // checkAnalyticsStatus(); 
   }
 }
 
-// --- HÀM checkAnalyticsStatus (MỚI) ---
+// --- HÀM checkAnalyticsStatus (GIỮ CHỖ) ---
+// Giữ hàm này đề phòng bạn muốn hiển thị lại trạng thái tích hợp Vercel Analytics.
 function checkAnalyticsStatus() {
     const scriptStatusEl = el('analyticsScriptStatus');
     const idInput = el('vercelAnalyticsId');
-    if (!scriptStatusEl) return;
+    if (!scriptStatusEl || !idInput) return;
     
-    // Kiểm tra xem script Vercel Analytics đã được tải chưa
+    // Logic kiểm tra script
     const isLoaded = document.querySelector('script[src*="/_vercel/insights/script.js"]');
     
     if (isLoaded) {
         scriptStatusEl.textContent = 'ĐÃ TÍCH HỢP';
-        scriptStatusEl.style.color = 'var(--success)';
+        scriptStatusEl.style.color = '#22c55e'; // var(--success)
         const sdId = isLoaded.getAttribute('data-sd-id');
-        if (idInput && sdId) {
+        if (sdId) {
             idInput.value = sdId;
         }
     } else {
         scriptStatusEl.textContent = 'CHƯA TÌM THẤY';
-        scriptStatusEl.style.color = 'var(--danger)';
-        if (idInput) idInput.value = '';
+        scriptStatusEl.style.color = '#ef4444'; // var(--danger)
+        idInput.value = '';
     }
 }
 // ---------------------------------------
@@ -607,7 +609,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
   showTab('gamesTab');
   loadData();
   populateGameOptions();
-  
-  // Gọi lần đầu khi tải trang
-  checkAnalyticsStatus(); 
 });
