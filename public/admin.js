@@ -1,37 +1,36 @@
 // public/admin.js
-const ADMIN_API = ''; // SỬA: Dùng relative path
+
+// SỬA LỖI: Trỏ API về backend Railway
+const ADMIN_API = 'https://datn-socket.up.railway.app'; 
+// const ADMIN_API = ''; // (Code cũ bị lỗi)
 
 function el(id){return document.getElementById(id);}
 function showOverlay(show){ el('popupOverlay').style.display = show ? 'block' : 'none'; }
 
-// Hàm debounce (bị thiếu trong code gốc)
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
 
-// Hàm escape (để an toàn)
 if (typeof escapeHtml === 'undefined') {
   window.escapeHtml = function(s){
     return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   };
 }
 
-// TAB switch
 function showTab(tabId){
   document.querySelectorAll('.admin-tab-content').forEach(e=>e.style.display='none');
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.sidebar nav a').forEach(a=>a.classList.remove('active')); // Thêm
+  document.querySelectorAll('.sidebar nav a').forEach(a=>a.classList.remove('active'));
   
   const tab = el(tabId);
   if(tab) tab.style.display = '';
   
   document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.getAttribute('data-tab')===tabId) b.classList.add('active') });
-  document.querySelectorAll('.sidebar nav a').forEach(a=>{ if(a.getAttribute('data-tab')===tabId) a.classList.add('active') }); // Thêm
+  document.querySelectorAll('.sidebar nav a').forEach(a=>{ if(a.getAttribute('data-tab')===tabId) a.classList.add('active') });
 }
 
-// --- Helpers Fetch (đã sửa đường dẫn) ---
 async function fetchApi(url) {
-  const res = await fetch(url, { credentials: 'same-origin' });
+  // SỬA LỖI: Không cần { credentials: 'same-origin' } khi gọi cross-origin
+  const res = await fetch(url); 
   if (!res.ok) {
-    // Nếu bị 401 (hết hạn token), tự động logout
     if (res.status === 401) {
         alert('Phiên đăng nhập hết hạn.');
         logoutAdmin();
@@ -42,19 +41,19 @@ async function fetchApi(url) {
   return res.json();
 }
 async function fetchUsers(q){
-  const url = new URL(`${ADMIN_API}/api/admin/users`, window.location.origin);
+  const url = new URL(`${ADMIN_API}/api/admin/users`); // Sửa: Dùng URL đầy đủ
   if (q) url.searchParams.set('q', q);
   const j = await fetchApi(url.toString());
   return j.users || [];
 }
 async function fetchRooms(q){
-  const url = new URL(`${ADMIN_API}/api/admin/rooms`, window.location.origin);
+  const url = new URL(`${ADMIN_API}/api/admin/rooms`); // Sửa: Dùng URL đầy đủ
   if (q) url.searchParams.set('q', q);
   const j = await fetchApi(url.toString());
   return j.rooms || [];
 }
 async function fetchGames(q){
-  const url = new URL(`${ADMIN_API}/api/admin/games`, window.location.origin);
+  const url = new URL(`${ADMIN_API}/api/admin/games`); // Sửa: Dùng URL đầy đủ
   if (q) url.searchParams.set('q', q);
   const j = await fetchApi(url.toString());
   return j.games || [];
@@ -184,7 +183,7 @@ async function saveUser(e){
   const payload = { username: el('userUsername').value.trim(), email: el('userEmail').value.trim(), role: el('userRole').value }; 
   if(!payload.username) return alert('Username không được để trống'); 
   try{ 
-    const res = await fetch(`${ADMIN_API}/api/admin/user/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) }); 
+    const res = await fetch(`${ADMIN_API}/api/admin/user/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }); 
     if(!res.ok){ const txt = await res.text(); throw new Error(txt||res.status); } 
     alert('Cập nhật người dùng thành công'); 
     closeUserForm(); 
@@ -195,7 +194,7 @@ async function onDeleteUser(e){
   const id = e.currentTarget.dataset.id; 
   if(!confirm('Xác nhận xóa user?')) return; 
   try{ 
-    const res = await fetch(`${ADMIN_API}/api/admin/user/${id}`, { method:'DELETE', credentials:'same-origin' }); 
+    const res = await fetch(`${ADMIN_API}/api/admin/user/${id}`, { method:'DELETE' }); 
     if(!res.ok) throw new Error('delete failed'); 
     alert('Đã xóa user'); 
     loadData(); 
@@ -238,9 +237,9 @@ async function saveRoom(e){
   try{
     let res;
     if(id){
-      res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+      res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
     } else {
-      res = await fetch(`${ADMIN_API}/api/admin/room`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+      res = await fetch(`${ADMIN_API}/api/admin/room`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
     }
     if(!res.ok){ const txt = await res.text().catch(()=>null); throw new Error(txt||res.status); }
     alert('Phòng lưu thành công');
@@ -252,7 +251,7 @@ async function onDeleteRoom(e){
   const id = e.currentTarget.dataset.id; // Room ID là 'code'
   if(!confirm('Xác nhận xóa phòng?')) return; 
   try{ 
-    const res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'DELETE', credentials:'same-origin' }); 
+    const res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'DELETE' }); 
     if(!res.ok) throw new Error('delete failed'); 
     alert('Đã xóa phòng'); 
     loadData(); 
@@ -300,12 +299,12 @@ async function saveGame(e){
     let res;
     if (orig) {
       res = await fetch(`${ADMIN_API}/api/admin/games/${encodeURIComponent(orig)}`, {
-        method: 'PUT', credentials:'same-origin',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
     } else {
       res = await fetch(`${ADMIN_API}/api/admin/games`, {
-        method: 'POST', credentials:'same-origin',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
     }
@@ -319,7 +318,7 @@ async function onDeleteGame(e){
   const id = e.currentTarget.dataset.id;
   if (!confirm('Xác nhận xóa trò chơi này?')) return;
   try{
-    const res = await fetch(`${ADMIN_API}/api/admin/games/${encodeURIComponent(id)}`, { method: 'DELETE', credentials:'same-origin' });
+    const res = await fetch(`${ADMIN_API}/api/admin/games/${encodeURIComponent(id)}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('delete failed');
     alert('Đã xóa trò chơi');
     loadData();
@@ -331,13 +330,10 @@ async function onFeatureGame(e) {
   const checked = cbEl.checked;
   cbEl.disabled = true;
   try {
-    // SỬA: API này không tồn tại, nhưng logic trong adminRoutes.js CÓ TỒN TẠI
-    // Chúng ta sẽ gọi PUT /api/admin/games/:id
     await fetch(`${ADMIN_API}/api/admin/games/${encodeURIComponent(id)}`, {
       method: 'PUT',
-      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ featured: !!checked }) // Chỉ cập nhật trường 'featured'
+      body: JSON.stringify({ featured: !!checked })
     });
   } catch (err) {
     console.error('update featured failed', err);
@@ -350,7 +346,8 @@ async function onFeatureGame(e) {
 
 // Logout
 function logoutAdmin(){ 
-  fetch('/admin/logout', {method:'POST', credentials:'same-origin'})
+  // Sửa: Dùng URL đầy đủ
+  fetch(`${ADMIN_API}/admin/logout`, {method:'POST'})
     .finally(()=> location.href='/admin-login.html'); 
 }
 
@@ -380,8 +377,7 @@ async function populateGameOptions(){
   if(!sel) return;
   sel.innerHTML = '<option value="">-- Chọn trò chơi --</option>';
   try{
-    // SỬA: Lấy games.json từ trang chủ
-    const res = await fetch(`/games.json`, { credentials: 'same-origin' });
+    const res = await fetch(`/games.json`); // Sửa: Lấy từ Vercel (public)
     if(!res.ok) return console.warn('games.json fetch failed', res.status);
     const data = await res.json();
     const list = Array.isArray(data) ? data : (Array.isArray(data.games) ? data.games : []);
@@ -401,7 +397,6 @@ async function populateGameOptions(){
 
 // --- Khởi tạo (DOM Ready) ---
 document.addEventListener('DOMContentLoaded', ()=>{
-  // Gán sự kiện
   document.querySelectorAll('.tab-btn').forEach(b=> b.addEventListener('click', ()=> showTab(b.getAttribute('data-tab'))));
   document.querySelectorAll('.sidebar nav a').forEach(a=>{
     a.addEventListener('click', (e)=>{
@@ -427,8 +422,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const addRoomBtn = document.querySelector('button[onclick="openRoomForm()"]');
   if(addRoomBtn) { addRoomBtn.onclick = () => { populateGameOptions(); openRoomForm(null); }; }
 
-  // Tải dữ liệu
-  showTab('gamesTab'); // Bắt đầu ở tab Games
+  showTab('gamesTab');
   loadData();
   populateGameOptions();
 });
