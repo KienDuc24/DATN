@@ -1,3 +1,5 @@
+/* publicstyle.css */
+
 :root {
     --bg-dark: #1a1a2e;
     --bg-medium: #16213e;
@@ -7,7 +9,7 @@
     --accent-yellow: #fddb3a;
     --accent-green: #3CB371;
     --border-color: #0f3460;
-    --card-bg: #2c3e50; /* Sửa màu card-bg */
+    --card-bg: #2c3e50;
 }
 
 body {
@@ -34,11 +36,11 @@ body {
     background-repeat: no-repeat;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start; /* Sửa: Bắt đầu từ trên */
+    justify-content: flex-start;
     align-items: center;
     padding: 1rem;
     box-sizing: border-box;
-    overflow: auto; /* Cho phép cuộn nếu playground quá cao */
+    overflow: auto;
 }
 
 .overlay {
@@ -54,7 +56,7 @@ body {
 
 .game-header {
     position: relative;
-    z-index: 2; /* Đặt lên trên playground */
+    z-index: 2;
     text-align: center;
     padding: 1rem;
     color: #fff;
@@ -112,33 +114,31 @@ body {
     gap: 0.5rem;
 }
 
-/* --- THÊM MỚI: Playground Container --- */
 .playground-container {
     position: relative;
     z-index: 1;
     width: 90%;
     max-width: 1200px;
     margin-top: 1rem;
-    background: rgba(15, 52, 96, 0.3); /* Màu nền mờ */
+    background: rgba(15, 52, 96, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 20px;
-    backdrop-filter: blur(15px); /* Hiệu ứng mờ chính */
+    backdrop-filter: blur(15px);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     padding: 1.5rem;
     box-sizing: border-box;
 }
-/* ---------------------------------- */
 
 .game-container {
     display: flex;
     width: 100%;
     gap: 2rem;
     justify-content: center;
-    align-items: flex-start; /* Sửa: Căn trên */
+    align-items: flex-start;
 }
 
 .player-camp {
-    flex: 3; /* Cho nhiều không gian hơn */
+    flex: 3;
     min-width: 300px;
     height: 100%;
     display: flex;
@@ -149,29 +149,26 @@ body {
     box-sizing: border-box;
 }
 
-/* --- SỬA LỖI: Dùng CSS Grid cho avatar --- */
 .player-grid {
     display: grid;
-    /* Tự động chia cột, mỗi cột tối thiểu 80px */
     grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-    gap: 2rem; /* Khoảng cách giữa các avatar */
+    gap: 2rem;
     justify-content: center;
     align-items: center;
     width: 100%;
     position: relative;
-    padding-bottom: 100px; /* Tạo không gian cho đống lửa */
+    padding-bottom: 100px;
 }
 
 .player {
-    /* Bỏ position: absolute */
     display: flex;
     flex-direction: column;
     align-items: center;
     transition: all 0.5s ease-in-out;
     cursor: pointer;
     text-align: center;
+    /* --- SỬA LỖI: Bỏ transform để CSS Grid căn chỉnh --- */
 }
-/* ------------------------------------- */
 
 .player .pic {
     width: 70px;
@@ -182,6 +179,7 @@ body {
     box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
     transition: all 0.3s ease-in-out;
     background-color: #fff;
+    position: relative; /* --- THÊM MỚI: Để định vị vương miện --- */
 }
 
 .player .pic img {
@@ -190,7 +188,36 @@ body {
     object-fit: cover;
 }
 
+/* --- THÊM MỚI: Style cho vương miện --- */
+.player .crown {
+    position: absolute;
+    top: -12px; /* Điều chỉnh vị trí vương miện */
+    left: 50%;
+    transform: translateX(-50%) rotate(15deg);
+    font-size: 1.8rem;
+    z-index: 10;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    /* Giúp icon không bị chọn (select) khi click */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Style cho Host */
+.player.host .pic {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 15px var(--accent-green);
+}
+/* ---------------------------------- */
+
 .player.you .pic {
+    border-color: var(--accent-yellow);
+    box-shadow: 0 0 15px var(--accent-yellow);
+}
+
+/* Style cho Host VÀ LÀ BẠN (ghi đè viền xanh) */
+.player.host.you .pic {
     border-color: var(--accent-yellow);
     box-shadow: 0 0 15px var(--accent-yellow);
 }
@@ -202,7 +229,7 @@ body {
 }
 .player.asked .pic {
     border-color: var(--accent-orange);
-    transform: scale(1.15);
+    transform: scale(1.15); /* SỬA: Xóa bỏ translate */
     animation: glowing 1.5s infinite ease-in-out;
 }
 
@@ -221,18 +248,17 @@ body {
 }
 
 .player:hover .pic {
-    transform: scale(1.1);
+    transform: scale(1.1); /* SỬA: Xóa bỏ translate */
 }
 
 .campfire {
-    /* SỬA: Đặt đống lửa vào vị trí tuyệt đối ở đáy grid */
     position: absolute;
     width: 150px;
     height: 150px;
-    bottom: -50px; /* Đẩy xuống dưới */
+    bottom: -50px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 10; /* Đặt lên trên avatar */
+    z-index: 10;
 }
 
 .campfire-gif {
@@ -251,7 +277,7 @@ body {
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
-    justify-content: flex-start; /* SỬA: Bắt đầu từ trên */
+    justify-content: flex-start;
     align-items: center;
     max-height: 80vh;
 }
@@ -425,7 +451,7 @@ body {
         width: 100%;
         max-width: 500px;
         padding: 1rem;
-        box-sizing: border-box; /* SỬA: Thêm vào */
+        box-sizing: border-box;
     }
     .turn-display { font-size: 1.1rem; }
     .btn { font-size: 1rem; padding: 0.7rem 1.2rem; min-width: 100px; }
@@ -443,7 +469,7 @@ body {
         width: 100%;
         padding: 0.5rem;
         margin-top: 0.5rem;
-        height: auto; /* SỬA: Cho phép co giãn */
+        height: auto;
         box-sizing: border-box;
     }
     
@@ -461,7 +487,7 @@ body {
     .game-controls {
         width: 100%;
         padding: 0.8rem;
-        max-height: none; /* SỬA: Cho phép co giãn */
+        max-height: none;
         box-sizing: border-box;
     }
     .action-buttons {

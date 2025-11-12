@@ -1,3 +1,4 @@
+// publicscript.js
 (() => {
   // --- 1. KẾT NỐI SOCKET VÀ LẤY THÔNG TIN ---
   const SOCKET_URL = "https://datn-socket.up.railway.app";
@@ -50,6 +51,7 @@
   
   const socket = window.socket;
   let currentAskedPlayer = null; 
+  let currentHost = null; // --- THÊM MỚI: Biến lưu host ---
 
   // --- 2. XỬ LÝ SỰ KIỆN SOCKET (ĐÃ GOM LẠI) ---
 
@@ -76,7 +78,8 @@
     return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
   }
 
-  function renderPlayers(players = [], askedName) {
+  // --- SỬA LỖI: Hàm Render Player (dùng CSS Grid) ---
+  function renderPlayers(players = [], askedName, host) { // Thêm 'host'
     if ($playersCount) $playersCount.textContent = `${players.length}`;
     if (!$avatars) return;
     $avatars.innerHTML = ''; 
@@ -88,30 +91,25 @@
     
     if (!players.length) return;
 
-    const area = $avatars; 
-    const w = area ? area.clientWidth : 500; 
-    const h = area ? area.clientHeight : 350; 
-    const cx = w / 2;
-    const cy = h / 2;
-    const R = Math.min(w, h) * 0.38;
-    
     players.forEach((p, i) => {
       const name = p && p.name ? p.name : String(p);
       const imgUrl = pickAvatarFor(p);
       const el = document.createElement('div');
       
-      el.className = 'player' + (name === playerName ? ' you' : '') + (name === askedName ? ' asked' : '');
+      // Thêm class 'host'
+      el.className = 'player' + 
+                    (name === playerName ? ' you' : '') + 
+                    (name === askedName ? ' asked' : '') +
+                    (name === host ? ' host' : ''); // Thêm class host
       
-      const angle = (2 * Math.PI * i) / players.length - (Math.PI / 2); 
-      const x = cx + R * Math.cos(angle);
-      const y = cy + R * Math.sin(angle);
+      // Thêm vương miện cho host
+      const crown = (name === host) ? '<div class="crown">👑</div>' : '';
       
-      el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
-      el.innerHTML = `<div class="pic"><img src="${imgUrl}" alt="${name}"></div><div class="name">${name}</div>`;
+      el.innerHTML = `<div class="pic">${crown}<img src="${imgUrl}" alt="${name}"></div><div class="name">${name}</div>`;
       $avatars.appendChild(el);
     });
   }
+  // --- HẾT HÀM RENDER ---
 
   socket.on('tod-joined', (payload) => {
     console.log('[ToD][client] evt tod-joined', payload);
@@ -120,35 +118,42 @@
     const host = (payload && (payload.host || (payload.data && payload.data.host))) || '';
     const players = (payload && (payload.players || (payload.data && payload.data.participants))) || [];
     const participantsCount = payload && (payload.participantsCount || (payload.data && payload.data.participantsCount)) || players.length || 0;
+    const status = (payload && payload.status) || 'open';
     
+    currentHost = host; // --- THÊM MỚI: Lưu lại host ---
+
     if ($room) $room.textContent = rc || '—';
     if ($playersCount) $playersCount.textContent = participantsCount;
 
-    renderPlayers(players, currentAskedPlayer);
+    renderPlayers(players, currentAskedPlayer, currentHost); // Truyền host vào
 
     if (controls) {
       let startBtn = document.getElementById('startRoundBtn');
-       startBtn = document.createElement('button');
-      startBtn.addEventListener('click', () => {
-        console.log('[ToD][client] start clicked by', playerName);
-        socket.emit('tod-start-round', { roomCode: rc });
-        startBtn.style.display = 'none';
-      });
+      if (!startBtn) {
+        startBtn = document.createElement('button');
+        startBtn.id = 'startRoundBtn';
+        startBtn.className = 'btn btn-primary';
+        startBtn.textContent = '🚀 Bắt đầu';
+        startBtn.style.margin = '0.5rem';
+        startBtn.addEventListener('click', () => {
+          console.log('[ToD][client] start clicked by', playerName);
+          socket.emit('tod-start-round', { roomCode: rc });
+        });
+        controls.appendChild(startBtn);
+      }
       
-      // --- SỬA LỖI Ở ĐÂY ---
-      // Chỉ hiện nút "Bắt đầu" cho chủ phòng.
-      // Sự kiện 'tod-your-turn' (ở dưới) sẽ ẩn nó đi khi game thực sự bắt đầu.
-      startBtn.style.display = (host && playerName === host) ? 'inline-block' : 'none';
-      // --- HẾT SỬA ---
+      startBtn.style.display = (host && playerName === host && status === 'open') ? 'inline-block' : 'none';
     }
   });
 
   socket.on('tod-your-turn', ({ player }) => {
     currentAskedPlayer = player; 
-    socket.emit('tod-who', { roomCode }); 
+    socket.emit('tod-who', { roomCode }); // Render lại (để highlight)
     
     if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thách thức' : `⏳ ${player} đang chọn...`;
-
+    
+    const startBtn = document.getElementById('startRoundBtn');
+    if (startBtn) startBtn.style.display = 'none'; // Ẩn nút "Bắt đầu"
 
     if (player === playerName) {
       if ($actionBtns) $actionBtns.innerHTML = '';
@@ -170,7 +175,7 @@
 
   socket.on('tod-question', ({ player, choice, question, totalVoters }) => {
     currentAskedPlayer = player; 
-    socket.emit('tod-who', { roomCode }); 
+    socket.emit('tod-who', { roomCode }); // Render lại (để highlight)
 
     if ($question) {
       $question.classList.remove('hidden');
