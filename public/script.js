@@ -1000,6 +1000,12 @@ function handleGameClick(gameId, gameName) {
     const name = getGameName(game, currentLang);
     const desc = getGameDesc(game, currentLang);
     const players = game.players || '';
+    
+    // --- SỬA LỖI (1/2): Lấy "category" và lưu lại ---
+    const category = getGameCategory(game, currentLang);
+    window.selectedGameType = category; // Lưu 'gameType' để gửi đi
+    // --- Hết phần sửa (1/2) ---
+
     infoHtml = `
       <div class="modal-game-info" style="display:flex;flex-direction:column;align-items:center;margin-bottom:12px;">
         <img src="game/${game.id}/Img/logo.png" alt="${name}" style="width:64px;height:64px;border-radius:14px;margin-bottom:8px;box-shadow:0 2px 8px #ff980033;">
@@ -1013,7 +1019,7 @@ function handleGameClick(gameId, gameName) {
   // Render lại nội dung modal
   modal.innerHTML = `
     <div class="modal-content">
-      <button class="close-btn" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:1.7rem;color:#ff9800;cursor:pointer;z-index:2;">&times;</button>
+      <button class="close-btn" id="closeRoomModal" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:1.7rem;color:#ff9800;cursor:pointer;z-index:2;">&times;</button>
       ${infoHtml}
       <div class="modal-title" style="font-size:1.13rem;font-weight:bold;color:#ff9800;margin-bottom:18px;text-align:center;">${LANGS[currentLang]?.room_create_or_join || 'Create or join a room'}</div>
       <div class="modal-actions" style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;">
@@ -1026,6 +1032,9 @@ function handleGameClick(gameId, gameName) {
       </div>
     </div>
   `;
+
+  // Gán sự kiện cho nút "Đóng" (vì modal được render lại)
+  modal.querySelector('#closeRoomModal').onclick = () => modal.style.display = 'none';
 
   const createRoomBtn = modal.querySelector('#createRoomBtn');
   const joinRoomBtn = modal.querySelector('#joinRoomBtn');
@@ -1043,16 +1052,29 @@ function handleGameClick(gameId, gameName) {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const username = user.username || user.displayName || 'Guest';
 
-    if (!gameIdLocal || !username) {
-      alert('Thiếu thông tin game hoặc người chơi. Vui lòng kiểm tra lại!');
+    // --- SỬA LỖI (2/2): Lấy thêm 2 trường và tạo payload đầy đủ ---
+    const gameTypeLocal = window.selectedGameType || ''; // Lấy gameType đã lưu
+    const roleLocal = 'host'; // Người tạo phòng luôn là "host"
+
+    if (!gameIdLocal || !username || !gameTypeLocal) {
+      alert('Thiếu thông tin game, loại game hoặc người chơi. Vui lòng kiểm tra lại!');
       return;
     }
+    
+    // Tạo payload đầy đủ 4 trường
+    const payload = {
+      player: username,
+      game: gameIdLocal,
+      gameType: gameTypeLocal,
+      role: roleLocal
+    };
+    // --- Hết phần sửa (2/2) ---
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/room`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player: username, game: gameIdLocal })
+        body: JSON.stringify(payload) // Gửi payload đầy đủ
       });
 
       if (!res.ok) {
@@ -1077,6 +1099,7 @@ function handleGameClick(gameId, gameName) {
       window.location.href = `/room.html?${qs}`;
     } catch (err) {
       console.error('[client] create room error', err);
+      // Hiển thị lỗi chính xác từ server
       alert('Lỗi khi tạo phòng: ' + (err && err.message));
     }
   };
@@ -1088,7 +1111,7 @@ function handleGameClick(gameId, gameName) {
 
   // Gán sự kiện cho nút "Xác nhận tham gia phòng"
   confirmJoinRoomBtn.onclick = async function() {
-    const code = roomModal.querySelector('#inputJoinRoomCode').value.trim().toUpperCase();
+    const code = modal.querySelector('#inputJoinRoomCode').value.trim().toUpperCase();
     const gameId = window.selectedGameId || '';
 
     if (!code || !gameId) {
@@ -1127,7 +1150,8 @@ function handleGameClick(gameId, gameName) {
   };
 
 
-    modal.querySelector('#joinRoomBtn').onclick = function() {
+
+  modal.querySelector('#joinRoomBtn').onclick = function() {
     modal.querySelector('#joinRoomBox').style.display = 'block';
     modal.querySelector('#roomCodeBox').style.display = 'none';
   };
