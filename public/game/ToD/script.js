@@ -298,7 +298,7 @@
   // Gọi API để lấy hướng dẫn cách chơi
   async function showInstructions(gameName) {
     try {
-      const response = await fetch(`${API_BASE_URL}/get-instructions?gameName=${encodeURIComponent(gameName)}`);
+      const response = await fetch(`/api/ai/get-instructions?gameName=${encodeURIComponent(gameName)}`);
       const data = await response.json();
       document.getElementById('instructions').innerText = data.instructions || 'Không thể lấy hướng dẫn.';
       document.getElementById('instructions').style.display = 'block';
@@ -308,3 +308,77 @@
     }
   }
 })();
+(() => {
+  const API_BASE_URL = '/api/ai'; // Đường dẫn API
+
+  const aiToolsIcon = document.getElementById('ai-tools-icon');
+  const aiChatbox = document.getElementById('ai-chatbox');
+  const chatInput = document.getElementById('chatInput');
+  const sendChat = document.getElementById('sendChat');
+  const chatMessages = document.getElementById('chatMessages');
+  const closeChatbox = document.getElementById('closeChatbox');
+
+  // Hiển thị hoặc ẩn chatbox
+  aiToolsIcon.addEventListener('click', () => {
+    aiChatbox.classList.toggle('hidden');
+  });
+
+  closeChatbox.addEventListener('click', () => {
+    aiChatbox.classList.add('hidden');
+  });
+
+  // Gửi câu hỏi đến API
+  async function sendQuestionToAI(question) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/get-instructions?gameName=Truth or Dare`);
+      const data = await response.json();
+      return data.instructions || 'Không thể lấy hướng dẫn.';
+    } catch (error) {
+      console.error('Lỗi khi lấy hướng dẫn:', error);
+      return 'Không thể lấy hướng dẫn. Vui lòng thử lại sau.';
+    }
+  }
+
+  // Xử lý gửi câu hỏi
+  sendChat.addEventListener('click', async () => {
+    const question = chatInput.value.trim();
+    if (!question) return;
+
+    // Hiển thị câu hỏi trong chat
+    const userMessage = document.createElement('div');
+    userMessage.className = 'chat-message user';
+    userMessage.textContent = question;
+    chatMessages.appendChild(userMessage);
+
+    // Gửi câu hỏi đến AI
+    const aiResponse = await sendQuestionToAI(question);
+
+    // Hiển thị câu trả lời từ AI
+    const aiMessage = document.createElement('div');
+    aiMessage.className = 'chat-message ai';
+    aiMessage.textContent = aiResponse;
+    chatMessages.appendChild(aiMessage);
+
+    // Xóa input
+    chatInput.value = '';
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  });
+})();
+const express = require('express');
+const router = express.Router();
+const fs = require('fs');
+const path = require('path');
+
+// Endpoint hướng dẫn cách chơi
+router.get('/ai/get-instructions', async (req, res) => {
+  try {
+    const filePath = path.join(__dirname, '../public/game/ToD/rule.json');
+    const rules = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    res.json({ instructions: rules.rules_summary });
+  } catch (error) {
+    console.error('Lỗi khi đọc rule.json:', error);
+    res.status(500).json({ error: 'Không thể lấy hướng dẫn.' });
+  }
+});
+
+module.exports = router;

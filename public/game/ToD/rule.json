@@ -1,0 +1,29 @@
+{
+  "game_name_vi": "Sự thật hay Thử thách",
+  "game_name_en": "Truth or Dare",
+  "rules_summary": "Trò chơi luân phiên chọn giữa trả lời thành thật (Sự thật) hoặc thực hiện nhiệm vụ (Thử thách) để tạo ra tiếng cười/khám phá.",
+  "core_actions": [
+    {
+      "action": "Truth",
+      "vi": "Sự thật",
+      "description": "Yêu cầu trả lời thành thật một câu hỏi cá nhân."
+    },
+    {
+      "action": "Dare",
+      "vi": "Thử thách",
+      "description": "Yêu cầu thực hiện một hành động ngớ ngẩn/khó khăn."
+    }
+  ],
+  "turn_mechanics": {
+    "start": "Chọn người chơi để đặt câu hỏi 'Sự thật hay Thử thách?'.",
+    "flow": "Người được hỏi chọn Truth hoặc Dare.",
+    "completion": "Lượt chơi chuyển sang người tiếp theo sau khi nhiệm vụ hoàn thành hoặc trả lời xong."
+  },
+  "voting_system": {
+    "purpose": "Đánh giá việc hoàn thành nhiệm vụ/tính trung thực.",
+    "votes": ["Accept (Thông qua)", "Reject (Không thông qua)"],
+    "result_success": "Đa số (>= 50%) 'Thông qua' -> Hoàn thành, chuyển lượt.",
+    "result_failure": "Đa số 'Không thông qua' -> Phải thực hiện lại bằng nhiệm vụ mới (cùng loại)."
+  },
+  "ai_focus": ["Thúc đẩy tính trung thực (Truth) và hài hước/bất ngờ (Dare)", "Sử dụng AI để tạo nội dung độc đáo."]
+}

@@ -407,6 +407,101 @@ body {
     margin-top: 0.5rem;
 }
 
+/* Icon AI Tools */
+.ai-tools-icon {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background: #2c3055;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.ai-tools-icon:hover {
+  background: #3a3f6b;
+  transform: scale(1.1);
+}
+
+.ai-tools-icon i {
+  color: #fff;
+  font-size: 24px;
+}
+
+/* Chatbox AI */
+.ai-chatbox {
+  position: absolute;
+  bottom: 80px;
+  right: 20px;
+  width: 300px;
+  background: #2c3055;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ai-chatbox.hidden {
+  display: none;
+}
+
+.chat-header {
+  background: #3a3f6b;
+  padding: 10px;
+  color: #fff;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-body {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  color: #fff;
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-footer {
+  display: flex;
+  padding: 10px;
+  background: #3a3f6b;
+}
+
+.chat-footer input {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 5px;
+  margin-right: 10px;
+}
+
+.chat-footer button {
+  background: #4caf50;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.chat-footer button:hover {
+  background: #45a049;
+}
+
 @media (max-width: 992px) {
     .game-header { padding: 0.5rem; }
     .back-btn {
