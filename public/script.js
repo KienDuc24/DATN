@@ -1125,7 +1125,7 @@ function handleGameClick(gameId, gameName) {
       alert('Lỗi khi tham gia phòng: ' + (err && err.message));
     }
   };
-}
+
 
     modal.querySelector('#joinRoomBtn').onclick = function() {
     modal.querySelector('#joinRoomBox').style.display = 'block';
@@ -1149,7 +1149,7 @@ function handleGameClick(gameId, gameName) {
       window.location.href = `/room.html?code=${code}&gameId=${encodeURIComponent(gameId)}&game=${encodeURIComponent(gameName)}&user=${encodeURIComponent(username)}`;
     };
   }
-
+}
 
 const SOCKET_URL = window.SOCKET_URL || window.__BASE_API__ || window.location.origin;
 const socket = (typeof io === 'function') ? io(SOCKET_URL, {
