@@ -1,32 +1,34 @@
+// Room.js
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
+const Schema = mongoose.Schema;
 
-const playHistorySchema = new Schema({
-  gameId: { type: String },
-  gameName: { type: String },
-  action: { type: String, default: 'played' },
-  result: { type: String },
-  playedAt: { type: Date, default: Date.now }
-}, { _id: false });
-
-const userSchema = new Schema({
-  id: {
+const roomSchema = new Schema({
+  code: { // Mã phòng (A123) - Khóa nghiệp vụ
     type: String,
     required: true,
     unique: true,
-    default: () => new mongoose.Types.ObjectId().toString()
+    default: () => {
+      const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+      const number = Math.floor(100 + Math.random() * 900);
+      return letter + number;
+    }
   },
-  username: { type: String, required: true, unique: true },
-  displayName: { type: String },
-  password: { type: String },
-  avatar: { type: String },
-  role: {
-    type: String,
-    enum: ['player', 'admin'],
-    default: 'player'
+  host: { // Liên kết đến User (host)
+    type: Schema.Types.ObjectId, // <-- THAY ĐỔI: Dùng ObjectId
+    ref: 'User', // <-- GIỮ NGUYÊN: Liên kết đến model 'User'
+    required: true
   },
-  playHistory: { type: [playHistorySchema], default: [] },
+  players: [{ name: String }],
+  game: {
+    gameId: { // Liên kết đến Game
+      type: Schema.Types.ObjectId, // <-- THAY ĐỔI: Dùng ObjectId
+      ref: 'Game', // <-- THÊM: Liên kết đến model 'Game'
+      required: true
+    },
+    type: { type: String } // "type" này có vẻ thừa nếu bạn đã có gameId
+  },
+  status: { type: String, default: 'waiting' },
   createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model('Room', roomSchema);
