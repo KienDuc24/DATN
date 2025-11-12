@@ -1,14 +1,16 @@
 // socketServer.js
 const { Server } = require('socket.io');
 const Room = require('./models/Room');
-const todHandler = require('./public/game/ToD/todSocket.js');
+const User = require('./models/User'); // Import User
+// Sửa đường dẫn: Giả sử todSocket ở public/game/ToD/
+const todHandler = require('./public/game/ToD/todSocket.js'); 
 
 const socketUserMap = new Map();
 
-// --- HÀM HELPER MỚI: Xử lý rời phòng (Dùng cho cả 'leaveRoom' và 'disconnect') ---
+// --- HÀM HELPER XỬ LÝ RỜI PHÒNG ---
 async function handlePlayerLeave(socketId, io) {
   const userInfo = socketUserMap.get(socketId);
-  if (!userInfo) return; // Người chơi này không ở trong phòng chờ
+  if (!userInfo) return; 
 
   const { player, code } = userInfo;
   socketUserMap.delete(socketId);
@@ -17,24 +19,20 @@ async function handlePlayerLeave(socketId, io) {
     const room = await Room.findOne({ code });
     if (!room) return;
 
-    // --- SỬA LỖI LOGIC: ---
-    // Nếu phòng đã bắt đầu, KHÔNG thay đổi danh sách người chơi
-    // (Vì họ đang trên đường sang trang game)
     if (room.status === 'playing') {
       console.log(`[SocketServer] Player ${player} left lobby to join game. No changes made.`);
-      return; // Không làm gì cả
+      return; 
     }
-    // -----------------------
 
     let newHost = room.host;
     const wasHost = (room.host === player);
     
     room.players = room.players.filter(p => p.name !== player);
 
+    // SỬA: Cập nhật status thành 'closed' thay vì xóa
     if (room.players.length === 0 && room.status === 'open') {
-      await Room.deleteOne({ code: code });
-      console.log(`[SocketServer] Empty lobby room ${code} deleted.`);
-      return; 
+      room.status = 'closed';
+      console.log(`[SocketServer] Empty lobby room ${code} set to 'closed'.`);
     }
 
     if (wasHost && room.players.length > 0) {
@@ -45,6 +43,13 @@ async function handlePlayerLeave(socketId, io) {
 
     await room.save();
     
+    // THÊM: Cập nhật status người chơi về 'online'
+    if (!player.startsWith('guest_')) {
+        await User.findOneAndUpdate({ username: player }, { status: 'online' });
+        io.emit('admin-user-status-changed');
+    }
+    
+    io.emit('admin-rooms-changed'); // Cập nhật admin
     io.to(code).emit('update-players', { 
       list: room.players.map(p => p.name), 
       host: newHost
@@ -53,7 +58,8 @@ async function handlePlayerLeave(socketId, io) {
     console.error('[SocketServer] handlePlayerLeave error:', err.message);
   }
 }
-// -----------------------------------------------------------------------
+// ------------------------------------
+
 
 module.exports = function attachSocket(server) {
   const io = new Server(server, {
@@ -67,8 +73,8 @@ module.exports = function attachSocket(server) {
   });
 
   io.on('connection', (socket) => {
-    console.log('[socketServer] client connected', socket.id);
-
+    // (Logic 'registerSocket' đã được chuyển lên 'index.js' chính)
+    
     // --- LOGIC PHÒNG CHỜ (LOBBY) ---
     socket.on('joinRoom', async ({ code, gameId, user }) => {
       try {
@@ -78,8 +84,9 @@ module.exports = function attachSocket(server) {
           return;
         }
 
-        if (room.status === 'playing') {
-          socket.emit('room-error', { message: 'Phòng này đã bắt đầu. Không thể tham gia!' });
+        // SỬA: Cập nhật kiểm tra status
+        if (room.status === 'playing' || room.status === 'closed') {
+          socket.emit('room-error', { message: 'Phòng này đã bắt đầu hoặc đã đóng.' });
           return;
         }
 
@@ -87,11 +94,20 @@ module.exports = function attachSocket(server) {
         const exists = room.players.some(p => p.name === name);
         if (!exists) {
           room.players.push({ name });
+          room.status = 'open'; // Đảm bảo phòng là 'open' khi có người join
           await room.save();
+          io.emit('admin-rooms-changed'); // Cập nhật admin
         }
 
         socket.join(code);
         socketUserMap.set(socket.id, { player: name, code: code });
+        
+        // THÊM: Cập nhật status người chơi
+        if (!name.startsWith('guest_')) {
+            await User.findOneAndUpdate({ username: name }, { status: 'playing' });
+            io.emit('admin-user-status-changed');
+        }
+        
         io.to(code).emit('update-players', { list: room.players.map(p => p.name), host: room.host?.username || room.host });
         
       } catch (err) {
@@ -102,7 +118,7 @@ module.exports = function attachSocket(server) {
 
     socket.on('leaveRoom', async ({ code, player }) => {
       socket.leave(code);
-      await handlePlayerLeave(socket.id, io); // Gọi hàm helper
+      await handlePlayerLeave(socket.id, io);
     });
     
     socket.on('kickPlayer', async ({ code, playerToKick }) => {
@@ -115,6 +131,7 @@ module.exports = function attachSocket(server) {
         if (kickerName === playerToKick) return;
         room.players = room.players.filter(p => p.name !== playerToKick);
         await room.save();
+
         let kickedSocketId = null;
         for (const [id, info] of socketUserMap.entries()) {
           if (info.player === playerToKick && info.code === code) {
@@ -127,7 +144,14 @@ module.exports = function attachSocket(server) {
           const kickedSocket = io.sockets.sockets.get(kickedSocketId);
           if (kickedSocket) kickedSocket.leave(code);
           socketUserMap.delete(kickedSocketId);
+          
+          if (!playerToKick.startsWith('guest_')) {
+              await User.findOneAndUpdate({ username: playerToKick }, { status: 'online' });
+              io.emit('admin-user-status-changed');
+          }
         }
+        
+        io.emit('admin-rooms-changed'); 
         io.to(code).emit('update-players', {
           list: room.players.map(p => p.name),
           host: room.host
@@ -142,10 +166,24 @@ module.exports = function attachSocket(server) {
         const room = await Room.findOne({ code }).exec();
         if (!room) return; 
 
+        // 1. Khóa phòng
         room.status = 'playing';
         await room.save();
-        console.log(`[SocketServer] Room ${code} locked and set to 'playing'.`);
+        io.emit('admin-rooms-changed'); 
+        
+        // 2. THÊM MỚI: Cập nhật lịch sử game
+        const playerNames = room.players.map(p => p.name).filter(name => !name.startsWith('guest_'));
+        if (playerNames.length > 0) {
+          await User.updateMany(
+            { username: { $in: playerNames } },
+            { $push: { gameHistory: { gameId: room.game.gameId, gameName: room.game.type, playedAt: new Date() } } }
+          );
+          io.emit('admin-users-changed'); 
+          console.log(`[History] Updated history for users: ${playerNames.join(', ')}`);
+        }
+        // ---------------------------------
 
+        // 3. Bắt đầu game
         const gameId = room.game.gameId;
         console.log(`[SocketServer] Redirecting room ${code} to game ${gameId}`);
         io.to(code).emit('game-started', { gameId: gameId });
@@ -155,7 +193,7 @@ module.exports = function attachSocket(server) {
     });
 
     // --- LOGIC TRONG GAME (Gắn handler của game) ---
-    todHandler(socket, io);
+    todHandler(socket, io); // Truyền io vào game handler
 
     // --- LOGIC DISCONNECT (Chung) ---
     socket.on('disconnect', async () => {

@@ -89,30 +89,34 @@ function showAllGames(pageKey) {
 
 // Sắp xếp và phân nhóm game
 function groupGames(games) {
-  // Sắp xếp theo ngày tạo (nếu có) hoặc tên
+  // Sắp xếp (Bạn có thể giữ logic sắp xếp cũ hoặc dùng logic mới)
   games.sort((a, b) => {
+    // Ưu tiên game có ngày tạo mới nhất
     if (a.createdAt && b.createdAt) {
       return new Date(b.createdAt) - new Date(a.createdAt);
     }
-    return (getGameName(a)).localeCompare(getGameName(b));
+    // Nếu không có, sắp xếp theo tên
+    return (getGameName(a, 'vi')).localeCompare(getGameName(b, 'vi'));
   });
   
-  recentGames = games.slice(0, 10); // Lấy 10 game mới nhất
+  recentGames = [...games]; // Giữ nguyên 'Gần đây' là tất cả game
   
-  // --- SỬA LỖI: Lọc theo "featured: true" ---
+  // --- SỬA LỖI Ở ĐÂY ---
+  // Lọc 'featuredGames' theo trường 'featured: true'
   featuredGames = games.filter(g => g.featured === true);
-  // ------------------------------------
+  // --- HẾT SỬA LỖI ---
   
-  // (Giả sử logic cho Top và New vẫn dựa trên badge, nếu không, bạn cũng sửa tương tự)
+  // (Giữ logic cũ cho Top và New nếu bạn vẫn dùng 'badge')
   topGames = games.filter(g => g.badge === "Hot" || g.badge === "Top");
   newGames = games.filter(g => g.badge === "New");
-
+  
   gamesByCategory = {};
   games.forEach(g => {
-    // Sửa: Lấy category theo ngôn ngữ hiện tại
-    const cat = getGameCategory(g, currentLang) || 'Khác';
-    if (!gamesByCategory[cat]) gamesByCategory[cat] = [];
-    gamesByCategory[cat].push(g);
+    const cats = (getGameCategory(g, 'vi') || 'Khác').split(',').map(c => c.trim());
+    cats.forEach(cat => {
+      if (!gamesByCategory[cat]) gamesByCategory[cat] = [];
+      gamesByCategory[cat].push(g);
+    });
   });
 }
 
@@ -1188,6 +1192,10 @@ function handleGameClick(gameId, gameName) {
   }
 }
 
+// script.js (Trang chủ Vercel)
+
+// ... (Giữ nguyên toàn bộ code từ đầu đến)
+
 const SOCKET_URL = window.SOCKET_URL || window.__BASE_API__ || window.location.origin;
 const socket = (typeof io === 'function') ? io(SOCKET_URL, {
   path: '/socket.io',
@@ -1197,8 +1205,21 @@ const socket = (typeof io === 'function') ? io(SOCKET_URL, {
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000
 }) : null;
-// Gửi payload này lên server hoặc socket
 
+// --- THÊM MỚI: Logic cập nhật status 'online' ---
+if (socket) {
+  socket.on('connect', () => {
+    console.log('Socket connected:', socket.id);
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const username = user.username || user.displayName;
+      if (username && !username.startsWith('guest_')) {
+        socket.emit('registerSocket', username);
+      }
+    } catch (e) { console.error('Error registering socket', e); }
+  });
+}
+// Gửi payload này lên server hoặc socket
 function getMaxShow() {
   if (window.innerWidth <= 600) return 2;
   if (window.innerWidth <= 900) return 3;

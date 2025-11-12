@@ -69,6 +69,10 @@
     alert(reason || 'Không thể vào phòng');
     window.location.href = '/';
   });
+  socket.on('kicked', (data) => {
+    alert(data.message || 'Bạn đã bị Admin kick khỏi phòng.');
+    window.location.href = '/';
+  });
 
   function pickAvatarFor(playerObj) {
     const name = typeof playerObj === 'string' ? playerObj : (playerObj && playerObj.name) ? playerObj.name : String(playerObj || '');

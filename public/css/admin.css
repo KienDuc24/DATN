@@ -1,3 +1,4 @@
+/* public/css/admin.css */
 :root{
   --bg:#071224; --card:#081726; --accent:#ff9f43; --muted:#9aa4b2;
   --panel:#0e1720; --glass: rgba(255,255,255,0.03); --success:#22c55e; --danger:#ef4444; --radius:10px;
@@ -16,10 +17,41 @@ nav a.active, nav a:hover{background:var(--glass);color:#fff}
 .sidebar-auth button{width:100%;padding:10px;border-radius:8px;border:none;background:var(--danger);color:white;cursor:pointer}
 
 /* header */
-header{position:sticky;top:0;left:220px;right:0;height:72px;display:flex;align-items:center;padding:0 20px;background:rgba(3,8,18,0.6);backdrop-filter: blur(4px);z-index:30}
-.header-main{display:flex;align-items:center;gap:14px}
+header{position:sticky;top:0;left:220px;right:0;/* height:72px; */ display:flex;flex-direction:column;align-items:center;padding:0 20px;background:rgba(3,8,18,0.6);backdrop-filter: blur(4px);z-index:30}
+.header-main{display:flex;align-items:center;gap:14px; width:100%; height: 72px;}
 .header-main img{width:46px; height:46px}
-.header-main h1{margin:0;font-size:1.15rem;color:var(--accent)}
+.header-main h1{margin:0;font-size:1.15rem;color:var(--accent); flex: 1;}
+
+/* --- THÊM MỚI: Thanh Xác nhận --- */
+.confirm-bar {
+  display: none; /* Ẩn mặc định */
+  width: 100%;
+  padding: 12px 20px;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+.confirm-bar span {
+  font-size: 1.1rem;
+}
+.confirm-bar-actions {
+  display: flex;
+  gap: 12px;
+}
+.confirm-bar-actions .btn-save {
+  background: var(--success);
+  color: #fff;
+}
+.confirm-bar-actions .btn-cancel {
+  background: var(--danger);
+  color: #fff;
+}
+/* --------------------------------- */
+
 
 /* main layout */
 .main-content{margin-left:220px;padding:22px 28px 60px;min-height:calc(100vh - 72px)}
@@ -49,6 +81,18 @@ header{position:sticky;top:0;left:220px;right:0;height:72px;display:flex;align-i
 .admin-table tbody td{padding:12px;border-bottom:1px dashed rgba(255,255,255,0.02);vertical-align:middle}
 .admin-table tbody tr:hover td{background:rgba(255,255,255,0.01)}
 
+/* --- THÊM MỚI: Style cho hàng chờ xóa --- */
+.admin-table tbody tr.row-to-be-deleted td {
+  background: rgba(239, 68, 68, 0.1);
+  opacity: 0.6;
+  text-decoration: line-through;
+  font-style: italic;
+}
+.admin-table tbody tr.row-to-be-deleted .icon-btn {
+  display: none; /* Ẩn nút khi đã đánh dấu xóa */
+}
+/* --------------------------------- */
+
 /* action icons */
 .icon-btn{
   width:36px;height:36px;border-radius:8px;border:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
@@ -62,7 +106,8 @@ header{position:sticky;top:0;left:220px;right:0;height:72px;display:flex;align-i
 /* popup overlay + modal */
 .popup-overlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(2,6,23,0.6);z-index:999;display:none}
 .auth-popup{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1000;min-width:320px;max-width:720px;background:linear-gradient(180deg,#071426,#071a29);padding:18px;border-radius:var(--radius);box-shadow:0 20px 50px rgba(2,6,23,0.8);display:none;border:1px solid rgba(255,255,255,0.03)}
-.auth-form input, .auth-form select{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+.auth-form input, .auth-form select, .auth-form label{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+.auth-form label { border: none; padding: 0; margin: 4px 0 0 0; } /* Style cho label */
 .auth-form h2{margin:0 0 6px 0}
 .auth-close{position:absolute;right:12px;top:10px;cursor:pointer;color:var(--muted)}
 

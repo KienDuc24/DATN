@@ -129,3 +129,8 @@ socket.on('game-started', (data) => {
   }).toString();
   window.location.href = `game/${data.gameId}/index.html?${params}`;
 });
+
+socket.on('kicked', (data) => {
+    alert(data.message || 'Bạn đã bị Admin kick khỏi phòng.');
+    window.location.href = 'index.html';
+});

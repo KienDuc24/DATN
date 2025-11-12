@@ -1,16 +1,118 @@
 // public/admin.js
+
 const ADMIN_API = 'https://datn-socket.up.railway.app'; 
+let allGamesCache = []; // Cache để lấy thông tin game
+let pendingChanges = []; // Hàng chờ thay đổi
+
+// --- THÊM MỚI: Kết nối Socket Admin ---
+try {
+  const socket = io(ADMIN_API, { path: '/socket.io', withCredentials: true });
+  socket.on('connect', () => {
+    console.log('Admin socket connected');
+  });
+  socket.on('admin-rooms-changed', () => {
+    console.log('Admin: Rooms changed, reloading data...');
+    loadData();
+  });
+  socket.on('admin-users-changed', () => {
+    console.log('Admin: Users changed, reloading data...');
+    loadData();
+  });
+  socket.on('admin-games-changed', () => {
+      console.log('Admin: Games changed, reloading data...');
+      loadData();
+  });
+  socket.on('admin-user-status-changed', () => {
+    console.log('Admin: User status changed, reloading data...');
+    loadData();
+  });
+} catch (e) {
+  console.error("Socket.IO connection failed.", e);
+}
+// ------------------------------------
 
 function el(id){return document.getElementById(id);}
 function showOverlay(show){ el('popupOverlay').style.display = show ? 'block' : 'none'; }
-
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
-
 if (typeof escapeHtml === 'undefined') {
   window.escapeHtml = function(s){
     return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   };
 }
+
+// --- LOGIC THANH XÁC NHẬN (MỚI) ---
+function updateConfirmBar() {
+    const bar = el('confirmBar');
+    const countEl = el('pendingChangesCount');
+    if (!bar || !countEl) return;
+
+    if (pendingChanges.length > 0) {
+        countEl.textContent = pendingChanges.length;
+        bar.style.display = 'flex';
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+function addChange(change) {
+    // Xóa các thay đổi cũ cho cùng 1 ID (nếu có)
+    pendingChanges = pendingChanges.filter(c => c.id !== change.id);
+    // Thêm thay đổi mới
+    pendingChanges.push(change);
+    updateConfirmBar();
+}
+
+async function executePendingChanges() {
+    const changesToExecute = [...pendingChanges];
+    pendingChanges = [];
+    updateConfirmBar();
+
+    for (const change of changesToExecute) {
+        try {
+            const { type, action, id, payload } = change;
+            let res;
+            if (action === 'delete') {
+                res = await fetch(`${ADMIN_API}/api/admin/${type}/${id}`, { method: 'DELETE', credentials: 'include' });
+            } else if (action === 'save') {
+                const method = id ? 'PUT' : 'POST';
+                const url = id ? `${ADMIN_API}/api/admin/${type}/${id}` : `${ADMIN_API}/api/admin/${type}`;
+                res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                });
+            } else if (action === 'update') { // Dùng cho "featured"
+                 res = await fetch(`${ADMIN_API}/api/admin/${type}/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                });
+            }
+            if (!res || !res.ok) throw new Error(await res.text());
+            
+        } catch (err) {
+            console.error('Failed to execute change:', change, err);
+            alert(`Lỗi khi thực thi ${change.action} ${change.type} ${change.id}: ${err.message}`);
+            // (Nếu lỗi, không tải lại dữ liệu để người dùng không mất các thay đổi khác)
+            // Tạm thời chỉ báo lỗi
+        }
+    }
+    
+    // Tải lại dữ liệu sau khi xong (nếu không có lỗi)
+    alert('Đã lưu tất cả thay đổi!');
+    loadData(); // Tải lại toàn bộ
+}
+
+function cancelPendingChanges() {
+    if (confirm('Bạn có chắc muốn hủy tất cả thay đổi chưa lưu?')) {
+        pendingChanges = [];
+        updateConfirmBar();
+        loadData(); // Tải lại dữ liệu gốc từ server
+    }
+}
+// ------------------------------------
 
 function showTab(tabId){
   document.querySelectorAll('.admin-tab-content').forEach(e=>e.style.display='none');
@@ -24,7 +126,6 @@ function showTab(tabId){
   document.querySelectorAll('.sidebar nav a').forEach(a=>{ if(a.getAttribute('data-tab')===tabId) a.classList.add('active') });
 }
 
-// --- SỬA LỖI: Thêm 'credentials: include' ---
 async function fetchApi(url) {
   const res = await fetch(url, { credentials: 'include' }); 
   if (!res.ok) {
@@ -37,8 +138,6 @@ async function fetchApi(url) {
   }
   return res.json();
 }
-// -----------------------------------------
-
 async function fetchUsers(q){
   const url = new URL(`${ADMIN_API}/api/admin/users`);
   if (q) url.searchParams.set('q', q);
@@ -55,10 +154,11 @@ async function fetchGames(q){
   const url = new URL(`${ADMIN_API}/api/admin/games`);
   if (q) url.searchParams.set('q', q);
   const j = await fetchApi(url.toString());
-  return j.games || [];
+  allGamesCache = j.games || []; // Cập nhật cache
+  return allGamesCache;
 }
 
-// (Giữ nguyên các hàm render: renderUsersTable, renderRoomsTable, renderGamesTable)
+// --- Render (Đã sửa logic Status) ---
 function renderUsersTable(users){
   const tbody = document.getElementById('adminUsersList');
   if (!tbody) return;
@@ -74,13 +174,23 @@ function renderUsersTable(users){
     if (Array.isArray(u.gameHistory) && u.gameHistory.length) {
       gh = `Đã chơi ${u.gameHistory.length} game`;
     }
-    let status = u.isOnline ? 'Online' : 'Offline';
+    
+    let statusText = 'Offline';
+    let statusColor = '#ef4444';
+    if (u.status === 'online') {
+        statusText = 'Online';
+        statusColor = '#22c55e';
+    } else if (u.status === 'playing') {
+        statusText = 'Playing';
+        statusColor = '#ff9f43';
+    }
 
     const tr = document.createElement('tr');
+    tr.id = `user-row-${id}`; // Thêm ID
     tr.innerHTML = `
       <td><div style="font-weight:600">${username}</div></td>
       <td>${escapeHtml(gh)}</td>
-      <td>${escapeHtml(status)}</td>
+      <td><span style="color:${statusColor}; font-weight:600;">${escapeHtml(statusText)}</span></td>
       <td style="display:flex;gap:8px;align-items:center">
         <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
         <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
@@ -91,6 +201,7 @@ function renderUsersTable(users){
   tbody.querySelectorAll('.icon-edit').forEach(btn => btn.addEventListener('click', onEditUser));
   tbody.querySelectorAll('.icon-delete').forEach(btn => btn.addEventListener('click', onDeleteUser));
 }
+
 function renderRoomsTable(rooms){
   const tbody = document.getElementById('adminRoomsList');
   if (!tbody) return;
@@ -101,11 +212,17 @@ function renderRoomsTable(rooms){
   }
   rooms.forEach(r => {
     const roomId = r.code || r.id || r._id || '';
-    const gameName = (r.game && r.game.name) ? r.game.name : (r.game || '');
+    const gameName = (r.game && (r.game.name || r.game.type)) ? (r.game.name || r.game.type) : (r.game || '');
     const owner = r.host || '';
     const participants = Array.isArray(r.players) ? r.players.map(p => p.name).join(', ') : '-';
-    const status = r.status || '-';
+    
+    let status = r.status || 'open';
+    if (status === 'open') status = 'Đang chờ';
+    if (status === 'playing') status = 'Đang chơi';
+    if (status === 'closed') status = 'Đã đóng';
+
     const tr = document.createElement('tr');
+    tr.id = `room-row-${roomId}`; // Thêm ID
     tr.innerHTML = `
       <td><div style="font-weight:600">${escapeHtml(gameName)}</div></td>
       <td>${escapeHtml(String(roomId))}</td>
@@ -120,6 +237,7 @@ function renderRoomsTable(rooms){
   });
   tbody.querySelectorAll('.icon-delete').forEach(btn => btn.addEventListener('click', onDeleteRoom));
 }
+
 function renderGamesTable(games){
   const tbody = document.getElementById('adminGamesList');
   if (!tbody) return;
@@ -136,6 +254,7 @@ function renderGamesTable(games){
     const players = g.players || '';
     const featuredChecked = g.featured ? 'checked' : '';
     const tr = document.createElement('tr');
+    tr.id = `game-row-${id}`; // Thêm ID
     tr.innerHTML = `
       <td>
         <div style="font-weight:600">${escapeHtml(title)}</div>
@@ -159,7 +278,8 @@ function renderGamesTable(games){
   tbody.querySelectorAll('.icon-delete').forEach(b=>b.addEventListener('click', onDeleteGame));
 }
 
-// (Giữ nguyên các hàm Handler: openUserForm, closeUserForm, ...)
+// --- Handlers (Đã sửa để dùng hàng chờ) ---
+
 function openUserForm(user){ 
   showOverlay(true); el('userFormPopup').style.display = 'block'; 
   el('userFormTitle').innerText = user ? 'Sửa người dùng' : 'Thêm người dùng'; 
@@ -170,49 +290,46 @@ function openUserForm(user){
 }
 function closeUserForm(){ el('userFormPopup').style.display='none'; showOverlay(false); }
 async function onEditUser(e){ const id = e.currentTarget.dataset.id; try{ const users = await fetchUsers(); const u = users.find(x=>x._id===id); if(!u) return alert('User not found'); openUserForm(u); }catch(err){ console.error(err); alert('Lỗi'); } }
+
 async function saveUser(e){ 
   e.preventDefault(); 
   const id = el('userId').value; 
   const payload = { username: el('userUsername').value.trim(), email: el('userEmail').value.trim(), role: el('userRole').value }; 
   if(!payload.username) return alert('Username không được để trống'); 
-  try{ 
-    const res = await fetch(`${ADMIN_API}/api/admin/user/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials: 'include', body: JSON.stringify(payload) }); 
-    if(!res.ok){ const txt = await res.text(); throw new Error(txt||res.status); } 
-    alert('Cập nhật người dùng thành công'); 
-    closeUserForm(); 
-    loadData(); 
-  }catch(err){ console.error(err); alert('Cập nhật thất bại: '+ (err.message||err)); } 
+
+  addChange({ type: 'user', action: 'save', id: id, payload: payload });
+  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
+  closeUserForm(); 
 }
 async function onDeleteUser(e){ 
   const id = e.currentTarget.dataset.id; 
-  if(!confirm('Xác nhận xóa user?')) return; 
-  try{ 
-    const res = await fetch(`${ADMIN_API}/api/admin/user/${id}`, { method:'DELETE', credentials: 'include' }); 
-    if(!res.ok) throw new Error('delete failed'); 
-    alert('Đã xóa user'); 
-    loadData(); 
-  }catch(err){ console.error(err); alert('Xóa thất bại'); } 
+  if(!confirm('Xác nhận đưa user này vào hàng chờ xóa?')) return; 
+  
+  addChange({ type: 'user', action: 'delete', id: id });
+  el(`user-row-${id}`).classList.add('row-to-be-deleted');
 }
+
 function openRoomForm(room){ 
   showOverlay(true); 
   el('roomFormPopup').style.display = 'block'; 
   el('roomFormTitle').innerText = room ? 'Sửa phòng' : 'Thêm phòng'; 
-  el('roomId').value = room? (room._id || room.id || '') : ''; 
+  el('roomId').value = room? (room.code || room.id || room._id || '') : ''; 
   el('roomName').value = room? (room.name || '') : ''; 
   const sel = el('roomGame');
-  const gameId = room ? ( (room.game && (room.game.id || room.game.name || room.game.title)) || room.game || room.gameName ) : '';
+  const gameId = room ? ( (room.game && (room.game.id || room.game.name || room.game.type)) || room.game || room.gameName ) : '';
   if(sel) sel.value = gameId || '';
   el('roomOwner').value = room? (room.owner || room.host || '') : ''; 
-  el('roomStatus').value = room? (room.status || 'Đang mở') : 'Đang mở'; 
+  el('roomStatus').value = room? (room.status || 'Đang chờ') : 'Đang chờ'; 
 }
 function closeRoomForm(){ el('roomFormPopup').style.display='none'; showOverlay(false); }
-async function onEditRoom(e){ const id = e.currentTarget.dataset.id; try{ const rooms = await fetchRooms(); const r = rooms.find(x=>x._id===id); if(!r) return alert('Room not found'); openRoomForm(r); }catch(err){ console.error(err); alert('Lỗi'); } }
+async function onEditRoom(e){ const id = e.currentTarget.dataset.id; try{ const rooms = await fetchRooms(); const r = rooms.find(x=>x.code===id); if(!r) return alert('Room not found'); openRoomForm(r); }catch(err){ console.error(err); alert('Lỗi'); } }
 async function saveRoom(e){
   e.preventDefault();
   const id = el('roomId').value;
   const payload = {
+    code: id || undefined, // Chỉ gửi code nếu đang sửa
     name: el('roomName').value.trim(),
-    owner: el('roomOwner').value.trim(),
+    host: el('roomOwner').value.trim(),
     status: el('roomStatus').value
   };
   const sel = el('roomGame');
@@ -220,34 +337,24 @@ async function saveRoom(e){
     const selVal = sel.value;
     if(!selVal) return alert('Vui lòng chọn trò chơi cho phòng.');
     const selText = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : selVal;
-    payload.game = { id: selVal, name: selText };
+    payload.game = { id: selVal, name: selText, type: selText };
   } else {
     payload.game = el('roomGame').value.trim();
   }
   if(!payload.name) return alert('Tên phòng không được để trống');
-  try{
-    let res;
-    if(id){
-      res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, credentials: 'include', body: JSON.stringify(payload) });
-    } else {
-      res = await fetch(`${ADMIN_API}/api/admin/room`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials: 'include', body: JSON.stringify(payload) });
-    }
-    if(!res.ok){ const txt = await res.text().catch(()=>null); throw new Error(txt||res.status); }
-    alert('Phòng lưu thành công');
-    closeRoomForm();
-    loadData();
-  }catch(err){ console.error(err); alert('Cập nhật thất bại: ' + (err.message || err)); }
+
+  addChange({ type: 'room', action: 'save', id: id, payload: payload });
+  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
+  closeRoomForm();
 }
 async function onDeleteRoom(e){ 
-  const id = e.currentTarget.dataset.id; 
-  if(!confirm('Xác nhận xóa phòng?')) return; 
-  try{ 
-    const res = await fetch(`${ADMIN_API}/api/admin/room/${id}`, { method:'DELETE', credentials: 'include' }); 
-    if(!res.ok) throw new Error('delete failed'); 
-    alert('Đã xóa phòng'); 
-    loadData(); 
-  }catch(err){ console.error(err); alert('Xóa thất bại'); } 
+  const id = e.currentTarget.dataset.id; // Room ID là 'code'
+  if(!confirm('Xác nhận đưa phòng này vào hàng chờ xóa?')) return; 
+
+  addChange({ type: 'room', action: 'delete', id: id });
+  el(`room-row-${id}`).classList.add('row-to-be-deleted');
 }
+
 function openGameForm(game){
   showOverlay(true);
   el('gameFormPopup').style.display = 'block';
@@ -265,12 +372,9 @@ function openGameForm(game){
 function closeGameForm(){ el('gameFormPopup').style.display='none'; showOverlay(false); }
 async function onEditGame(e){
   const id = e.currentTarget.dataset.id;
-  try{
-    const games = await fetchGames();
-    const g = games.find(x => (x.id||x._id) === id);
-    if (!g) return alert('Game not found');
-    openGameForm(g);
-  }catch(err){ console.error(err); alert('Lỗi'); }
+  const g = allGamesCache.find(x => (x.id||x._id) === id);
+  if (!g) return alert('Game not found');
+  openGameForm(g);
 }
 async function saveGame(e){
   e.preventDefault();
@@ -284,62 +388,35 @@ async function saveGame(e){
     players: el('gamePlayers').value.trim(),
     category: { vi: el('gameCatVI').value.trim(), en: el('gameCatEN').value.trim() }
   };
-  try{
-    let res;
-    if (orig) {
-      res = await fetch(`${ADMIN_API}/api/admin/games/${encodeURIComponent(orig)}`, {
-        method: 'PUT', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-      });
-    } else {
-      res = await fetch(`${ADMIN_API}/api/admin/games`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-      });
-    }
-    if (!res.ok) { const txt = await res.text().catch(()=>null); throw new Error(txt || res.status); }
-    alert('Lưu thành công');
-    closeGameForm();
-    loadData();
-  }catch(err){ console.error(err); alert('Lưu thất bại: ' + (err.message||err)); }
+  
+  addChange({ type: 'game', action: 'save', id: orig || id, payload: payload });
+  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
+  closeGameForm();
 }
 async function onDeleteGame(e){
   const id = e.currentTarget.dataset.id;
-  if (!confirm('Xác nhận xóa trò chơi này?')) return;
-  try{
-    const res = await fetch(`${ADMIN_API}/api/admin/games/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' });
-    if (!res.ok) throw new Error('delete failed');
-    alert('Đã xóa trò chơi');
-    loadData();
-  }catch(err){ console.error(err); alert('Xóa thất bại'); }
+  if (!confirm('Xác nhận đưa game này vào hàng chờ xóa?')) return;
+  
+  addChange({ type: 'game', action: 'delete', id: id });
+  el(`game-row-${id}`).classList.add('row-to-be-deleted');
 }
 async function onFeatureGame(e) {
   const cbEl = e.currentTarget;
   const id = cbEl.dataset.id;
   const checked = cbEl.checked;
-  cbEl.disabled = true;
-  try {
-    await fetch(`${ADMIN_API}/api/admin/games/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ featured: !!checked })
-    });
-  } catch (err) {
-    console.error('update featured failed', err);
-    alert('Không thể cập nhật: ' + (err.message || err));
-    try { cbEl.checked = !checked; } catch(e2){ console.warn('revert failed', e2); }
-  } finally {
-    cbEl.disabled = false;
-  }
+  
+  const originalGame = allGamesCache.find(g => g.id === id);
+  if (!originalGame) return alert('Không tìm thấy game');
+  
+  const payload = { ...originalGame, featured: !!checked };
+  
+  addChange({ type: 'game', action: 'update', id: id, payload: payload });
 }
 
-// --- SỬA LỖI: Thêm 'credentials: include' ---
 function logoutAdmin(){ 
   fetch(`${ADMIN_API}/admin/logout`, {method:'POST', credentials: 'include'})
     .finally(()=> location.href='/admin-login.html'); 
 }
-// ----------------------------------------
 
 async function loadData(){
   try{
@@ -357,7 +434,6 @@ async function loadData(){
     renderGamesTable(gamesRes.games || []);
   } catch (err) {
     console.error('loadData error:', err);
-    alert('Không thể tải dữ liệu admin: ' + (err.message || err));
   }
 }
 
@@ -405,7 +481,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   
   el('popupOverlay').addEventListener('click', ()=>{ closeUserForm(); closeRoomForm(); closeGameForm(); });
 
-  const addGameBtn = document.querySelector('button[onclick="openGameForm()"]');
+  const addGameBtn = document.querySelector('button[onclick="openGameForm(null)"]');
   if (addGameBtn) { addGameBtn.onclick = () => openGameForm(null); }
   const addRoomBtn = document.querySelector('button[onclick="openRoomForm()"]');
   if(addRoomBtn) { addRoomBtn.onclick = () => { populateGameOptions(); openRoomForm(null); }; }
