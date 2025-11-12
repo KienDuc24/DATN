@@ -1,14 +1,41 @@
 // js/auth.js
-import { validateRegister, saveUserToLocal, getUserSafe } from './utils.js';
-import { BASE_API_URL } from './main.js'; // Import hằng số từ main
+
+// --- HÀM TIỆN ÍCH USER (Dùng chung) ---
 
 /**
- * Hiển thị thông tin người dùng lên UI (header, dropdown).
+ * Lưu user/token vào localStorage và cập nhật UI
  */
-export function showUserInfo(user) {
-  if (!user) return;
+function saveUserToLocal(user) {
+  try {
+    if (!user || typeof user !== 'object') return;
+    localStorage.setItem('user', JSON.stringify(user));
+    if (user.token) localStorage.setItem('token', user.token);
+    // Cập nhật giao diện ngay lập tức
+    showUserInfo(user);
+  } catch (err) {
+    console.error('saveUserToLocal error', err);
+  }
+}
 
-  // Ẩn nút Đăng nhập/Đăng ký
+/**
+ * Lấy thông tin user từ localStorage một cách an toàn
+ */
+function getUserSafe() {
+  try {
+    const u = localStorage.getItem('user');
+    return u ? JSON.parse(u) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Hiển thị thông tin người dùng (avatar, tên) và ẩn nút auth
+ */
+function showUserInfo(user) {
+  if (!user) return;
+  
+  // Ẩn nút đăng nhập/đăng ký
   document.getElementById('headerAuthBtns')?.style.setProperty('display', 'none', 'important');
   document.getElementById('sidebarAuthBtns')?.style.setProperty('display', 'none', 'important');
 
@@ -29,19 +56,36 @@ export function showUserInfo(user) {
 }
 
 /**
- * Ẩn thông tin người dùng, hiện lại nút Đăng nhập/Đăng ký (khi đăng xuất).
+ * Ẩn thông tin người dùng và hiện lại nút auth (khi đăng xuất)
  */
-export function showGuestUI() {
-  document.getElementById('headerAuthBtns')?.style.setProperty('display', 'flex'); // Hoặc 'block', 'flex' tùy layout
-  document.getElementById('sidebarAuthBtns')?.style.setProperty('display', 'block'); // Hoặc 'block', 'flex' tùy layout
+function showGuestUI() {
+  document.getElementById('headerAuthBtns')?.style.setProperty('display', 'flex');
+  document.getElementById('sidebarAuthBtns')?.style.setProperty('display', 'block');
   document.getElementById('userInfo')?.style.setProperty('display', 'none', 'important');
   document.getElementById('userDropdown')?.style.setProperty('display', 'none');
 }
 
 /**
- * Mở Modal Xác thực và hiển thị tab (login hoặc register).
+ * Validate form đăng ký
  */
-export function openAuthModal(tab = 'login') {
+function validateRegister(username, password, password2) {
+  const usernameRegex = /^[a-zA-Z0-9_.]{4,20}$/;
+  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+]{6,}$/;
+  if (!usernameRegex.test(username)) {
+    return 'Tên đăng nhập phải từ 4-20 ký tự, chỉ gồm chữ, số, _ hoặc .';
+  }
+  if (!passwordRegex.test(password)) {
+    return 'Mật khẩu phải từ 6 ký tự, gồm cả chữ và số.';
+  }
+  if (password !== password2) {
+    return 'Mật khẩu nhập lại không khớp.';
+  }
+  return '';
+}
+
+// --- LOGIC MODAL AUTH ---
+
+function openAuthModal(tab = 'login') {
   const modal = document.getElementById('auth-modal');
   if (modal) {
     modal.style.display = 'flex';
@@ -49,20 +93,14 @@ export function openAuthModal(tab = 'login') {
   }
 }
 
-/**
- * Đóng Modal Xác thực.
- */
-export function closeAuthModal() {
+function closeAuthModal() {
   const modal = document.getElementById('auth-modal');
   if (modal) {
     modal.style.display = 'none';
   }
 }
 
-/**
- * Chuyển tab trong Modal Xác thực.
- */
-export function showAuthTab(tab) {
+function showAuthTab(tab) {
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
   const loginTab = document.getElementById('loginTab');
@@ -84,130 +122,101 @@ export function showAuthTab(tab) {
 }
 
 /**
- * Khởi tạo tất cả các event listener cho form Đăng nhập/Đăng ký.
+ * Hàm này sẽ được gọi bởi main.js khi DOM đã sẵn sàng
  */
-export function initAuth() {
-  const loginForm = document.getElementById('loginForm');
-  const registerForm = document.getElementById('registerForm');
-  const anonymousLoginBtn = document.getElementById('anonymousLoginBtn');
-  const googleLoginBtn = document.getElementById('googleLoginBtn');
-  const facebookLoginBtn = document.getElementById('facebookLoginBtn');
-  const loginTab = document.getElementById('loginTab');
-  const registerTab = document.getElementById('registerTab');
-  
-  // Nút mở modal (ví dụ)
-  // document.getElementById('open-login-btn').onclick = () => openAuthModal('login');
-  // document.getElementById('open-register-btn').onclick = () => openAuthModal('register');
-  
-  // Chuyển tab
-  loginTab?.addEventListener('click', () => showAuthTab('login'));
-  registerTab?.addEventListener('click', () => showAuthTab('register'));
-  
-  // Đăng nhập
-  if (loginForm) {
-    loginForm.onsubmit = async function(e) {
-      e.preventDefault();
-      const username = document.getElementById('login-username').value;
-      const password = document.getElementById('login-password').value;
-      const messageEl = document.getElementById('login-message');
+function initAuth() {
+  // Gán sự kiện cho các tab
+  document.getElementById('loginTab')?.addEventListener('click', () => showAuthTab('login'));
+  document.getElementById('registerTab')?.addEventListener('click', () => showAuthTab('register'));
 
-      try {
-        const res = await fetch(`${BASE_API_URL}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-        
-        const data = await res.json();
-        
-        if (!res.ok) {
-          if (messageEl) messageEl.innerText = data.message || 'Đăng nhập thất bại';
-          return;
-        }
+  // Xử lý Form Đăng nhập
+  document.getElementById('loginForm').onsubmit = async function(e) {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+    const messageEl = document.getElementById('login-message');
+    
+    try {
+      const res = await fetch(`${BASE_API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
 
-        if (data.token && data.user) {
-          saveUserToLocal(data.user);
-          closeAuthModal();
-          showUserInfo(data.user);
-          alert('Đăng nhập thành công!');
-        } else {
-          if (messageEl) messageEl.innerText = 'Lỗi: Không nhận được token hoặc user';
-        }
-      } catch (err) {
-        console.error('[client] login error', err);
-        if (messageEl) messageEl.innerText = 'Lỗi kết nối máy chủ: ' + err.message;
-      }
-    };
-  }
-  
-  // Đăng ký
-  if (registerForm) {
-    registerForm.onsubmit = async function(e) {
-      e.preventDefault();
-      const username = document.getElementById('register-username').value.trim();
-      const password = document.getElementById('register-password').value;
-      const password2 = document.getElementById('register-password2').value;
-      const messageEl = document.getElementById('register-message');
-      
-      const msg = validateRegister(username, password, password2);
-      if (msg) {
-        if (messageEl) messageEl.innerText = msg;
+      if (!res.ok) {
+        if (messageEl) messageEl.innerText = data.message || 'Đăng nhập thất bại';
         return;
       }
+      
+      if (data.token && data.user) {
+        saveUserToLocal(data.user); // Đã bao gồm showUserInfo()
+        closeAuthModal();
+        alert('Đăng nhập thành công!');
+      } else {
+        if (messageEl) messageEl.innerText = 'Lỗi: Không nhận được token/user';
+      }
+    } catch (err) {
+      console.error('[client] login error', err);
+      if (messageEl) messageEl.innerText = 'Lỗi kết nối máy chủ: ' + (err && err.message);
+    }
+  };
 
-      try {
-        const res = await fetch(`${BASE_API_URL}/api/auth/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
+  // Xử lý Form Đăng ký
+  document.getElementById('registerForm').onsubmit = async function(e) {
+    e.preventDefault();
+    const username = document.getElementById('register-username').value.trim();
+    const password = document.getElementById('register-password').value;
+    const password2 = document.getElementById('register-password2').value;
+    const messageEl = document.getElementById('register-message');
+    
+    const msg = validateRegister(username, password, password2);
+    if (msg) {
+      if (messageEl) messageEl.innerText = msg;
+      return;
+    }
+    
+    try {
+      const res = await fetch(`${BASE_API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (messageEl) messageEl.innerText = data.message || '';
 
-        const data = await res.json();
-        if (messageEl) messageEl.innerText = data.message || '';
-
-        if (res.ok && data.user) {
-          alert('Đăng ký thành công! Vui lòng đăng nhập.');
-          showAuthTab('login');
-        }
-      } catch (err) {
+      if (res.ok && data.user) {
+        alert('Đăng ký thành công! Vui lòng đăng nhập.');
+        showAuthTab('login');
+      }
+    } catch (err) {
         console.error('[client] register error', err);
         if (messageEl) messageEl.innerText = 'Lỗi kết nối máy chủ: ' + err.message;
-      }
-    };
-  }
-  
-  // Đăng nhập ẩn danh
-  if (anonymousLoginBtn) {
-    anonymousLoginBtn.onclick = function() {
-      const username = 'guest_' + Math.random().toString(36).substring(2, 10);
-      const user = { username, displayName: username, name: username };
-      saveUserToLocal(user);
-      closeAuthModal();
-      showUserInfo(user);
-      alert('Bạn đã đăng nhập ẩn danh với tên: ' + username);
-    };
-  }
+    }
+  };
 
-  // Đăng nhập Google
-  if (googleLoginBtn) {
-    googleLoginBtn.onclick = function() {
-      window.location.href = `${BASE_API_URL}/auth/google`;
-    };
-  }
+  // Xử lý các nút Auth khác
+  document.getElementById('anonymousLoginBtn').onclick = function() {
+    const username = 'guest_' + Math.random().toString(36).substring(2, 10);
+    const user = { username, displayName: username, name: username };
+    saveUserToLocal(user);
+    closeAuthModal();
+    alert('Bạn đã đăng nhập ẩn danh với tên: ' + username);
+  };
 
-  // Đăng nhập Facebook
-  if (facebookLoginBtn) {
-    facebookLoginBtn.onclick = function() {
-      alert('Tính năng đăng nhập Facebook sẽ được bổ sung sau!');
-    };
-  }
+  document.getElementById('googleLoginBtn').onclick = function() {
+    window.location.href = `${BASE_API_URL}/auth/google`;
+  };
 
-  // Quên mật khẩu
+  document.getElementById('facebookLoginBtn').onclick = function() {
+    alert('Tính năng đăng nhập Facebook sẽ được bổ sung sau!');
+  };
+
   document.getElementById('forgotPasswordBtn')?.addEventListener('click', () => {
     alert('Tính năng quên mật khẩu sẽ được bổ sung sau!');
   });
   
-  // Ẩn/Hiện mật khẩu (Đăng nhập)
+  // Xử lý Ẩn/Hiện Mật khẩu (Đăng nhập)
   const loginPwdInput = document.getElementById('login-password');
   const loginToggleBtn = document.getElementById('togglePassword');
   if (loginPwdInput && loginToggleBtn) {
@@ -223,7 +232,7 @@ export function initAuth() {
     };
   }
   
-  // Ẩn/Hiện mật khẩu (Đăng ký)
+  // Xử lý Ẩn/Hiện Mật khẩu (Đăng ký)
   const regToggleBtn = document.getElementById('toggleRegisterPassword');
   const regPw1 = document.getElementById('register-password');
   const regPw2 = document.getElementById('register-password2');
