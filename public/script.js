@@ -1153,7 +1153,6 @@ function handleGameClick(gameId, gameName) {
 
   modal.querySelector('#joinRoomBtn').onclick = function() {
     modal.querySelector('#joinRoomBox').style.display = 'block';
-    modal.querySelector('#roomCodeBox').style.display = 'none';
   };
 
   const goToRoomBtn = modal.querySelector('#goToRoomBtn');

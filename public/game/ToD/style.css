@@ -1,134 +1,488 @@
-:root{
-  --bg:#071126;
-  --card:#ffffffee;
-  --muted:#9aa6ad;
-  --accent1:#00d4b4;
-  --accent2:#00b59a;
-  --danger:#ff6b6b;
-  --glass: rgba(255,255,255,0.04);
-  --radius:14px;
-  --max-width:980px;
-  --text:#ecf8f7;
-  --shadow: 0 12px 40px rgba(2,6,10,0.5);
-  --avatar-size:64px;
-  --ui-gap:12px;
-  --card-elev: 0 10px 30px rgba(3,8,14,0.6);
-  --accent-contrast: #012429;
+/* public/game/ToD/style.css */
+
+/* --- Biến CSS toàn cục --- */
+:root {
+    --bg-dark: #1a1a2e; /* Nền tối */
+    --bg-medium: #16213e; /* Nền trung bình */
+    --text-light: #e0e0e0; /* Chữ sáng */
+    --text-accent: #e94560; /* Màu nhấn */
+    --accent-orange: #ff7f50; /* Cam cháy */
+    --accent-yellow: #fddb3a; /* Vàng ấm */
+    --accent-green: #3CB371; /* Xanh lá cây */
+    --border-color: #0f3460; /* Màu viền */
+    --card-bg: #0f3460; /* Nền card */
+    --campfire-orange: #ffa500;
+    --campfire-red: #ff4500;
 }
 
-/* use Noto Sans (Vietnamese) with safe fallbacks */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap&subset=vietnamese');
-
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;background:linear-gradient(180deg,#051026 0%, #0b1720 70%);font-family:"Noto Sans",system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
-.page{max-width:var(--max-width);margin:18px auto;padding:12px;display:flex;flex-direction:column;gap:16px}
-
-/* top bar */
-.topbar{background:linear-gradient(180deg,rgba(255,255,255,0.03), rgba(255,255,255,0.02));border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
-.topbar-inner{display:flex;justify-content:space-between;gap:12px;align-items:center}
-.title{font-weight:700;color:#e8fbf9}
-.meta{display:flex;gap:12px;align-items:center}
-.room-code{background:linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));padding:6px 10px;border-radius:10px;color:var(--text);font-weight:700}
-.players-count{background:rgba(255,255,255,0.02);padding:6px 10px;border-radius:10px;color:var(--muted);font-weight:600}
-
-/* arena */
-.game-shell{display:flex;justify-content:center}
-.arena{width:100%;max-width:980px;min-height:64vh;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border-radius:18px;padding:18px;position:relative;box-shadow:var(--card-elev);overflow:hidden}
-.camp{position:relative;width:100%;height:62vh;border-radius:12px;display:flex;align-items:center;justify-content:center}
-.camp-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.06;pointer-events:none}
-
-/* campfire centering fix: anchor centrally within arena */
-.campfire{
-  position:absolute;
-  left:50%;
-  top:50%;
-  transform:translate(-50%,-50%);
-  width:140px;
-  height:140px;
-  z-index:40;
-}
-.campfire img{
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  filter:drop-shadow(0 10px 30px rgba(0,0,0,0.5));
-}
-@media (max-width:720px){
-  .campfire{ width:100px; height:100px; top:56%; }
+/* --- Thiết lập cơ bản --- */
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    color: var(--text-light);
+    overflow: hidden; /* Ngăn cuộn */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: var(--bg-dark); /* Fallback */
 }
 
-/* avatars */
-.avatars{position:absolute;inset:0;pointer-events:none;z-index:30}
-.player{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:6px;width:var(--avatar-size);height:calc(var(--avatar-size) + 18px)}
-.player .pic{width:var(--avatar-size);height:var(--avatar-size);border-radius:50%;background:linear-gradient(180deg,#ffffff,#f0fff9);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,0.35);overflow:hidden;border:3px solid rgba(255,255,255,0.04)}
-.player.you .pic{outline:3px solid rgba(0,212,180,0.95);box-shadow:0 14px 36px rgba(0,212,180,0.06)}
-.player .name{font-size:0.78rem;color:var(--text);background:rgba(0,0,0,0.35);padding:4px 8px;border-radius:999px;white-space:nowrap}
-
-/* question card */
-.question-card{position:absolute;left:50%;top:10%;transform:translateX(-50%);min-width:320px;max-width:88%;padding:12px 14px;border-radius:12px;background:linear-gradient(180deg,#ffffff,#f3f7f7);color:#072026;font-weight:700;z-index:60;box-shadow:0 12px 40px rgba(0,0,0,0.25);display:flex;align-items:center;gap:10px}
-.question-card .q-text{flex:1;display:block}
-.question-card.collapsed .q-text{display:none}
-.question-card.collapsed{
-  position:fixed !important;
-  left:auto !important;
-  top:auto !important;
-  right:18px;
-  bottom:18px;
-  transform:none !important;
-  min-width:56px;
-  width:auto;
-  padding:8px 10px;
-  border-radius:999px;
-  box-shadow:0 20px 60px rgba(2,6,10,0.6);
-  background:linear-gradient(90deg,#ffffff,#f8faf9);
-  color:#032026;
+.background-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('/game/ToD/camp_bg.jpg'); /* Đảm bảo đường dẫn đúng */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    box-sizing: border-box;
 }
 
-/* ensure toggle icon visible in collapsed mode */
-.question-card .q-toggle{background:transparent;border:none;font-size:1.05rem;cursor:pointer;padding:6px;border-radius:8px;min-width:36px;min-height:36px}
-.question-card.truth{border-left:6px solid #7de1d1}
-.question-card.dare{border-left:6px solid #ff8aa3}
-
-/* expanded view */
-.question-card.expanded{
-  position:fixed;
-  left:50%;
-  top:50%;
-  transform:translate(-50%,-50%);
-  width:min(880px,94%);
-  z-index:999;
-  padding:20px;
-  border-radius:18px;
-  box-shadow:0 30px 80px rgba(2,6,10,0.8);
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Lớp phủ tối */
+    backdrop-filter: blur(3px); /* Hiệu ứng làm mờ nhẹ */
+    z-index: 0;
 }
 
-/* controls bottom */
-.controls{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:12px;align-items:center;z-index:70}
-.turn-text{background:rgba(255,255,255,0.04);padding:8px 12px;border-radius:10px;color:var(--text);font-weight:700}
-.action-btns{display:flex;gap:8px}
-.btn{padding:10px 14px;border-radius:12px;border:none;cursor:pointer;font-weight:800}
-.btn-accept{background:linear-gradient(90deg,#3be88c,#12c2a6);color:#042522}
-.btn-reject{background:linear-gradient(90deg,#ff7b7b,#ff6a4d);color:#fff}
-.btn-primary{background:linear-gradient(90deg,var(--accent2),var(--accent1));color:var(--accent-contrast)}
-
-/* footer */
-.footer{display:flex;justify-content:center}
-.vote-info{background:rgba(255,255,255,0.95);color:#072022;padding:8px 12px;border-radius:10px;display:none;box-shadow:0 8px 20px rgba(0,0,0,0.12)}
-
-/* hidden helper */
-.hidden{display:none !important}
-
-/* responsive */
-@media (max-width:720px){
-  :root{--avatar-size:52px}
-  .topbar-inner{flex-direction:column;align-items:flex-start;gap:8px}
-  .question-card{top:6%;min-width:240px;padding:10px}
-  .question-card.expanded{padding:14px}
-  .campfire{width:86px;height:86px;top:72%}
-  .controls{bottom:12px}
-  .turn-text{font-size:0.95rem}
-  .campfire{position:absolute;left:50%;top:72%;transform:translate(-50%,-8%);width:140px;height:140px;z-index:40}
+/* --- Header --- */
+.game-header {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 1rem;
+    color: #fff;
+    width: 100%;
+    max-width: 900px;
 }
-@media (max-width:720px){
-  .campfire{width:100px;height:100px;top:78%;transform:translate(-50%,-6%)}
+
+.game-title {
+    font-family: 'Pacifico', cursive;
+    font-size: 3rem;
+    margin: 0;
+    color: var(--accent-yellow);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
+
+.room-info {
+    font-size: 1.1rem;
+    margin-top: 0.5rem;
+    background-color: rgba(var(--card-bg), 0.7);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    display: inline-flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.room-info span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* --- Main Content --- */
+.game-container {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-grow: 1;
+    width: 100%;
+    max-width: 1200px;
+    gap: 2rem;
+    padding: 1rem 0;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Player Camp */
+.player-camp {
+    flex: 2;
+    min-width: 300px;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.player-grid {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 600px;
+    max-height: 400px; /* Chiều cao cố định tương đối */
+    min-height: 250px;
+    aspect-ratio: 3/2; /* Giữ tỉ lệ */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.player {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.5s ease-in-out;
+    cursor: pointer;
+    text-align: center;
+}
+
+.player .pic {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--border-color);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+    transition: transform 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.player .pic img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.player.you .pic {
+    border-color: var(--accent-yellow); /* Border cho người chơi hiện tại */
+}
+.player.asked .pic {
+    border-color: var(--accent-orange); /* Border cho người đang bị hỏi */
+}
+
+.player .name {
+    margin-top: 5px;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--text-light);
+    background-color: rgba(var(--bg-medium), 0.7);
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+}
+
+.player:hover .pic {
+    transform: scale(1.1);
+}
+
+.campfire {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: -1; /* Đảm bảo lửa trại ở dưới */
+}
+
+.campfire-gif {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+
+/* Game Controls */
+.game-controls {
+    flex: 1;
+    min-width: 280px;
+    background-color: var(--card-bg);
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    max-height: 80vh;
+}
+
+.turn-display {
+    font-size: 1.3rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: var(--accent-yellow);
+    line-height: 1.4;
+}
+
+.action-panel {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap; /* Cho phép xuống dòng trên màn hình nhỏ */
+    justify-content: center;
+    width: 100%;
+}
+
+.btn {
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 30px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    min-width: 120px; /* Giới hạn chiều rộng nút */
+}
+
+.btn-primary {
+    background-color: var(--accent-green);
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #2e8b57;
+    transform: translateY(-2px);
+}
+
+.btn-accept {
+    background-color: var(--accent-orange);
+    color: white;
+}
+.btn-accept:hover {
+    background-color: #e6673f;
+    transform: translateY(-2px);
+}
+
+.btn-reject {
+    background-color: var(--accent-text);
+    color: white;
+}
+.btn-reject:hover {
+    background-color: #d1354f;
+    transform: translateY(-2px);
+}
+
+
+/* Question Card */
+.question-card {
+    background-color: var(--bg-medium);
+    border-radius: 10px;
+    padding: 1.2rem;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+    width: 100%;
+    text-align: center;
+    transition: all 0.4s ease-in-out;
+    position: relative;
+    overflow: hidden; /* Để ẩn phần text khi collapsed */
+    max-height: 250px; /* Chiều cao tối đa khi mở */
+}
+
+.question-card.hidden {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    max-height: 0;
+    padding: 0;
+    margin-top: 0;
+}
+
+.question-card.collapsed {
+    max-height: 50px; /* Chiều cao khi thu gọn */
+    padding: 0.8rem 1.2rem;
+}
+.question-card.collapsed .q-text,
+.question-card.collapsed .vote-info {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    margin: 0;
+}
+.question-card.collapsed .toggle-btn .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+.question-card.truth {
+    border: 2px solid var(--accent-orange);
+}
+.question-card.dare {
+    border: 2px solid var(--text-accent);
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+}
+
+.question-type {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--accent-yellow);
+}
+
+.toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.q-text {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.vote-info {
+    font-size: 0.9rem;
+    color: var(--text-light);
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+/* --- Footer --- */
+.game-footer {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 1rem;
+    color: rgba(var(--text-light), 0.7);
+    font-size: 0.9rem;
+    width: 100%;
+}
+
+
+/* --- Responsive Design (Media Queries) --- */
+
+/* Tablet & Smaller Desktops */
+@media (max-width: 992px) {
+    .game-title {
+        font-size: 2.5rem;
+    }
+    .game-container {
+        flex-direction: column;
+        padding: 0.5rem;
+        gap: 1.5rem;
+    }
+    .player-camp {
+        flex: none;
+        height: auto;
+        min-height: 200px;
+        max-width: 100%;
+    }
+    .player-grid {
+        max-height: 300px;
+    }
+    .player .pic {
+        width: 60px;
+        height: 60px;
+    }
+    .player .name {
+        font-size: 0.8em;
+    }
+    .campfire {
+        width: 120px;
+        height: 120px;
+    }
+    .game-controls {
+        flex: none;
+        width: 90%;
+        max-width: 500px;
+        padding: 1rem;
+    }
+    .turn-display {
+        font-size: 1.1rem;
+    }
+    .btn {
+        font-size: 1rem;
+        padding: 0.7rem 1.2rem;
+        min-width: 100px;
+    }
+    .question-card {
+        padding: 1rem;
+    }
+    .q-text {
+        font-size: 1rem;
+    }
+}
+
+/* Mobile */
+@media (max-width: 576px) {
+    .game-title {
+        font-size: 2rem;
+    }
+    .room-info {
+        font-size: 1rem;
+        padding: 0.4rem 0.8rem;
+        gap: 0.8rem;
+    }
+    .player .pic {
+        width: 50px;
+        height: 50px;
+    }
+    .player .name {
+        font-size: 0.7em;
+        max-width: 80px;
+    }
+    .campfire {
+        width: 100px;
+        height: 100px;
+    }
+    .game-controls {
+        width: 100%;
+        padding: 0.8rem;
+    }
+    .action-buttons {
+        flex-direction: column; /* Nút xếp chồng lên nhau */
+        gap: 0.8rem;
+    }
+    .btn {
+        width: 100%;
+        max-width: 250px; /* Giới hạn chiều rộng nút trên mobile */
+        margin: 0 auto;
+    }
+    .question-card {
+        padding: 0.8rem;
+    }
+    .question-header {
+        flex-direction: column; /* Loại và nút toggle xếp chồng */
+        gap: 0.5rem;
+    }
+    .toggle-btn {
+        margin-top: 0.5rem;
+    }
+    .q-text {
+        font-size: 0.95rem;
+    }
+    .game-footer {
+        padding: 0.8rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Cập nhật lại vị trí player cho responsive */
+/* (Phần này sẽ được JS tính toán động) */
