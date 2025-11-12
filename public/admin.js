@@ -35,11 +35,11 @@ function el(id){return document.getElementById(id);}
 // ... (các hàm tiện ích giữ nguyên) ...
 function showOverlay(show){ el('popupOverlay').style.display = show ? 'block' : 'none'; }
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
-// if (typeof escapeHtml === 'undefined') {
-//   window.escapeHtml = function(s){
-//     return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-//   };
-// }
+if (typeof escapeHtml === 'undefined') {
+  window.escapeHtml = function(s){
+    return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  };
+}
 
 // --- LOGIC THANH XÁC NHẬN (MỚI) ---
 function updateConfirmBar() {
@@ -320,14 +320,21 @@ function closeUserForm(){ el('userFormPopup').style.display='none'; showOverlay(
 async function onEditUser(e){ const id = e.currentTarget.dataset.id; try{ const users = await fetchUsers(); const u = users.find(x=>x._id===id); if(!u) return alert('User not found'); openUserForm(u); }catch(err){ console.error(err); alert('Lỗi'); } }
 
 async function saveUser(e){ 
-  e.preventDefault(); 
-  const id = el('userId').value; 
-  const payload = { username: el('userUsername').value.trim(), email: el('userEmail').value.trim(), role: el('userRole').value }; 
-  if(!payload.username) return alert('Username không được để trống'); 
+  e.preventDefault(); 
+  const id = el('userId').value; 
+  
+  // ÁP DỤNG escapeHtml cho tất cả các trường nhập liệu từ form người dùng
+  const payload = { 
+    username: escapeHtml(el('userUsername').value.trim()), 
+    email: escapeHtml(el('userEmail').value.trim()), 
+    role: el('userRole').value // Giữ nguyên, vì đây là giá trị chọn (select)
+  }; 
+  
+  if(!payload.username) return alert('Username không được để trống'); 
 
-  addChange({ type: 'user', action: 'save', id: id, payload: payload });
-  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
-  closeUserForm(); 
+  addChange({ type: 'user', action: 'save', id: id, payload: payload });
+  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
+  closeUserForm(); 
 }
 async function onDeleteUser(e){ 
   const id = e.currentTarget.dataset.id; 
@@ -351,29 +358,31 @@ function openRoomForm(room){
 }
 function closeRoomForm(){ el('roomFormPopup').style.display='none'; showOverlay(false); }
 async function onEditRoom(e){ const id = e.currentTarget.dataset.id; try{ const rooms = await fetchRooms(); const r = rooms.find(x=>x.code===id); if(!r) return alert('Room not found'); openRoomForm(r); }catch(err){ console.error(err); alert('Lỗi'); } }
-async function saveRoom(e){
-  e.preventDefault();
-  const id = el('roomId').value;
-  const payload = {
-    code: id || undefined, // Chỉ gửi code nếu đang sửa
-    name: el('roomName').value.trim(),
-    host: el('roomOwner').value.trim(),
-    status: el('roomStatus').value
-  };
-  const sel = el('roomGame');
-  if (sel) {
-    const selVal = sel.value;
-    if(!selVal) return alert('Vui lòng chọn trò chơi cho phòng.');
-    const selText = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : selVal;
-    payload.game = { id: selVal, name: selText, type: selText };
-  } else {
-    payload.game = el('roomGame').value.trim();
-  }
-  if(!payload.name) return alert('Tên phòng không được để trống');
 
-  addChange({ type: 'room', action: 'save', id: id, payload: payload });
-  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
-  closeRoomForm();
+async function saveRoom(e){
+  e.preventDefault();
+  
+  // ÁP DỤNG escapeHtml cho ID phòng và các giá trị form
+  const id = escapeHtml(el('roomId').value.trim()); 
+  const idOrig = el('roomIdOrig').value.trim();
+  
+  if (!id) return alert('Room ID không được để trống');
+  
+  const payload = {
+    id: id,
+    gameId: escapeHtml(el('roomGameId').value.trim()), // Game ID
+    password: escapeHtml(el('roomPassword').value), // Mật khẩu (nếu có)
+    host: escapeHtml(el('roomHost').value.trim()),   // Host
+    status: el('roomStatus').value,                  // Status (select/dropdown)
+    participantsCount: el('roomParticipantsCount').value.trim() // Số lượng người chơi
+  };
+
+  if(!payload.gameId) return alert('Game ID không được để trống');
+
+  const action = idOrig ? 'update' : 'save';
+  addChange({ type: 'room', action: action, id: id, payload: payload, idOrig: idOrig });
+  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
+  closeRoomForm();
 }
 async function onDeleteRoom(e){ 
   const id = e.currentTarget.dataset.id; // Room ID là 'code'
@@ -405,21 +414,36 @@ async function onEditGame(e){
   openGameForm(g);
 }
 async function saveGame(e){
-  e.preventDefault();
-  const orig = el('gameIdOrig').value;
-  const id = el('gameId').value.trim();
-  if (!id) return alert('ID không được để trống');
-  const payload = {
-    id,
-    name: { vi: el('gameNameVI').value.trim(), en: el('gameNameEN').value.trim() },
-    desc: { vi: el('gameDescVI').value.trim(), en: el('gameDescEN').value.trim() },
-    players: el('gamePlayers').value.trim(),
-    category: { vi: el('gameCatVI').value.trim(), en: el('gameCatEN').value.trim() }
-  };
-  
-  addChange({ type: 'game', action: 'save', id: orig || id, payload: payload });
-  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
-  closeGameForm();
+  e.preventDefault();
+  
+  // ÁP DỤNG escapeHtml cho ID game
+  const id = escapeHtml(el('gameId').value.trim()); 
+  const idOrig = el('gameIdOrig').value.trim();
+  
+  if (!id) return alert('Game ID không được để trống');
+  
+  // ÁP DỤNG escapeHtml cho tất cả các trường trong payload
+  const payload = {
+    id: id, // Đã được escapeHtml ở trên
+    name: { 
+      vi: escapeHtml(el('gameNameVI').value.trim()), 
+      en: escapeHtml(el('gameNameEN').value.trim()) 
+    },
+    desc: { 
+      vi: escapeHtml(el('gameDescVI').value.trim()), 
+      en: escapeHtml(el('gameDescEN').value.trim()) 
+    },
+    players: escapeHtml(el('gamePlayers').value.trim()),
+    category: { 
+      vi: escapeHtml(el('gameCatVI').value.trim()), 
+      en: escapeHtml(el('gameCatEN').value.trim()) 
+    }
+  };
+  
+  const action = idOrig ? 'update' : 'save';
+  addChange({ type: 'game', action: action, id: id, payload: payload, idOrig: idOrig });
+  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
+  closeGameForm();
 }
 async function onDeleteGame(e){
   const id = e.currentTarget.dataset.id;

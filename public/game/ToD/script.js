@@ -1,4 +1,4 @@
-// public/game/ToD/script.js
+// public/game/ToD/script.js (ĐÃ SỬA LỖI)
 (() => {
   // --- 1. KẾT NỐI SOCKET VÀ LẤY THÔNG TIN ---
   const SOCKET_URL = "https://datn-socket.up.railway.app";
@@ -83,7 +83,7 @@
     return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
   }
 
-  // --- HÀM RENDER ĐÃ SỬA LỖI (Dùng CSS Grid và loại bỏ tính toán) ---
+  // --- SỬA LỖI: Hàm Render Player (dùng CSS Grid và loại bỏ tính toán) ---
   function renderPlayers(players = [], askedName, host) { 
     if ($playersCount) $playersCount.textContent = `${players.length}`;
     if (!$avatars) return;
@@ -105,11 +105,11 @@
       el.className = 'player' + 
                     (name === playerName ? ' you' : '') + 
                     (name === askedName ? ' asked' : '') +
-                    (name === host ? ' host' : ''); 
+                    (name === host ? ' host' : ''); // Thêm class host
       
       const crown = (name === host) ? '<div class="crown">👑</div>' : '';
       
-      // SỬA: Bỏ left/top để CSS Grid tự sắp xếp
+      // SỬA LỖI: Bỏ left/top để CSS Grid tự sắp xếp
       el.innerHTML = `<div class="pic">${crown}<img src="${imgUrl}" alt="${name}"></div><div class="name">${name}</div>`;
       $avatars.appendChild(el);
     });
@@ -147,10 +147,13 @@
         controls.appendChild(startBtn);
       }
       
-      // --- SỬA LỖI: LOGIC HIỂN THỊ NÚT BẮT ĐẦU ---
-      // Hiện nút NẾU: (Bạn là Host) VÀ (Game đang chờ hoặc chưa có lượt)
-      // Nút sẽ bị ẩn khi tod-your-turn được gọi.
-      startBtn.style.display = (host && playerName === host && status !== 'playing') ? 'inline-block' : 'none';
+      // --- SỬA LỖI Ở ĐÂY ---
+      // Chỉ hiện nút "Bắt đầu" cho Host nếu game chưa bị khóa hẳn (status != closed)
+      // Nút này sẽ bị ẩn khi sự kiện tod-your-turn được nhận.
+      const isHost = (host && playerName === host);
+      const isGameNotRunning = !currentAskedPlayer; // Nếu chưa có người được gán lượt chơi (lượt đầu)
+      
+      startBtn.style.display = (isHost && isGameNotRunning && status !== 'closed') ? 'inline-block' : 'none';
       // --- HẾT SỬA LỖI ---
     }
   });
@@ -161,10 +164,9 @@
     
     if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thử thách' : `⏳ ${player} đang chọn...`;
     
-    // --- SỬA LỖI: Ẩn nút "Bắt đầu" ngay khi lượt chơi đầu tiên bắt đầu ---
+    // Ẩn nút "Bắt đầu" ngay khi lượt chơi đầu tiên bắt đầu
     const startBtn = document.getElementById('startRoundBtn');
     if (startBtn) startBtn.style.display = 'none'; 
-    // --- HẾT SỬA LỖI ---
 
     if (player === playerName) {
       if ($actionBtns) $actionBtns.innerHTML = '';
