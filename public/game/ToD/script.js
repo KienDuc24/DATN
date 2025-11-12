@@ -1,4 +1,4 @@
-// public/game/ToD/script.js (ĐÃ SỬA LỖI)
+// public/game/ToD/script.js
 (() => {
   // --- 1. KẾT NỐI SOCKET VÀ LẤY THÔNG TIN ---
   const SOCKET_URL = "https://datn-socket.up.railway.app";
@@ -8,19 +8,14 @@
   const params = new URLSearchParams(url.search);
   const roomCode = params.get('code') || '';
 
-  // --- SỬA LỖI: Lấy tên người dùng CHÍNH XÁC từ URL ---
-  // (Không tạo tên ngẫu nhiên nữa)
   let playerName = params.get('user'); 
   
-  // Kiểm tra nếu thiếu thông tin
   if (!playerName || !roomCode) {
     alert('Lỗi: Thiếu thông tin phòng hoặc người dùng. Đang quay về trang chủ.');
-    window.location.href = '/'; // Quay về trang chủ
-    return; // Dừng chạy code
+    window.location.href = '/'; 
+    return; 
   }
-  // --- HẾT SỬA LỖI ---
 
-  // Lưu lại tên
   window.playerName = playerName;
   try { localStorage.setItem('playerName', playerName); } catch (e) { /* ignore */ }
 
@@ -29,7 +24,6 @@
   let avatarUrl = localStorage.getItem('avatarUrl') || sessionStorage.getItem('avatarUrl') || null;
   sessionStorage.setItem('playerName', playerName);
 
-  // Lấy các element DOM
   const $room = document.getElementById('roomCode');
   const $playersCount = document.getElementById('playersCount');
   const $avatars = document.getElementById('avatars');
@@ -52,18 +46,15 @@
     controls.insertBefore($turnText, $actionBtns || null);
   }
   
-  // Dùng socket instance đã tạo
   const socket = window.socket;
 
   // --- 2. XỬ LÝ SỰ KIỆN SOCKET (ĐÃ GOM LẠI) ---
 
   socket.on('connect', () => {
     console.log('[ToD][client] socket connected', socket.id, { roomCode, playerName });
-    // Gửi sự kiện join VỚI TÊN ĐÚNG
     socket.emit('tod-join', { roomCode, player: playerName });
-    // Yêu cầu thông tin phòng
     socket.emit('tod-who', { roomCode });
-    setTimeout(()=> socket.emit('tod-who', { roomCode }), 200); // Gửi lại
+    setTimeout(()=> socket.emit('tod-who', { roomCode }), 200); 
   });
 
   socket.on('connect_error', (err) => console.warn('[ToD][client] connect_error', err));
@@ -74,7 +65,6 @@
     window.location.href = '/';
   });
 
-  // (Hàm helper) Lấy avatar
   function pickAvatarFor(playerObj) {
     const name = typeof playerObj === 'string' ? playerObj : (playerObj && playerObj.name) ? playerObj.name : String(playerObj || '');
     const providedAvatar = (playerObj && playerObj.avatar) ? playerObj.avatar : null;
@@ -83,7 +73,6 @@
     return `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`;
   }
 
-  // (Hàm helper) Vẽ người chơi
   function renderPlayers(players = [], askedName) {
     if ($playersCount) $playersCount.textContent = `Người chơi: ${players.length}`;
     if (!$avatars) return;
@@ -110,7 +99,6 @@
     });
   }
 
-  // Cập nhật giao diện khi nhận 'tod-joined'
   socket.on('tod-joined', (payload) => {
     console.log('[ToD][client] evt tod-joined', payload);
 
@@ -124,7 +112,6 @@
 
     renderPlayers(players);
 
-    // Hiển thị nút "Bắt đầu" (chỉ cho host)
     if (controls) {
       let startBtn = document.getElementById('startRoundBtn');
       if (!startBtn) {
@@ -143,7 +130,6 @@
     }
   });
 
-  // Xử lý lượt chơi
   socket.on('tod-your-turn', ({ player }) => {
     if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thử thách' : `⏳ ${player} đang chọn...`;
     
@@ -156,12 +142,10 @@
       const btnD = document.createElement('button'); btnD.className='btn btn-reject'; btnD.textContent='Thử thách'; btnD.onclick = () => socket.emit('tod-choice', { roomCode, player: playerName, choice: 'dare' });
       $actionBtns && $actionBtns.appendChild(btnT) && $actionBtns.appendChild(btnD);
     } else {
-        // Xóa nút vote của người chơi trước (nếu có)
         if ($actionBtns) $actionBtns.innerHTML = '';
     }
   });
 
-  // (Hàm helper) Thu/phóng thẻ câu hỏi
   function toggleQuestionExpand() {
     if (!$question) return;
     $question.classList.toggle('collapsed');
@@ -170,7 +154,6 @@
   const toggleBtn = document.getElementById('toggleQuestion');
   toggleBtn && toggleBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleQuestionExpand(); });
 
-  // Hiển thị câu hỏi
   socket.on('tod-question', ({ player, choice, question }) => {
     if ($question) {
       $question.classList.remove('hidden');
@@ -194,7 +177,6 @@
     }
   });
 
-  // Hiển thị kết quả vote
   socket.on('tod-result', ({ result }) => {
     if ($voteInfo) $voteInfo.style.display = 'none';
     if ($turnText) $turnText.textContent = result === 'accepted' ? '✅ Đa số chấp nhận' : '❌ Không đủ, thử lại';
@@ -207,7 +189,6 @@
     socket.emit('tod-who', { roomCode });
   });
 
-  // (Các hàm helper dự phòng giữ nguyên)
   if (typeof window.ActionBtns === 'undefined') {
     window.ActionBtns = {
       disable(selector) {
