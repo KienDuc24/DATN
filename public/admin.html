@@ -15,7 +15,7 @@
       <span>Admin Panel</span>
     </div>
     <nav>
-      <a href="/" data-tab="homeTab"><span class="icon">🏠</span> Trang chủ</a>
+      <a href="/" target="_blank"><span class="icon">🏠</span> Trang chủ</a>
       
       <a href="#" class="active" data-tab="gamesTab"><span class="icon">🎮</span> Trò chơi</a>
       <a href="#" data-tab="roomsTab"><span class="icon">🛋️</span> Phòng chơi</a>
@@ -51,7 +51,10 @@
     <section id="gamesTab" class="admin-tab-content">
       <div class="section-title-row">
         <div class="section-title">Danh sách trò chơi</div>
-        <button class="btn" onclick="openGameForm(null)">+ Thêm trò chơi</button>
+        <div>
+          <button class="btn" style="margin-right:8px;background:linear-gradient(90deg,#ffd36b,#ff9f43);color:#061022" onclick="syncGames()">Đồng bộ từ games.json</button>
+          <button class="btn" onclick="openGameForm(null)">+ Thêm trò chơi</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="admin-table">

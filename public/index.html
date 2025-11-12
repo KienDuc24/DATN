@@ -3,178 +3,206 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Camping Game - Admin</title>
+  <title>Camping Game </title>
   <link rel="icon" type="image/svg+xml" href="img/fav.svg" />
-  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/nav.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+  <script>
+    // Thay bằng URL backend Railway
+    window.BASE_API = 'https://datn-socket.up.railway.app';
+    window.SOCKET_URL = 'https://datn-socket.up.railway.app';
+  </script>
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <img src="img/fav.svg" alt="Logo" />
-      <span>Admin Panel</span>
+      <span>Camping Game</span>
     </div>
     <nav>
-      <a href="/" target="_blank"><span class="icon">🏠</span> Trang chủ</a>
-      
-      <a href="#" class="active" data-tab="gamesTab"><span class="icon">🎮</span> Trò chơi</a>
-      <a href="#" data-tab="roomsTab"><span class="icon">🛋️</span> Phòng chơi</a>
-      <a href="#" data-tab="usersTab"><span class="icon">👥</span> Người dùng</a>
-      <div class="sidebar-auth">
-        <button onclick="logoutAdmin()">Đăng xuất</button>
-      </div>
+      <a href="#all" data-i18n="all"><span class="icon">&#128340;</span> </a>
+      <a href="#featured" data-i18n="featured"><span class="icon">&#128293;</span> </a>
+      <a href="#new" data-i18n="new"><span class="icon">&#128640;</span> </a>
     </nav>
+    <div class="sidebar-auth" id="sidebarAuthBtns">
+      <button class="auth-btn" data-i18n="login" onclick="openAuthModal('login')"></button>
+      <button class="auth-btn" data-i18n="register" onclick="openAuthModal('register')"></button>
+    </div>
+    <div class="sidebar-lang">
+      <select id="langSelect" onchange="setLang(this.value)">
+        <option value="vi">Tiếng Việt</option>
+        <option value="en">English</option>
+      </select>
+    </div>
   </aside>
-
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
   <header>
     <div class="header-main">
-      <img src="img/fav.svg" alt="Camping Game Logo" class="logo-animate" />
-      <h1>Dashboard Admin</h1>
-    </div>
-    
-    <div class="confirm-bar" id="confirmBar" style="display: none;">
-      <span>Bạn có <span id="pendingChangesCount">0</span> thay đổi đang chờ</span>
-      <div class="confirm-bar-actions">
-        <button class="btn btn-cancel" onclick="cancelPendingChanges()">Hủy</button>
-        <button class="btn btn-save" onclick="executePendingChanges()">Lưu thay đổi</button>
+      <!-- Nút mở sidebar/nav ngoài cùng bên trái -->
+      <button class="sidebar-toggle" onclick="toggleSidebar()">
+        <span class="icon">&#9776;</span>
+      </button>
+      <!-- Logo và tiêu đề -->
+      <img src="img/fav.svg" class="logo-animate" alt="Logo" />
+      <h1 class="header-title">Camping Game</h1>
+      <!-- Thanh tìm kiếm căn giữa -->
+      <div class="search-bar search-bar-center">
+        <input type="text" id="searchInput" placeholder="Tìm kiếm trò chơi..." oninput="searchGames()" />
+        <button onclick="searchGames()">
+          <span class="icon-search">&#128269;</span>
+        </button>
       </div>
-    </div>
-    </header>
-
-  <main class="main-content fullheight">
-    <div class="admin-tabs" role="tablist">
-      <button class="tab-btn active" data-tab="gamesTab">Trò chơi</button>
-      <button class="tab-btn" data-tab="roomsTab">Phòng chơi</button>
-      <button class="tab-btn" data-tab="usersTab">Người dùng</button>
-    </div>
-
-    <section id="gamesTab" class="admin-tab-content">
-      <div class="section-title-row">
-        <div class="section-title">Danh sách trò chơi</div>
-        <div>
-          <button class="btn" style="margin-right:8px;background:linear-gradient(90deg,#ffd36b,#ff9f43);color:#061022" onclick="syncGames()">Đồng bộ từ games.json</button>
-          <button class="btn" onclick="openGameForm(null)">+ Thêm trò chơi</button>
+      <!-- Nút tìm kiếm chỉ hiện trên mobile -->
+      <button class="search-toggle" id="searchToggleBtn" type="button" onclick="showMobileSearch()">
+        <span class="icon-search">&#128269;</span>
+      </button>
+      <!-- Nút đăng nhập/đăng ký sát phải -->
+      <div class="header-auth-btns" id="headerAuthBtns">
+        <button class="auth-btn" id="loginBtn" data-i18n="login" onclick="openAuthModal('login')"></button>
+        <button class="auth-btn" id="registerBtn" data-i18n="register" onclick="openAuthModal('register')"></button>
+      </div>
+      <div class="user-info" id="userInfo" style="display:none; position: relative;">
+        <img id="userAvatar" class="user-avatar" src="img/guestlogo.png" alt="avatar" />
+        <div class="user-dropdown" id="userDropdown" style="display:none;">
+          <div class="user-dropdown-header">
+            <img id="dropdownAvatar" class="user-avatar-large" src="img/guestlogo.png" alt="avatar" />
+            <div class="user-dropdown-username" id="dropdownUsername"></div>
+            <div class="user-dropdown-email" id="dropdownEmail"></div>
+          </div>
+          <button type="button" id="profileBtn">👤 Hồ sơ</button>
+          <button type="button" id="settingsBtn">⚙️ Cài đặt tài khoản</button>
+          <button type="button" id="logoutBtn">🚪 Đăng xuất</button>
         </div>
       </div>
-      <div class="table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr><th>Tên</th><th>Thể loại</th><th>Số người</th><th>Nổi bật</th><th>Hành động</th></tr>
-          </thead>
-          <tbody id="adminGamesList"></tbody>
-        </table>
+    </div>
+  </header>
+  <main class="main-content">
+    <div class="section-title-row" id="all">
+      <div class="section-title" data-i18n="all">Gần đây</div>
+    </div>
+    <div class="sort-dropdown-row">
+      <label class="sort-label" data-i18n="sort_by"></label>
+      <div class="sort-dropdown">
+        <select class="sort-select" onchange="sortGames('all', this)">
+          <option value="newest" data-i18n="sort_newest"></option>
+          <option value="oldest" data-i18n="sort_oldest"></option>
+          <option value="players_asc" data-i18n="sort_players_asc"></option>
+          <option value="players_desc" data-i18n="sort_players_desc"></option>
+          <option value="az" data-i18n="sort_az"></option>
+          <option value="za" data-i18n="sort_za"></option>
+        </select>
       </div>
-    </section>
-
-    <section id="roomsTab" class="admin-tab-content" style="display:none">
-      <div class="section-title-row">
-        <div class="section-title">Danh sách phòng chơi</div>
-        <div class="controls">
-          <input id="roomsSearch" placeholder="Tìm phòng..." />
-          <button class="btn" onclick="openRoomForm()">+ Thêm phòng</button>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Tên trò chơi</th>
-              <th>Mã phòng</th>
-              <th>Người tạo</th>
-              <th>Người tham gia</th>
-              <th>Trạng thái</th>
-              <th>Hành động</th>
-            </tr>
-          </thead>
-          <tbody id="adminRoomsList"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="usersTab" class="admin-tab-content" style="display:none">
-      <div class="section-title-row">
-        <div class="section-title">Người dùng</div>
-        <div class="controls">
-          <input id="usersSearch" placeholder="Tìm username hoặc email..." />
-          <button class="btn" onclick="loadData()">Làm mới</button>
-          <button class="btn" style="margin-left:8px;background:linear-gradient(90deg,#ffd36b,#ff9f43);color:#061022" onclick="openUserForm(null)">+ Thêm người dùng</button>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table class="admin-table">
-          <thead><tr><th>Username</th><th>Lịch sử trò chơi</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
-          <tbody id="adminUsersList"></tbody>
-        </table>
-      </div>
-    </section>
+    </div>
+    <div class="games-slider-container" id="all-container">
+      <div class="games-slider" id="allSlider"></div>
+    </div>
+    </div>
+    <div class="section-title-row" id="featured">
+      <div class="section-title" data-i18n="featured">Trò chơi nổi bật</div>
+    </div>
+    <div class="games-slider-container">
+      <div class="games-slider" id="featuredSlider"></div>
+    </div>
+    <div class="section-title-row" id="category">
+      <div class="section-title" data-i18n="by_category">Game theo thể loại</div>
+    </div>
+    <div id="category-list"></div>
   </main>
 
-  <footer style="margin-left:220px;padding:14px;color:var(--muted)">© 2025 Camping Game Admin</footer>
-
-  <div id="popupOverlay" class="popup-overlay"></div>
-
-  <div id="roomFormPopup" class="auth-popup">
-    <form id="roomForm" class="auth-form" onsubmit="return saveRoom(event)">
-      <h2 id="roomFormTitle">Chỉnh sửa phòng</h2>
-      <input type="hidden" id="roomId" />
-      <input id="roomName" placeholder="Tên phòng" required />
-      <select id="roomGame" required>
-        <option value="">-- Chọn trò chơi --</option>
-      </select>
-      <input id="roomOwner" placeholder="Người tạo" required />
-      <select id="roomStatus"><option>Đang mở</option><option>Đang chơi</option><option>Đã đóng</option></select>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-        <button type="button" onclick="closeRoomForm()" class="action-btn">Hủy</button>
-        <button type="submit" class="btn">Lưu</button>
+  <!-- Modal Đăng nhập/Đăng ký -->
+  <div id="auth-modal" class="auth-modal" style="display:none;">
+    <div class="auth-modal-content">
+      <button class="auth-modal-close" type="button" onclick="document.getElementById('auth-modal').style.display='none'">&times;</button>
+      <div class="auth-tabs">
+        <button id="loginTab" class="auth-tab active" type="button">Đăng nhập</button>
+        <button id="registerTab" class="auth-tab" type="button">Đăng ký</button>
       </div>
-      <span class="auth-close" onclick="closeRoomForm()">×</span>
-    </form>
+      <div class="auth-social">
+        <button id="googleLoginBtn" class="social-btn social-google" type="button">Continue with Google</button>
+        <button id="facebookLoginBtn" class="social-btn social-facebook" type="button">Continue with Facebook</button>
+        <button id="anonymousLoginBtn" class="social-btn social-guest" type="button">Login as Guest</button>
+      </div>
+      <div class="auth-or"><span>OR</span></div>
+      <!-- Đăng nhập -->
+      <form id="loginForm" class="auth-form">
+        <input id="login-username" type="text" placeholder="Username" required />
+        <input id="login-password" type="password" placeholder="Password" required />
+        <button id="togglePassword" type="button" class="toggle-password-btn-below">👁 Hiện mật khẩu</button>
+        <button type="submit" class="login-btn">Login</button>
+        <div id="login-message" class="auth-message"></div>
+      </form>
+      <!-- Đăng ký -->
+      <form id="registerForm" class="auth-form" style="display:none;">
+        <input id="register-username" type="text" placeholder="Username" required />
+        <input class="hide" id="register-password" type="password" placeholder="Password" required />
+        <input class="hide" id="register-password2" type="password" placeholder="Confirm password" required />
+        <button id="toggleRegisterPassword" type="button" class="register-btn" style="margin-bottom: 8px;">
+          <span class="eye-icon">👁</span> Hiện mật khẩu
+        </button>
+        <button type="submit" class="register-btn">Register</button>
+        <div id="register-message" class="auth-message"></div>
+      </form>
+    </div>
   </div>
 
-  <div id="userFormPopup" class="auth-popup">
-    <form id="userForm" class="auth-form" onsubmit="return saveUser(event)">
-      <h2 id="userFormTitle">Chỉnh sửa người dùng</h2>
-      <input type="hidden" id="userId" />
-      <input id="userUsername" placeholder="Username" required />
-      <input id="userEmail" placeholder="Email" />
-      <select id="userRole"><option value="user">user</option><option value="admin">admin</option></select>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-        <button type="button" onclick="closeUserForm()" class="action-btn">Hủy</button>
-        <button type="submit" class="btn">Lưu</button>
+  <!-- Popup đổi hồ sơ -->
+  <div id="profile-modal" class="profile-modal" style="display:none;">
+    <div class="profile-modal-content">
+      <span class="profile-modal-close" id="closeProfileModal">&times;</span>
+      <h2>Thay đổi hồ sơ</h2>
+      <div class="profile-modal-actions">
+        <button type="button" id="modalChangeAvatarBtn">🖼️ Đổi avatar</button>
+        <button type="button" id="modalChangeNameBtn">✏️ Đổi tên tài khoản</button>
       </div>
-      <span class="auth-close" onclick="closeUserForm()">×</span>
-    </form>
+    </div>
   </div>
 
-  <div id="gameFormPopup" class="auth-popup">
-    <form id="gameForm" class="auth-form" onsubmit="return saveGame(event)">
-      <h2 id="gameFormTitle">Chỉnh sửa trò chơi</h2>
-      <input type="hidden" id="gameIdOrig" />
-      <label>Tên (VI)</label>
-      <input id="gameNameVI" placeholder="Tên tiếng Việt" />
-      <label>Tên (EN)</label>
-      <input id="gameNameEN" placeholder="Name (English)" />
-      <label>Mô tả (VI)</label>
-      <input id="gameDescVI" placeholder="Mô tả tiếng Việt" />
-      <label>Mô tả (EN)</label>
-      <input id="gameDescEN" placeholder="Description (English)" />
-      <label>Players (e.g. 3+)</label>
-      <input id="gamePlayers" placeholder="3+" />
-      <label>Category (VI)</label>
-      <input id="gameCatVI" placeholder="Thể loại (VI)" />
-      <label>Category (EN)</label>
-      <input id="gameCatEN" placeholder="Category (EN)" />
-      <label>ID (unique)</label>
-      <input id="gameId" placeholder="Draw" required />
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-        <button type="button" onclick="closeGameForm()" class="action-btn">Hủy</button>
-        <button type="submit" class="btn">Lưu</button>
+  <!-- Modal tạo/tham gia phòng -->
+  <div id="roomModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <button class="close-btn" onclick="document.getElementById('roomModal').style.display='none'">&times;</button>
+      <div class="modal-title">Tạo hoặc tham gia phòng</div>
+      <div class="modal-actions">
+        <button id="createRoomBtn">Tạo phòng</button>
+        <button id="joinRoomBtn">Tham gia phòng</button>
       </div>
-      <span class="auth-close" onclick="closeGameForm()">×</span>
-    </form>
+      <div id="roomCodeBox" style="display:none;">
+        Mã phòng: <span id="generatedRoomCode"></span>
+        <button id="goToRoomBtn">Vào phòng</button>
+      </div>
+      <div id="joinRoomBox" style="display:none;">
+        <input id="inputJoinRoomCode" placeholder="Nhập mã phòng">
+        <button id="confirmJoinRoomBtn">Vào phòng</button>
+      </div>
+    </div>
   </div>
-  
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script> <script src="/admin.js"></script>
-  
+
+  <!-- Nút kéo lên trên cùng -->
+  <button id="backToTopBtn" title="Lên đầu trang" onclick="scrollToTop()">&#8679;</button>
+  <div id="loadingSpinner" style="display:none;justify-content:center;align-items:center;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2000;background:rgba(255,255,255,0.7)">
+    <div class="spinner"></div>
+  </div>
+  <footer class="main-footer">
+    <div class="footer-content">
+      <div class="footer-logo">
+        <img src="img/fav.svg" alt="Camping Game" />
+        <span>Camping Game</span>
+      </div>
+      <div class="footer-links">
+        <a href="mailto:support@campinggame.com">Liên hệ</a>
+        <a href="#">Chính sách</a>
+        <a href="#">Facebook</a>
+        <a href="#">Discord</a>
+      </div>
+      <div class="footer-copyright">
+        &copy; 2025 Camping Game. All rights reserved.
+      </div>
+    </div>
+  </footer>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="script.js" defer></script>
 </body>
 </html>
