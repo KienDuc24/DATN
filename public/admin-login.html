@@ -1,63 +1,31 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login</title>
+  <link rel="icon" type="image/svg+xml" href="img/fav.svg" />
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="css/admin.css"> <link rel="stylesheet" href="admin-login.css"> </head>
 <body>
+
   <div class="card">
+    <h3>Admin Login</h3>
+    <div class="input-wrapper">
+        <input id="u" placeholder="Username" autocomplete="username" />
     </div>
-  <script>
-    const BASE_API_URL = 'https://datn-socket.up.railway.app';
-    const loginBtn = document.getElementById('login');
-    const passInput = document.getElementById('p');
-    const userIpnut = document.getElementById('u');
-    
-    loginBtn.addEventListener('click', handleLogin);
-    passInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') handleLogin(); });
-    userIpnut.addEventListener('keypress', function(e) { if (e.key === 'Enter') handleLogin(); });
+    <div class="input-wrapper">
+        <input id="p" placeholder="Password" type="password" autocomplete="current-password" />
+        <button type="button" id="togglePass" class="toggle-password">
+            <i class="fa fa-eye"></i>
+        </button>
+    </div>
+    <button id="login">Login</button>
+    <p id="msg"></p>
+  </div>
 
-    const toggleBtn = document.getElementById('togglePass');
-    const icon = toggleBtn.querySelector('i');
-    toggleBtn.addEventListener('click', function() {
-        if (passInput.type === 'password') {
-            passInput.type = 'text';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        } else {
-            passInput.type = 'password';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
-    });
+  <script src="admin-login.js"></script>
 
-    async function handleLogin() {
-      const u = document.getElementById('u').value.trim();
-      const p = document.getElementById('p').value;
-      const msg = document.getElementById('msg');
-      msg.textContent = '';
-      
-      if (!u || !p) {
-          msg.textContent = 'Vui lòng nhập cả username và password.';
-          return;
-      }
-
-      try {
-        const res = await fetch(`${BASE_API_URL}/admin/login`, { 
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: u, password: p }),
-          // --- SỬA LỖI: Thêm dòng này để gửi cookie ---
-          credentials: 'include'
-          // ----------------------------------------
-        });
-        
-        const j = await res.json();
-        if (res.ok && j.ok) {
-          location.href = '/admin.html'; 
-        } else {
-          msg.textContent = j.message || 'Login failed';
-        }
-      } catch (e) {
-        msg.textContent = 'Network error';
-      }
-    };
-  </script>
 </body>
 </html>
