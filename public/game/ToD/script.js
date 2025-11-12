@@ -299,6 +299,10 @@
   async function showInstructions(gameName) {
     try {
       const response = await fetch(`/api/ai/get-instructions?gameName=${encodeURIComponent(gameName)}`);
+      if (!response.ok) {
+        throw new Error('Không thể lấy hướng dẫn từ server.');
+      }
+
       const data = await response.json();
       document.getElementById('instructions').innerText = data.instructions || 'Không thể lấy hướng dẫn.';
       document.getElementById('instructions').style.display = 'block';
@@ -307,6 +311,24 @@
       alert('Không thể lấy hướng dẫn. Vui lòng thử lại sau.');
     }
   }
+
+  async function fetchRuleJson() {
+    try {
+      const response = await fetch('./rule.json'); // Đường dẫn tương đối từ index.html
+      if (!response.ok) {
+        throw new Error('Không thể tải file rule.json');
+      }
+      const rules = await response.json();
+      console.log('Nội dung rule.json:', rules);
+      return rules;
+    } catch (error) {
+      console.error('Lỗi khi tải rule.json:', error);
+      return null;
+    }
+  }
+
+  // Gọi hàm để tải file rule.json
+  fetchRuleJson();
 })();
 (() => {
   const API_BASE_URL = '/api/ai'; // Đường dẫn API
@@ -372,7 +394,7 @@ const path = require('path');
 // Endpoint hướng dẫn cách chơi
 router.get('/ai/get-instructions', async (req, res) => {
   try {
-    const filePath = path.join(__dirname, '../public/game/ToD/rule.json');
+    const filePath = './rule.json'; // Đường dẫn tương đối từ index.html
     const rules = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     res.json({ instructions: rules.rules_summary });
   } catch (error) {
