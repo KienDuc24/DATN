@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 // (Sửa đường dẫn .env và models/ cho đúng với vị trí file của bạn)
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') }); 
 const Room = require('../../../models/Room');
@@ -97,6 +98,50 @@ function getPlayersFromRoom(room) {
     if (!np) return null;
     return { name: np.name, displayName: np.displayName || null, avatar: np.avatar || null };
   }).filter(Boolean);
+}
+
+// Hàm gọi OpenAI API để tạo câu hỏi
+async function generateQuestion(prompt) {
+  try {
+    const response = await axios.post('https://api.openai.com/v1/completions', {
+      model: 'text-davinci-003',
+      prompt: `Hãy tạo một câu hỏi cho trò chơi "Truth or Dare" dựa trên gợi ý sau: "${prompt}"`,
+      max_tokens: 100,
+      temperature: 0.7,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    return response.data.choices[0].text.trim();
+  } catch (error) {
+    console.error('Lỗi khi tạo câu hỏi:', error);
+    return 'Không thể tạo câu hỏi. Vui lòng thử lại sau.';
+  }
+}
+
+// Hàm gọi OpenAI API để hướng dẫn luật chơi
+async function getGameInstructions(gameName) {
+  try {
+    const response = await axios.post('https://api.openai.com/v1/completions', {
+      model: 'text-davinci-003',
+      prompt: `Hãy hướng dẫn cách chơi trò chơi "${gameName}" một cách chi tiết.`,
+      max_tokens: 200,
+      temperature: 0.7,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    return response.data.choices[0].text.trim();
+  } catch (error) {
+    console.error('Lỗi khi lấy hướng dẫn:', error);
+    return 'Không thể lấy hướng dẫn. Vui lòng thử lại sau.';
+  }
 }
 
 // --- MODULE EXPORT ---

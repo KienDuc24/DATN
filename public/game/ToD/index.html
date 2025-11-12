@@ -60,6 +60,22 @@
         </div>
         </div>
 
+    <div id="ai-tools">
+      <h2>AI Tools</h2>
+      <div id="ai-question-section">
+        <h3>Tạo câu hỏi</h3>
+        <textarea id="ai-question" placeholder="Nhập gợi ý để AI tạo câu hỏi..."></textarea>
+        <button onclick="generateAIQuestion()">Tạo câu hỏi</button>
+        <p id="generated-question"></p>
+      </div>
+
+      <div id="instructions-section">
+        <h3>Hướng dẫn cách chơi</h3>
+        <button onclick="showInstructions('Truth or Dare')">Xem hướng dẫn</button>
+        <p id="instructions" style="display: none;"></p>
+      </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

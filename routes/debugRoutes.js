@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
 const Room = require('../models/Room');
+const { generateQuestion, getGameInstructions } = require('../controllers/aiService');
 
 // optional simple protection: require ?secret=DEBUG_SECRET
 router.get('/rooms', async (req, res) => {
@@ -25,6 +26,20 @@ router.get('/db', (req, res) => {
 router.get('/socket', (req, res) => {
   const io = require('../socketServer').io;
   res.json({ clients: io.sockets.sockets.size });
+});
+
+// Endpoint tạo câu hỏi
+router.post('/ai/generate-question', async (req, res) => {
+  const { prompt } = req.body;
+  const question = await generateQuestion(prompt);
+  res.json({ question });
+});
+
+// Endpoint hướng dẫn cách chơi
+router.get('/ai/get-instructions', async (req, res) => {
+  const { gameName } = req.query;
+  const instructions = await getGameInstructions(gameName);
+  res.json({ instructions });
 });
 
 module.exports = router;

@@ -269,4 +269,42 @@
     };
   }
   if (typeof window.$actionBtns === 'undefined') window.$actionBtns = window.ActionBtns;
+
+  const API_BASE_URL = '/api/ai'; // Đường dẫn API
+
+  // Gọi API để tạo câu hỏi
+  async function generateAIQuestion() {
+    const prompt = document.getElementById('ai-question').value.trim();
+    if (!prompt) {
+      alert('Vui lòng nhập gợi ý để tạo câu hỏi.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/generate-question`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+
+      const data = await response.json();
+      document.getElementById('generated-question').innerText = data.question || 'Không thể tạo câu hỏi.';
+    } catch (error) {
+      console.error('Lỗi khi tạo câu hỏi:', error);
+      alert('Không thể tạo câu hỏi. Vui lòng thử lại sau.');
+    }
+  }
+
+  // Gọi API để lấy hướng dẫn cách chơi
+  async function showInstructions(gameName) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/get-instructions?gameName=${encodeURIComponent(gameName)}`);
+      const data = await response.json();
+      document.getElementById('instructions').innerText = data.instructions || 'Không thể lấy hướng dẫn.';
+      document.getElementById('instructions').style.display = 'block';
+    } catch (error) {
+      console.error('Lỗi khi lấy hướng dẫn:', error);
+      alert('Không thể lấy hướng dẫn. Vui lòng thử lại sau.');
+    }
+  }
 })();
