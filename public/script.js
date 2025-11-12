@@ -1,6 +1,5 @@
 // Lấy dữ liệu game từ games.json
 let allGames = [];
-let recentGames = [];
 let topGames = [];
 let featuredGames = [];
 let newGames = [];
@@ -11,7 +10,7 @@ let gamesByCategory = {};
 const API_BASE_URL = 'https://datn-socket.up.railway.app'; // Đường dẫn API
 // Lưu vị trí trang hiện tại cho từng slider
 let sliderPage = {
-  recent: 0,
+  allGames: 0,
   top: 0,
   featured: 0,
   new: 0
@@ -92,7 +91,7 @@ function groupGames(games) {
   // Sắp xếp
   games.sort((a, b) => (getGameName(a, 'vi')).localeCompare(getGameName(b, 'vi')));
   
-  recentGames = [...games]; // 'Gần đây'
+  allGames = [...games]; // 'Tất cả game'
   
   // --- PHẦN QUAN TRỌNG LÀ ĐÂY ---
   // Lọc 'featuredGames' theo trường 'featured: true'
@@ -239,8 +238,8 @@ function sortGames(sectionKey, selectEl) {
   if (sectionKey.startsWith('cat-')) {
     const catName = sectionKey.replace(/^cat-/, '').replace(/-/g, ' ');
     gamesArr = allGames.filter(g => (getGameCategory(g) || '').toLowerCase().includes(catName.toLowerCase()));
-  } else if (sectionKey === 'recent') {
-    gamesArr = recentGames.slice();
+  } else if (sectionKey === 'all') {
+    gamesArr = allGames.slice();
   } else if (sectionKey === 'top') {
     gamesArr = topGames.slice();
   } else if (sectionKey === 'featured') {
@@ -341,8 +340,8 @@ fetch('games.json')
     showLoading(false);
     allGames = data;
     groupGames(allGames);
-    sliderPage = { recent: 0, top: 0, featured: 0, new: 0 };
-    renderSlider(recentGames, 'recentSlider', 'recent');
+    sliderPage = { all: 0, top: 0, featured: 0, new: 0 };
+    renderSlider(allGames, 'allSlider', 'all');
     renderSlider(topGames, 'topSlider', 'top');
     renderSlider(featuredGames, 'featuredSlider', 'featured');
     renderSlider(newGames, 'newSlider', 'new');
@@ -431,7 +430,7 @@ function setLang(lang, firstLoad = false) {
   localStorage.setItem('lang', lang);
   updateLangUI();
   // Render lại các slider/game khi đổi ngôn ngữ
-  renderSlider(recentGames, 'recentSlider', 'recentShowMore', 'recentShowMore-prev', 'recent');
+  renderSlider(allGames, 'allSlider', 'allShowMore', 'allShowMore-prev', 'all');
   renderSlider(topGames, 'topSlider', 'topShowMore', 'topShowMore-prev', 'top');
   renderSlider(featuredGames, 'featuredSlider', 'featuredShowMore', 'featuredShowMore-prev', 'featured');
   renderSlider(newGames, 'newSlider', 'newShowMore', 'newShowMore-prev', 'new');
@@ -1222,7 +1221,7 @@ function getMaxShow() {
 }
 function rerenderAllSliders() {
   MAX_SHOW = getMaxShow();
-  renderSlider(recentGames, 'recentSlider', 'recentShowMore', 'recentShowMore-prev', 'recent');
+  renderSlider(allGames, 'allSlider', 'allShowMore', 'allShowMore-prev', 'all');
   renderSlider(topGames, 'topSlider', 'topShowMore', 'topShowMore-prev', 'top');
   renderSlider(featuredGames, 'featuredSlider', 'featuredShowMore', 'featuredShowMore-prev', 'featured');
   renderSlider(newGames, 'newSlider', 'newShowMore', 'newShowMore-prev', 'new');
