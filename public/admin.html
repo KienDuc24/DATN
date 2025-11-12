@@ -111,38 +111,28 @@
     </section>
 
     <section id="analyticsTab" class="admin-tab-content" style="display:none">
-      <div class="section-title-row">
-          <div class="section-title">Vercel Web Analytics & Core Web Vitals</div>
-          <div>
-              <button class="btn btn-primary" onclick="window.open('https://vercel.com/kines-projects/datn/analytics?environment=all', '_blank')" style="background:linear-gradient(90deg,#00b0ff,#007aff);color:#fff">
-                  <span class="icon">🔗</span> Mở Dashboard Vercel
-              </button>
-          </div>
-      </div>
-      
-      <div class="table-wrap" style="padding: 20px; min-height: 40vh;">
-          <p style="margin-bottom: 20px; color: var(--muted);">
-              Vì lý do bảo mật, không thể nhúng Dashboard Vercel Analytics trực tiếp vào đây. Bạn có thể kiểm tra trạng thái tích hợp script và sử dụng nút **"Mở Dashboard Vercel"** ở trên.
+      <div class="table-wrap" style="padding: 40px; min-height: 80vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+          
+          <h2 style="margin-bottom: 25px; color: var(--accent);">Vercel Web Analytics</h2>
+          <p style="max-width: 600px; color: var(--muted); margin-bottom: 40px;">
+              Vì lý do bảo mật, Vercel Dashboard chặn việc nhúng trực tiếp vào đây. 
+              Vui lòng nhấp vào nút bên dưới để mở Dashboard Analytics trong một tab mới và xem dữ liệu hiệu suất cũng như lưu lượng truy cập thực tế của dự án.
           </p>
-          
-          <h4>⚙️ Trạng thái Tích hợp Script (Client-side)</h4>
-          <div id="analyticsStatusContainer" style="display: flex; flex-direction: column; gap: 10px; max-width: 500px; padding: 10px; border: 1px dashed rgba(255,255,255,0.1);">
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dotted var(--muted); padding-bottom: 8px;">
-                  <span style="font-weight: 600;">Trạng thái Script:</span>
-                  <span id="analyticsScriptStatus" style="color: var(--danger); font-weight: 700;">CHƯA TÌM THẤY</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px;">
-                  <span style="font-weight: 600;">Vercel Project ID (data-sd-id):</span>
-                  <input type="text" id="vercelAnalyticsId" placeholder="ID (e.g., prj_xxxx)" style="width: 150px; padding: 6px; border-radius: 4px; background: rgba(0,0,0,0.3); border: 1px solid var(--muted);" readonly/>
-              </div>
-          </div>
 
-          <h4 style="margin-top: 30px;">💡 Gợi ý Tiếp theo</h4>
-          <p style="font-size: 13px;">Nhấp vào nút **"Mở Dashboard Vercel"** để xem các biểu đồ Core Web Vitals và dữ liệu lưu lượng truy cập thực tế của người dùng.</p>
-          
-          <div style="height: 150px; background: var(--panel); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-style: italic;">
-              [Khu vực hiển thị biểu đồ Analytics (Cần tích hợp API riêng)]
-          </div>
+          <button 
+              class="btn" 
+              onclick="window.open('https://vercel.com/kines-projects/datn/analytics?environment=all', '_blank')" 
+              style="
+                  padding: 15px 30px; 
+                  font-size: 1.2rem; 
+                  background: linear-gradient(90deg, #00b0ff, #007aff); 
+                  color: #fff;
+                  box-shadow: 0 8px 25px rgba(0, 118, 255, 0.5);
+              "
+          >
+              <span class="icon" style="margin-right: 10px;">📈</span> Mở Dashboard Vercel Analytics
+          </button>
+
         </div>
     </section>
   </main>
