@@ -1,8 +1,8 @@
-// public/game/DrawGuess/script.js (FIX LỖI handleDrawStart VÀ TẤT CẢ LOGIC)
+// public/game/DrawGuess/script.js (FIX LỖI isEraser is not defined)
 
 (() => {
     const GAME_ID = 'DG';
-    const SOCKET_URL = "https://datn-socket.up.railway.app";
+    const SOCKET_URL = "https://datn-socket.up.railway.app"; // Đảm bảo URL này là chính xác
     window.socket = window.socket || (window.io && io(SOCKET_URL, { transports: ['websocket'], secure: true }));
 
     const url = new URL(window.location.href);
@@ -46,6 +46,9 @@
     let currentSize = $sizeSlider ? parseInt($sizeSlider.value) : 5;
     let lastX = 0;
     let lastY = 0;
+    
+    // SỬA LỖI: Thêm khai báo 'isEraser'
+    let isEraser = false;
     
     const ctx = $canvas ? $canvas.getContext('2d') : null;
     
@@ -113,7 +116,7 @@
     
     function setActiveTool(tool) {
         currentTool = tool;
-        isEraser = (tool === 'eraser');
+        isEraser = (tool === 'eraser'); // Hàm này gán giá trị
         
         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
@@ -149,6 +152,7 @@
         lastX = pos.x;
         lastY = pos.y;
         
+        // Dòng này sử dụng 'isEraser'
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('start', lastX, lastY, drawColor, currentSize);
         e.preventDefault();
@@ -157,6 +161,7 @@
     function handleDrawMove(e) { 
         if (!isDrawing || currentDrawer !== playerName || !$canvas || currentTool === 'fill') return;
         const pos = getMousePos(e);
+        // Dòng này sử dụng 'isEraser'
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('move', pos.x, pos.y, drawColor, currentSize);
         lastX = pos.x;
@@ -168,8 +173,6 @@
         if (currentDrawer !== playerName) return;
         isDrawing = false;
     }
-
-    // --- BỎ LOGIC NÚT THOÁT PHÒNG ---
 
     // GẮN EVENT LISTENERS
     if ($canvas) {
@@ -409,7 +412,6 @@
         }
     });
 
-    // SỬA LỖI: LOGIC POPUP KẾT THÚC VÒNG
     socket.on(`${GAME_ID}-end-round`, ({ word, scores, drawer, guessed }) => {
         currentDrawer = null;
         if ($drawingTools) $drawingTools.classList.add('hidden'); 
@@ -425,11 +427,10 @@
         renderScores(scores, null, roomPlayers);
         disableGuessInput(true);
 
-        // Hiển thị Pop-up xếp hạng (false = không phải cuối game, KHÔNG CÓ NÚT)
         showRankingPopup(scores, false); 
         
         setTimeout(() => {
-            hidePopup(); // Tự động đóng popup
+            hidePopup();
             
             const startBtn = document.getElementById('startGameBtn');
             if (startBtn && currentHost === playerName) {
@@ -439,26 +440,26 @@
             } else if (currentHost !== playerName && $gameStatus) {
                 $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
             }
-        }, 5000); // Đợi 5 giây
+        }, 5000); 
     });
     
-    // SỬA LỖI: LOGIC POPUP KẾT THÚC GAME
     socket.on(`${GAME_ID}-game-over`, ({ finalScores }) => {
         if ($gameStatus) $gameStatus.textContent = '🏆 TRÒ CHƠI KẾT THÚC!';
         
         disableGuessInput(true);
         if ($drawingTools) $drawingTools.classList.add('hidden');
         
-        // Hiển thị Pop-up xếp hạng cuối cùng (true = cuối game, CÓ NÚT)
         showRankingPopup(finalScores, true); 
     });
 
-    // --- 4. HÀM RENDER ĐIỂM SỐ (Đã có logic vương miện/icon vẽ) ---
+    // --- 4. HÀM RENDER ĐIỂM SỐ ---
     function renderScores(scores, drawerName, playerList = []) {
         if (!$scoreGrid) return;
         $scoreGrid.innerHTML = '';
         
-        const playerNames = playerList.map(p => p.name);
+        const safePlayerList = Array.isArray(playerList) ? playerList : [];
+        
+        const playerNames = safePlayerList.map(p => p.name);
         const mergedScores = playerNames.reduce((acc, name) => ({ ...acc, [name]: scores[name] || 0 }), { ...scores });
         const sortedPlayers = playerNames.sort((a, b) => mergedScores[b] - mergedScores[a]);
 
@@ -490,8 +491,9 @@
         });
     }
     
-    // --- 5. BỔ SUNG: HÀM POP-UP XẾP HẠNG (ĐÃ SỬA LOGIC NÚT) ---
+    // --- 5. HÀM POP-UP XẾP HẠNG ---
     function getSortedScores(scores) {
+        if (!scores || typeof scores !== 'object') return [];
         return Object.entries(scores)
             .sort(([, a], [, b]) => b - a);
     }
@@ -515,11 +517,9 @@
         content += '<div id="popup-actions" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">';
         
         if (isFinal) {
-            // Nút Chơi Lại (reload) và Thoát (về home)
             content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
             content += `<button id="popup-exit" class="btn btn-danger">Thoát</button>`;
         } else {
-            // SỬA LỖI: Chỉ hiển thị text, không có nút
             content += `<p>Vòng tiếp theo sẽ bắt đầu sau 5 giây...</p>`;
         }
         content += '</div>';
@@ -530,7 +530,6 @@
         modal.innerHTML = `<div class="modal-content">${content}</div>`;
         document.body.appendChild(modal);
         
-        // Thêm CSS cho modal
         const styleId = 'modal-styles';
         if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
@@ -554,7 +553,16 @@
 
         if (isFinal) {
             document.getElementById('popup-continue').addEventListener('click', () => {
-                window.location.reload(); 
+                hidePopup(); 
+                
+                const startBtn = document.getElementById('startGameBtn');
+                if (startBtn && currentHost === playerName) {
+                     if ($gameStatus) $gameStatus.textContent = '';
+                     if ($gameStatus) $gameStatus.appendChild(startBtn); 
+                     startBtn.style.display = 'inline-block';
+                } else if (currentHost !== playerName && $gameStatus) {
+                    $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+                }
             });
             document.getElementById('popup-exit').addEventListener('click', () => {
                 window.location.href = '/'; 
