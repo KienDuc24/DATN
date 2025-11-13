@@ -2,6 +2,7 @@
 (() => {
   // --- 1. KẾT NỐI SOCKET VÀ LẤY THÔNG TIN ---
   const SOCKET_URL = "https://datn-socket.up.railway.app";
+  window.__SOCKET_URL__ = SOCKET_URL;
   window.socket = window.socket || (window.io && io(SOCKET_URL, { transports: ['websocket'], secure: true }));
 
   const url = new URL(window.location.href);
@@ -303,27 +304,46 @@
 
   // Gửi câu hỏi đến API Backend (ĐÃ SỬA)
   async function getInstructionsFromAI(question) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/ai/ask`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question })
-      });
+    const normalizedQuestion = String(question || '').trim();
+    if (!normalizedQuestion) return '❌ Vui lòng nhập câu hỏi hợp lệ.';
 
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
+    let lastError = '❌ Lỗi kết nối server.';
+    for (const base of uniqueApiBases) {
+      const endpoint = `${base}/ai/ask`;
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: normalizedQuestion })
+        });
+
         const raw = await response.text();
-        console.error('Unexpected AI response:', raw);
-        return '❌ Server trả về dữ liệu không hợp lệ.';
-      }
+        let payload;
+        try {
+          payload = raw ? JSON.parse(raw) : {};
+        } catch (parseErr) {
+          console.warn('[AI Chatbox] Không phải JSON từ', endpoint, raw);
+          lastError = '❌ Server trả về dữ liệu không hợp lệ.';
+          continue;
+        }
 
-      const data = await response.json();
-      if (!response.ok) return data.error || 'Lỗi server khi hỏi AI.';
-      return data.answer;
-    } catch (error) {
-      console.error('Lỗi khi hỏi AI:', error);
-      return '❌ Lỗi kết nối server.';
+        if (!response.ok) {
+          lastError = payload?.error || `❌ API trả về lỗi (${response.status}).`;
+          console.warn('[AI Chatbox] API error', endpoint, response.status, payload);
+          continue;
+        }
+
+        if (typeof payload?.answer === 'string' && payload.answer.trim()) {
+          return payload.answer.trim();
+        }
+
+        lastError = '❌ Server trả về dữ liệu không hợp lệ.';
+      } catch (error) {
+        console.error('[AI Chatbox] Request failed', endpoint, error);
+        lastError = '❌ Lỗi kết nối server.';
+      }
     }
+    return lastError;
   }
 
   // Xử lý gửi câu hỏi
