@@ -328,6 +328,12 @@ module.exports = (socket, io) => {
 
             await room.save();
             
+            if (!player.startsWith('guest_')) {
+                await User.findOneAndUpdate({ username: player }, { status: 'online' });
+                io.emit('admin-user-status-changed');
+                console.log(`[Draw] User ${player} disconnected, status set to 'online'.`);
+            }
+
             const playersWithAvt = await attachAvatarsToPlayers(room.players);
             const state = getRoomState(code);
 

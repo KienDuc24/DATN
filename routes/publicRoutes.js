@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const Game = require('../models/Game');
-const { answerRuleQuestion } = require('../controllers/chatboxControler');
+const { answerRuleQuestion } = require('../controllers/chatbotControler');
 
 // API công khai để lấy tất cả game
 router.get('/games', async (req, res) => {

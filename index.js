@@ -11,7 +11,7 @@ const cookieParser = require('cookie-parser');
 const adminAuth = require('./middleware/adminAuth');
 const User = require('./models/User'); 
 const setupGameWatcher = require('./watchGames'); // <-- THÊM MỚI: Import watcher
-const chatboxRoutes = require('./routes/chatboxRoutes'); // <-- giữ duy nhất 1 khai báo
+const chatbotRoutes = require('./routes/chatbotRoutes'); // <-- giữ duy nhất 1 khai báo
 
 const app = express();
 const server = http.createServer(app);
@@ -38,7 +38,7 @@ try {
   app.use('/admin', require('./routes/adminAuthRoutes')); 
   app.use('/api/admin', adminAuth, require('./routes/adminRoutes')(io)); 
   app.use('/api', require('./routes/publicRoutes'));
-  // REMOVE duplicate: app.use('/api/chatbox', chatboxRoutes);
+  // REMOVE duplicate: app.use('/api/chatbot', chatbotRoutes);
   
   console.log('[index] All routes mounted successfully.');
 } catch (e) {

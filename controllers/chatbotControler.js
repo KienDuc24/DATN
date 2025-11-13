@@ -8,7 +8,7 @@ const gameRules = require('../public/game/ToD/rule.json');
 // 1. Lấy API key từ .env
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 if (!GOOGLE_API_KEY) {
-    console.warn('[ChatboxController] Thiếu GOOGLE_API_KEY trong file .env');
+    console.warn('[chatbotController] Thiếu GOOGLE_API_KEY trong file .env');
 }
 const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
 

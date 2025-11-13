@@ -178,7 +178,7 @@ module.exports = function attachSocket(server) {
         if (playerNames.length > 0) {
           await User.updateMany(
             { username: { $in: playerNames } },
-            { $push: { gameHistory: { gameId: room.game.gameId, gameName: room.game.type, playedAt: new Date() } } }
+            { $push: { playHistory: { gameId: room.game.gameId, gameName: room.game.type, playedAt: new Date() } } }
           );
           io.emit('admin-users-changed'); 
           console.log(`[History] Updated history for users: ${playerNames.join(', ')}`);

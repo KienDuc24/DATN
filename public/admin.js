@@ -278,9 +278,10 @@ function renderRoomsTable(rooms){
     const tr = document.createElement('tr');
     tr.id = `room-row-${roomId}`;
     tr.innerHTML = `
-      <td><div style="font-weight:600">${gameName}</div></td>       <td>${String(roomId)}</td>       <td>${owner}</td>       <td style="max-width:360px">${participants || '-'}</td>       <td>${status}</td>       <td style="display:flex;gap:6px">
-        <button class="icon-btn icon-delete" title="Xóa" data-id="${roomId}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
-      </td>
+      <td>${status}</td> 
+      <td style="display:flex; gap:6px; justify-content: center;">
+        <button class="icon-btn icon-delete" title="Xóa" data-id="${roomId}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -305,14 +306,13 @@ function renderGamesTable(games){
     const tr = document.createElement('tr');
     tr.id = `game-row-${id}`;
     tr.innerHTML = `
-      <td>
-        <div style="font-weight:600">${title}</div>         <div style="color:var(--muted);font-size:12px">${String(desc).slice(0,120)}</div>       </td>
-      <td>${category}</td>       <td>${players}</td>       <td style="text-align:center">
-        <input type="checkbox" class="game-feature-checkbox" data-id="${id}" ${featuredChecked} aria-label="Nổi bật"/>       </td>
-      <td style="display:flex;gap:6px">
-        <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-        <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
-      </td>
+     <td style="text-align:center; vertical-align: middle;"> 
+        <input type="checkbox" class="game-feature-checkbox" data-id="${id}" ${featuredChecked} aria-label="Nổi bật"/> 
+      </td>
+      <td style="display:flex; gap:6px; justify-content: center; vertical-align: middle;"> 
+        <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+        <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -516,45 +516,44 @@ async function onFeatureGame(e) {
 
 // +++ THÊM HÀM MỚI ĐỂ ĐỒNG BỘ GAMES.JSON +++
 async function syncGames() {
-    if (!confirm('Bạn có chắc muốn ĐỒNG BỘ (Cập nhật/Thêm mới) toàn bộ trò chơi từ tệp games.json không?\n\nHành động này sẽ thêm TẤT CẢ game vào hàng chờ "Lưu thay đổi".\n\n(Nó sẽ KHÔNG XÓA các game đang có trên database mà không có trong tệp .json)')) {
+    if (!confirm('Bạn có chắc muốn ĐỒNG BỘ (Cập nhật/Thêm mới) toàn bộ trò chơi từ tệp games.json lên Database không?\n\nHành động này sẽ được thực thi ngay lập tức.')) {
         return;
     }
 
     try {
         // 1. Lấy dữ liệu từ file games.json tĩnh
-        const resJson = await fetch('/games.json');
+        const resJson = await fetch('/games.json'); 
         if (!resJson.ok) {
             throw new Error(`Không thể tải tệp /games.json. Status: ${resJson.status}`);
         }
-        const gamesData = await resJson.json();
+        const gamesData = await resJson.json(); // Đây là mảng [ { game1 }, { game2 } ]
 
         if (!Array.isArray(gamesData) || gamesData.length === 0) {
             return alert('Tệp games.json rỗng hoặc không hợp lệ.');
         }
 
-        let addedCount = 0;
-        // 2. LOGIC: Thêm từng game vào hàng chờ 'pendingChanges'
-        for (const game of gamesData) {
-            if (!game.id) {
-                console.warn('Bỏ qua game không có ID:', game);
-                continue;
-            }
-            
-            addChange({ 
-                type: 'game', 
-                action: 'save', 
-                id: game.id, 
-                payload: game 
-            });
-            addedCount++;
+        // 2. GỌI ENDPOINT SYNC CỦA BACKEND
+        const resSync = await fetch(`${ADMIN_API}/api/admin/games/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(gamesData) // Gửi toàn bộ mảng game lên
+        });
+
+        const result = await resSync.json();
+
+        if (!resSync.ok) {
+            throw new Error(result.message || 'Lỗi từ server khi đồng bộ');
         }
 
-        alert(`Đã thêm ${addedCount} game vào hàng chờ.\n\nHãy nhấn "Lưu thay đổi" (màu xanh lá) để bắt đầu quá trình cập nhật lên database.`);
+        alert(`Đồng bộ hoàn tất!\nĐã cập nhật: ${result.updated}\nĐã tạo mới: ${result.created}`);
         
+        // 3. Tải lại dữ liệu (vì socket 'admin-games-changed' có thể chưa kịp chạy)
+        loadData();
 
     } catch (err) {
-        console.error('Lỗi khi chuẩn bị đồng bộ games:', err);
-        alert(`Đã xảy ra lỗi: ${err.message}`);
+        console.error('Lỗi khi đồng bộ games:', err);
+        alert(`Đã xảy ra lỗi khi đồng bộ: ${err.message}`);
     }
 }
 

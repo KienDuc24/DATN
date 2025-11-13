@@ -3,8 +3,8 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 
-// Import controller chatbox
-const { answerRuleQuestion } = require('../controllers/chatboxControler');
+// Import controller chatbot
+const { answerRuleQuestion } = require('../controllers/chatbotControler');
 
 // Endpoint hướng dẫn cách chơi
 router.get('/ai/get-instructions', async (req, res) => {

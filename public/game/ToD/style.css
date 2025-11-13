@@ -434,8 +434,8 @@ body {
   font-size: 24px;
 }
 
-/* Chatbox AI */
-.ai-chatbox {
+/* chatbot AI */
+.ai-chatbot {
   position: absolute;
   bottom: 80px;
   right: 20px;
@@ -448,7 +448,7 @@ body {
   overflow: hidden;
 }
 
-.ai-chatbox.hidden {
+.ai-chatbot.hidden {
   display: none;
 }
 

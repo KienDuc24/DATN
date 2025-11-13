@@ -2,7 +2,7 @@
 (() => {
   // --- 1. KẾT NỐI SOCKET VÀ LẤY THÔNG TIN ---
   const SOCKET_URL = "https://datn-socket.up.railway.app";
-  window.__CHATBOX_API_BASE__ = 'https://datn-socket.up.railway.app/api';
+  window.__chatbot_API_BASE__ = 'https://datn-socket.up.railway.app/api';
   window.__SOCKET_URL__ = SOCKET_URL;
   window.socket = window.socket || (window.io && io(SOCKET_URL, { transports: ['websocket'], secure: true }));
 
@@ -268,28 +268,28 @@
   if (typeof window.$actionBtns === 'undefined') window.$actionBtns = window.ActionBtns;
 })();
 
-// --- LOGIC CHATBOX AI (ĐƯA VÀO IIFE RIÊNG) ---
+// --- LOGIC chatbot AI (ĐƯA VÀO IIFE RIÊNG) ---
 (() => {
   const API_BASE_URL =
-    window.__CHATBOX_API_BASE__ ||
+    window.__chatbot_API_BASE__ ||
     document.body.dataset.apiBase ||
     '/api';
 
   const aiToolsIcon = document.getElementById('ai-tools-icon');
-  const aiChatbox = document.getElementById('ai-chatbox');
+  const aichatbot = document.getElementById('ai-chatbot');
   const chatInput = document.getElementById('chatInput');
   const sendChat = document.getElementById('sendChat');
   const chatMessages = document.getElementById('chatMessages');
-  const closeChatbox = document.getElementById('closeChatbox');
+  const closechatbot = document.getElementById('closechatbot');
 
-  if (!aiToolsIcon || !aiChatbox || !chatInput || !sendChat || !chatMessages || !closeChatbox) {
-      console.warn('AI Chatbox elements not found. Skipping AI chat logic.');
+  if (!aiToolsIcon || !aichatbot || !chatInput || !sendChat || !chatMessages || !closechatbot) {
+      console.warn('AI chatbot elements not found. Skipping AI chat logic.');
       return;
   }
 
-  // Hiển thị hoặc ẩn chatbox
+  // Hiển thị hoặc ẩn chatbot
   aiToolsIcon.addEventListener('click', () => {
-    aiChatbox.classList.toggle('hidden');
+    aichatbot.classList.toggle('hidden');
     // Khởi tạo tin nhắn đầu tiên nếu trống
     if (!chatMessages.children.length) {
         const initialMessage = document.createElement('div');
@@ -299,8 +299,8 @@
     }
   });
 
-  closeChatbox.addEventListener('click', () => {
-    aiChatbox.classList.add('hidden');
+  closechatbot.addEventListener('click', () => {
+    aichatbot.classList.add('hidden');
   });
 
   // Gửi câu hỏi đến API Backend (ĐÃ SỬA)
@@ -323,14 +323,14 @@
         try {
           payload = raw ? JSON.parse(raw) : {};
         } catch (parseErr) {
-          console.warn('[AI Chatbox] Không phải JSON từ', endpoint, raw);
+          console.warn('[AI chatbot] Không phải JSON từ', endpoint, raw);
           lastError = '❌ Server trả về dữ liệu không hợp lệ.';
           continue;
         }
 
         if (!response.ok) {
           lastError = payload?.error || `❌ API trả về lỗi (${response.status}).`;
-          console.warn('[AI Chatbox] API error', endpoint, response.status, payload);
+          console.warn('[AI chatbot] API error', endpoint, response.status, payload);
           continue;
         }
 
@@ -340,7 +340,7 @@
 
         lastError = '❌ Server trả về dữ liệu không hợp lệ.';
       } catch (error) {
-        console.error('[AI Chatbox] Request failed', endpoint, error);
+        console.error('[AI chatbot] Request failed', endpoint, error);
         lastError = '❌ Lỗi kết nối server.';
       }
     }
@@ -391,7 +391,7 @@
 
   // tạo danh sách base API khả dĩ và chuẩn hóa (fix: định nghĩa uniqueApiBases)
   const apiBaseCandidates = [
-    window.__CHATBOX_API_BASE__,
+    window.__chatbot_API_BASE__,
     document.body?.dataset?.apiBase,
     (window.__SOCKET_URL__ || '').replace(/\/+$/, '') ? `${(window.__SOCKET_URL__ || '').replace(/\/+$/, '')}/api` : null,
     API_BASE_URL

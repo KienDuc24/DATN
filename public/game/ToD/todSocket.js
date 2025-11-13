@@ -379,6 +379,12 @@ module.exports = (socket, io) => {
 
       await room.save();
       
+      if (!player.startsWith('guest_')) {
+                await User.findOneAndUpdate({ username: player }, { status: 'online' });
+                io.emit('admin-user-status-changed');
+                console.log(`[Draw] User ${player} disconnected, status set to 'online'.`);
+            }
+      
       // SỬA: Xóa logic cập nhật status. socketServer.js sẽ xử lý
       // (Khi socket game disconnect, socket chính (nếu có) sẽ tự động registerSocket)
       // if (!player.startsWith('guest_')) {
