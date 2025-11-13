@@ -53,7 +53,7 @@ async function answerRuleQuestion(req, res) {
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: 'models/chat-bison-001' }); // Sử dụng model hợp lệ
+        const model = genAI.getGenerativeModel({ model: 'models/gemini-1.5-pro:generateText' }); // Sử dụng model hợp lệ
         
         // Ghép prompt hệ thống và câu hỏi của người dùng
         const fullPrompt = `${systemPrompt} "${question}"`;
@@ -69,20 +69,6 @@ async function answerRuleQuestion(req, res) {
         res.status(500).json({ error: 'Có lỗi xảy ra khi hỏi AI.' });
     }
 }
-
-// 5. Danh sách các model khả dụng
-async function listAvailableModels() {
-    try {
-        const models = await genAI.listModels();
-        console.log('[ChatboxController] Danh sách model khả dụng:', models);
-    } catch (error) {
-        console.error('[ChatboxController] Lỗi khi gọi ListModels:', error.message);
-    }
-}
-
-// Gọi hàm này khi khởi động server để kiểm tra model
-listAvailableModels();
-
 // 6. Export hàm mới
 // (Bạn có thể xóa các hàm generateQuestion, getGameInstructions cũ dùng OpenAI)
 module.exports = {
