@@ -387,4 +387,14 @@
     chatInput.value = '';
     chatMessages.scrollTop = chatMessages.scrollHeight;
   });
+
+  // tạo danh sách base API khả dĩ và chuẩn hóa (fix: định nghĩa uniqueApiBases)
+  const apiBaseCandidates = [
+    window.__CHATBOX_API_BASE__,
+    document.body?.dataset?.apiBase,
+    (window.__SOCKET_URL__ || '').replace(/\/+$/, '') ? `${(window.__SOCKET_URL__ || '').replace(/\/+$/, '')}/api` : null,
+    API_BASE_URL
+  ].filter(Boolean);
+
+  const uniqueApiBases = [...new Set(apiBaseCandidates.map(b => b.replace(/\/+$/, '')))];
 })();
