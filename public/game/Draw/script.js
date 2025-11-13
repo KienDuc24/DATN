@@ -1,4 +1,4 @@
-// public/game/DrawGuess/script.js (FIX LỖI CÔNG CỤ VẼ VÀ LOGIC POPUP)
+// public/game/DrawGuess/script.js (FIX LỖI CÔNG CỤ VẼ VÀ LOGIC POPUP MỚI)
 
 (() => {
     const GAME_ID = 'DG';
@@ -161,6 +161,7 @@
         lastX = pos.x;
         lastY = pos.y;
         
+        // Dòng này sử dụng 'isEraser'
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('start', lastX, lastY, drawColor, currentSize);
         e.preventDefault();
@@ -170,6 +171,7 @@
         if (!isDrawing || currentDrawer !== playerName || !$canvas || (currentTool !== 'pen' && currentTool !== 'eraser')) return;
         
         const pos = getMousePos(e);
+        // Dòng này sử dụng 'isEraser'
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('move', pos.x, pos.y, drawColor, currentSize);
         lastX = pos.x;
@@ -263,6 +265,7 @@
              $sendGuess.disabled = false;
         } else {
              $guessInput.placeholder = 'Nhập từ khóa đoán hoặc chat...';
+             // Nếu người chơi đã đoán đúng, logic 'correct-guess' sẽ tắt input
         }
 
         if (disabled) {
@@ -461,6 +464,16 @@
         
         showRankingPopup(finalScores, true); 
     });
+    
+    // BỔ SUNG: LẮNG NGHE SỰ KIỆN RESET GAME
+    socket.on(`${GAME_ID}-game-restarted`, () => {
+        hidePopup(); // Đóng popup cho tất cả mọi người
+        
+        // Cập nhật giao diện chờ (logic 'room-update' sẽ xử lý nút Bắt đầu)
+        if ($gameStatus && currentHost !== playerName) {
+            $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+        }
+    });
 
     // --- 4. HÀM RENDER ĐIỂM SỐ ---
     function renderScores(scores, drawerName, playerList = []) {
@@ -470,7 +483,10 @@
         const safePlayerList = Array.isArray(playerList) ? playerList : [];
         
         const playerNames = safePlayerList.map(p => p.name);
-        const mergedScores = playerNames.reduce((acc, name) => ({ ...acc, [name]: scores[name] || 0 }), { ...scores });
+        // SỬA LỖI: Chỉ reset điểm khi state.scores là null/undefined (khi game mới bắt đầu)
+        const currentScores = scores || {}; 
+        
+        const mergedScores = playerNames.reduce((acc, name) => ({ ...acc, [name]: currentScores[name] || 0 }), { ...currentScores });
         const sortedPlayers = playerNames.sort((a, b) => mergedScores[b] - mergedScores[a]);
 
         sortedPlayers.forEach(name => {
@@ -527,7 +543,10 @@
         content += '<div id="popup-actions" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">';
         
         if (isFinal) {
-            content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
+            // SỬA LỖI: Chỉ Host thấy nút Chơi Lại
+            if (currentHost === playerName) {
+                content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
+            }
             content += `<button id="popup-exit" class="btn btn-danger">Thoát</button>`;
         } else {
             content += `<p>Vòng tiếp theo sẽ bắt đầu sau 5 giây...</p>`;
@@ -564,15 +583,20 @@
 
         if (isFinal) {
             // SỬA LỖI: Gắn sự kiện cho nút "Chơi Lại" (Tiếp tục)
-            document.getElementById('popup-continue').addEventListener('click', () => {
-                hidePopup(); 
-                
-                // Gửi tín hiệu yêu cầu reset game/điểm về server
-                socket.emit(`${GAME_ID}-restart-game`, { roomCode }); 
-            });
-            document.getElementById('popup-exit').addEventListener('click', () => {
-                window.location.href = '/'; 
-            });
+            const continueBtn = document.getElementById('popup-continue');
+            if (continueBtn) {
+                continueBtn.addEventListener('click', () => {
+                    // Không cần hidePopup(), server sẽ gửi tín hiệu
+                    socket.emit(`${GAME_ID}-restart-game`, { roomCode }); 
+                });
+            }
+            
+            const exitBtn = document.getElementById('popup-exit');
+            if (exitBtn) {
+                exitBtn.addEventListener('click', () => {
+                    window.location.href = '/'; 
+                });
+            }
         }
     }
     
