@@ -29,9 +29,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Mount chatbox route once under /api
-app.use('/api', chatboxRoutes);
-
 // --- 2. Khởi tạo Socket.IO và truyền 'io' vào routes ---
 const io = attachSocket(server); 
 
