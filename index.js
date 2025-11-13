@@ -33,7 +33,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 const io = attachSocket(server); 
 
 try {
-  app.use('/api/debug', require('./routes/debugRoutes'));
   app.use('/api/room', require('./routes/roomRoutes'));
   app.use('/api/auth', require('./routes/authRoutes'));
   app.use('/admin', require('./routes/adminAuthRoutes')); 
