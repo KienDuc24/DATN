@@ -5,19 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vẽ Nhanh Đoán Nhanh</title>
     <link rel="stylesheet" href="/assets/global.css"> <link rel="stylesheet" href="./style.css"> <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-
-    <style>
-        /* Tùy chỉnh nhỏ hoặc override nếu cần */
-        body {
-            /* Example: Adjust background if global.css overrides it */
-            background-image: url('../../assets/bg_camping.jpg'); 
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-        }
-    </style>
+    <link rel="icon" type="image/x-icon" href="Img/logo.png">
 </head>
 <body>
     <div class="game-container">
@@ -32,17 +20,19 @@
 
         <div class="game-main">
             <div class="canvas-section">
-                <div class="game-info-box" style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="canvas-info">
                     <span id="game-status">Đang chờ Host bắt đầu...</span>
-                    <span id="timer" style="font-size:1.5em; font-weight:bold;">90</span>
+                    <span id="timer">90</span>
                 </div>
                 <div id="word-hint" class="hidden"></div>
+                
                 <canvas id="drawingCanvas"></canvas>
+                
                 <div id="drawingTools" class="drawing-tools hidden">
                     <input type="color" id="colorPicker" value="#000000">
                     <input type="range" id="sizeSlider" min="1" max="50" value="5">
-                    <button id="eraseBtn">Eraser</button>
-                    <button id="clearBtn">Clear</button>
+                    <button id="eraseBtn">Tẩy</button>
+                    <button id="clearBtn">Xóa Canvas</button>
                 </div>
             </div>
 
@@ -51,12 +41,6 @@
                     <h3>Điểm số</h3>
                     <div id="scoreGrid">
                         </div>
-                </div>
-
-                <div id="playerList">
-                    <h3>Danh sách người chơi</h3>
-                    <ul class="player-list-ul">
-                        </ul>
                 </div>
 
                 <div class="chat-section">
