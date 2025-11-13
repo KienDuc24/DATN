@@ -65,15 +65,32 @@ async function executePendingChanges() {
         try {
             const { type, action, id, payload } = change;
             
-            // SỬA LỖI LOGIC ENDPOINT: 'game' -> 'games'
             const resourceType = (type === 'game') ? 'games' : type;
 
             let res;
             if (action === 'delete') {
                 res = await fetch(`${ADMIN_API}/api/admin/${resourceType}/${id}`, { method: 'DELETE', credentials: 'include' });
             } else if (action === 'save' || action === 'update') {
-                const method = (action === 'update' || id) ? 'PUT' : 'POST'; // Sử dụng PUT nếu là update hoặc có ID
-                const url = id ? `${ADMIN_API}/api/admin/${resourceType}/${id}` : `${ADMIN_API}/api/admin/${resourceType}`;
+                
+                // --- SỬA LỖI LOGIC HTTP METHOD TẠI ĐÂY ---
+                let method = 'PUT'; // Mặc định là PUT (cập nhật)
+                let url = `${ADMIN_API}/api/admin/${resourceType}/${id}`;
+                
+                if (action === 'save' && id) {
+                    // Nếu là SAVE (tạo mới) VÀ có ID nghiệp vụ (như Draw), ta vẫn dùng PUT (Upsert)
+                    // (Giả định Backend xử lý PUT /games/ID là Upsert)
+                    method = 'PUT'; 
+                } else if (action === 'save' && !id) {
+                    // Nếu là SAVE (tạo mới) và không có ID, ta dùng POST
+                    method = 'POST';
+                    url = `${ADMIN_API}/api/admin/${resourceType}`;
+                } else if (action === 'update') {
+                    // Nếu là Update, dùng PUT (cập nhật tài liệu hiện có)
+                    method = 'PUT';
+                    url = `${ADMIN_API}/api/admin/${resourceType}/${id}`;
+                }
+                // ------------------------------------------
+
                 res = await fetch(url, {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },

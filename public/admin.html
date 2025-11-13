@@ -132,6 +132,19 @@
           >
               <span class="icon" style="margin-right: 10px;">📈</span> Mở Dashboard Vercel Analytics
           </button>
+          <button 
+              class="btn" 
+              onclick="window.open('https://vercel.com/kines-projects/datn/speed-insights', '_blank')" 
+              style="
+                  padding: 15px 30px; 
+                  font-size: 1.2rem; 
+                  background: linear-gradient(90deg, #00b0ff, #007aff); 
+                  color: #fff;
+                  box-shadow: 0 8px 25px rgba(0, 118, 255, 0.5);
+              "
+          >
+              <span class="icon" style="margin-right: 10px;">📈</span> Mở Dashboard Vercel Speed Insights
+          </button>
 
         </div>
     </section>
@@ -207,5 +220,9 @@
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
   </script>
   <script defer src="/_vercel/insights/script.js"></script>
+  <script>
+  window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/speed-insights/script.js"></script>
 </body>
 </html>

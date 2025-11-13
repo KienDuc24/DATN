@@ -27,8 +27,11 @@ body {
     justify-content: flex-start;
     align-items: center;
     min-height: 100vh;
-    background-color: var(--bg-dark);
-}
+    background-image: url('Img/fav.png'); 
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;}
 
 /* KHU VỰC HEADER NẰM TRÊN CÙNG */
 .game-top-bar {
@@ -328,6 +331,51 @@ body {
     color: white;
     font-weight: bold;
     cursor: pointer;
+}
+
+.drawing-tools {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+}
+
+.drawing-tools input[type="color"] {
+    /* RESET MẶC ĐỊNH */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    
+    /* STYLE MỚI */
+    width: 40px; /* Kích thước nhỏ gọn */
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    overflow: hidden; 
+    
+    /* Màu nền được kiểm soát bởi input (giúp hiện màu hiện tại) */
+    background: transparent; 
+    box-shadow: 0 0 0 2px var(--text-light); /* Viền ngoài để thấy box */
+}
+
+/* Ẩn hộp swatch màu mặc định của Webkit (Chrome/Edge) */
+.drawing-tools input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.drawing-tools input[type="color"]::-webkit-color-swatch {
+    border: none; /* Bỏ viền xung quanh ô màu */
+    border-radius: 5px;
+}
+
+/* Ẩn hộp swatch màu mặc định của Mozilla (Firefox) */
+.drawing-tools input[type="color"]::-moz-color-swatch {
+    border: none;
+    border-radius: 5px;
 }
 
 /* Responsive adjustments */

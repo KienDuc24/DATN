@@ -1,4 +1,4 @@
-// public/game/DrawGuess/script.js (ĐÃ CẢI TIẾN TOÀN DIỆN VÀ FIX LỖI DOM NULL)
+// public/game/DrawGuess/script.js (ĐÃ FIX LỖI handleDrawStart is not defined)
 
 (() => {
     const GAME_ID = 'DG';
@@ -46,10 +46,8 @@
     let lastX = 0;
     let lastY = 0;
     
-    // FIX LỖI: Kiểm tra $canvas trước khi lấy context
     const ctx = $canvas ? $canvas.getContext('2d') : null;
 
-    // Khởi tạo Canvas (đặt kích thước gốc)
     if ($canvas) {
         $canvas.width = 800; 
         $canvas.height = 600; 
@@ -63,44 +61,10 @@
     }
     clearCanvas();
 
-    // --- LOGIC THOÁT PHÒNG ---
-    if ($leaveRoomBtn) {
-        $leaveRoomBtn.addEventListener('click', () => {
-            if (confirm('Bạn có chắc chắn muốn rời khỏi phòng này không?')) {
-                // Sử dụng sự kiện 'leaveGame' để server dọn dẹp trạng thái game
-                socket.emit('leaveGame', { roomCode, player: playerName });
-                window.location.href = '/'; 
-            }
-        });
-    }
-
-    // --- 1. LOGIC VẼ (Giữ nguyên, bổ sung kiểm tra ctx) ---
-    function emitDraw(type, x, y, color = currentColor, size = currentSize) {
-        if (currentDrawer !== playerName || !ctx) return; 
-
-        const data = { type, x, y, color, size };
-        socket.emit(`${GAME_ID}-draw`, { roomCode, data });
-        draw(data);
-    }
-
-    function draw({ type, x, y, color, size }) {
-        if (!ctx) return; 
-        if (type === 'start') {
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.strokeStyle = color;
-            ctx.lineWidth = size;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-        } else if (type === 'move') {
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-        }
-    }
+    // --- LOGIC VẼ (KHAI BÁO HÀM LÊN TRÊN CÙNG) ---
     
-    function getMousePos(e) { /* ... (Giữ nguyên) ... */
+    function getMousePos(e) {
+        if (!$canvas) return { x: 0, y: 0 };
         const rect = $canvas.getBoundingClientRect();
         let clientX, clientY;
         
@@ -120,10 +84,71 @@
             y: (clientY - rect.top) * scaleY
         };
     }
+    
+    function draw({ type, x, y, color, size }) {
+        if (!ctx) return; 
+        if (type === 'start') {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        } else if (type === 'move') {
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+    }
+    
+    function emitDraw(type, x, y, color = currentColor, size = currentSize) {
+        if (currentDrawer !== playerName || !ctx) return; 
 
-    // ... (handleDrawStart, handleDrawMove, handleDrawEnd và Event Listeners giữ nguyên) ...
+        const data = { type, x, y, color, size };
+        socket.emit(`${GAME_ID}-draw`, { roomCode, data });
+        draw(data);
+    }
+    
+    // HÀM XỬ LÝ SỰ KIỆN VẼ CHÍNH
+    function handleDrawStart(e) { 
+        if (currentDrawer !== playerName || !$canvas) return; 
+        isDrawing = true;
+        const pos = getMousePos(e);
+        lastX = pos.x;
+        lastY = pos.y;
+        
+        const drawColor = isEraser ? 'white' : currentColor;
+        emitDraw('start', lastX, lastY, drawColor, currentSize);
+        e.preventDefault();
+    }
 
-    // Gắn sự kiện vẽ (Chỉ gắn nếu Canvas tồn tại)
+    function handleDrawMove(e) { 
+        if (!isDrawing || currentDrawer !== playerName || !$canvas) return;
+        const pos = getMousePos(e);
+        const drawColor = isEraser ? 'white' : currentColor;
+        emitDraw('move', pos.x, pos.y, drawColor, currentSize);
+        lastX = pos.x;
+        lastY = pos.y;
+        e.preventDefault();
+    }
+
+    function handleDrawEnd() { 
+        if (currentDrawer !== playerName) return;
+        isDrawing = false;
+    }
+
+    // --- LOGIC THOÁT PHÒNG ---
+    if ($leaveRoomBtn) {
+        $leaveRoomBtn.addEventListener('click', () => {
+            if (confirm('Bạn có chắc chắn muốn rời khỏi phòng này không?')) {
+                socket.emit('leaveGame', { roomCode, player: playerName });
+                window.location.href = '/'; 
+            }
+        });
+    }
+
+    // GẮN EVENT LISTENERS CHO VẼ (SAU KHI CÁC HÀM ĐÃ ĐƯỢC KHAI BÁO)
     if ($canvas) {
         $canvas.addEventListener('mousedown', handleDrawStart);
         $canvas.addEventListener('mousemove', handleDrawMove);
@@ -152,7 +177,7 @@
 
     if ($eraseBtn) $eraseBtn.addEventListener('click', () => {
         isEraser = true;
-        $eraseBtn.classList.add('active');
+        if ($eraseBtn) $eraseBtn.classList.add('active');
     });
     
     if ($colorPicker) $colorPicker.addEventListener('click', () => {
@@ -163,7 +188,7 @@
 
     // --- 2. LOGIC CHAT & ĐOÁN (Đã sửa lỗi chat) ---
     function renderChatMessage(player, message, type = 'msg-guess') { 
-        if (!$chatMessages) return; // FIX LỖI: Kiểm tra tồn tại
+        if (!$chatMessages) return; 
         const el = document.createElement('div');
         el.className = `chat-message ${type}`;
         el.innerHTML = `<strong>${player}:</strong> ${message}`;
@@ -221,7 +246,6 @@
     }
 
     socket.on(`${GAME_ID}-room-update`, ({ state, room }) => {
-        // FIX LỖI: Tất cả các truy cập DOM đều được bao quanh bởi logic kiểm tra
         
         currentHost = room.host;
         roomPlayers = room.players;
@@ -269,7 +293,6 @@
             if (currentHost !== playerName && $gameStatus) {
                 $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
             } else if (currentHost === playerName && $gameStatus) {
-                 // Đảm bảo Host không thấy chữ chờ khi nút hiện
                  $gameStatus.textContent = ''; 
                  if (startBtn) $gameStatus.appendChild(startBtn);
             }
