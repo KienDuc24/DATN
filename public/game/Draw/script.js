@@ -232,72 +232,76 @@
     }
 
     socket.on(`${GAME_ID}-room-update`, ({ state, room }) => {
-        // --- DEBUG 3: KIỂM TRA TRẠNG THÁI HOST/PLAYER VÀ ĐIỀU KIỆN NÚT BẮT ĐẦU ---
-        console.log(`[${GAME_ID}][DEBUG ROOM] Data nhận về: Host=${room.host}, Drawer=${state.drawer}`);
-        console.log(`[${GAME_ID}][DEBUG ROOM] Điều kiện Host: (Host === Player) => ${room.host === playerName}`);
-        console.log(`[${GAME_ID}][DEBUG ROOM] Điều kiện Game: (!Drawer) => ${!state.drawer}`);
-        // -------------------------------------------------------------------------
+        try{
+            // --- DEBUG 3: KIỂM TRA TRẠNG THÁI HOST/PLAYER VÀ ĐIỀU KIỆN NÚT BẮT ĐẦU ---
+            console.log(`[${GAME_ID}][DEBUG ROOM] Data nhận về: Host=${room.host}, Drawer=${state.drawer}`);
+            console.log(`[${GAME_ID}][DEBUG ROOM] Điều kiện Host: (Host === Player) => ${room.host === playerName}`);
+            console.log(`[${GAME_ID}][DEBUG ROOM] Điều kiện Game: (!Drawer) => ${!state.drawer}`);
+            // -------------------------------------------------------------------------
 
-        currentHost = room.host;
-        roomPlayers = room.players; // Lưu danh sách players
-        
-        if ($room) $room.textContent = room.code || '—';
-        if ($playersCount) $playersCount.textContent = roomPlayers.length;
-        
-        // Render điểm số (dùng danh sách player)
-        renderScores(state.scores, state.drawer, roomPlayers);
-        
-        // Render danh sách người chơi
-        renderPlayerList(roomPlayers);
-        
-        // --- XỬ LÝ NÚT BẮT ĐẦU GAME ---
-        let startBtn = document.getElementById('startGameBtn');
-        const gameNotRunning = !state.drawer;
-        
-        // CẬP NHẬT TRẠNG THÁI CHUNG HIỂN THỊ TÊN HOST
-        const hostEl = document.getElementById('hostDisplay');
-        if (hostEl) hostEl.remove(); // Xóa cũ nếu có
+            currentHost = room.host;
+            roomPlayers = room.players;
+            
+            if ($room) $room.textContent = room.code || '—';
+            if ($playersCount) $playersCount.textContent = roomPlayers.length;
+            
+            // Render điểm số & danh sách người chơi
+            renderScores(state.scores, state.drawer, roomPlayers);
+            renderPlayerList(roomPlayers);
+            
+            // CẬP NHẬT HIỂN THỊ TÊN HOST RÕ RÀNG TRONG ROOM INFO (Giữ nguyên)
+            const hostEl = document.getElementById('hostDisplay');
+            if (hostEl) hostEl.remove();
 
-        const newHostEl = document.createElement('span');
-        newHostEl.id = 'hostDisplay';
-        newHostEl.style.fontWeight = 'bold';
-        newHostEl.style.color = 'var(--accent-yellow)';
-        newHostEl.textContent = `Host: ${currentHost}`;
+            const newHostEl = document.createElement('span');
+            newHostEl.id = 'hostDisplay';
+            newHostEl.style.fontWeight = 'bold';
+            newHostEl.style.color = 'var(--accent-yellow)';
+            newHostEl.textContent = `Host: ${currentHost}`;
 
-        const roomInfo = document.querySelector('.room-info');
-        if (roomInfo) {
-             // Chèn tên Host vào khu vực room-info
-             roomInfo.appendChild(newHostEl);
-        }
-        
-        if (currentHost === playerName && gameNotRunning) {
-             if (!startBtn) {
-                startBtn = document.createElement('button');
-                startBtn.id = 'startGameBtn';
-                startBtn.className = 'btn btn-primary';
-                startBtn.textContent = '🚀 Bắt đầu Vẽ Đoán';
-                startBtn.addEventListener('click', () => {
-                    // Thêm console.log khi nút được click
-                    console.log(`[${GAME_ID}][DEBUG START] Host ${playerName} click START.`);
-                    socket.emit(`${GAME_ID}-start-game`, { roomCode });
-                });
-                
-                if ($gameStatus) {
-                    // Dùng innerHTML để xóa nội dung cũ (như 'Đang chờ Host bắt đầu...')
-                    $gameStatus.innerHTML = 'Nhấn'; 
-                    $gameStatus.appendChild(startBtn); 
-                    $gameStatus.insertAdjacentText('beforeend', ' để chơi!');
+            const roomInfo = document.querySelector('.room-info');
+            if (roomInfo) {
+                roomInfo.appendChild(newHostEl);
+            }
+            
+            // --- XỬ LÝ NÚT BẮT ĐẦU GAME (TỐI ƯU) ---
+            let startBtn = document.getElementById('startGameBtn');
+            const gameNotRunning = !state.drawer;
+            
+            if (currentHost === playerName && gameNotRunning) {
+                // Host và game chưa chạy: Cần hiển thị nút
+                if (!startBtn) {
+                    // TẠO VÀ CHÈN NÚT VÀO DOM LẦN ĐẦU
+                    startBtn = document.createElement('button');
+                    startBtn.id = 'startGameBtn';
+                    startBtn.className = 'btn btn-primary';
+                    startBtn.textContent = '🚀 Bắt đầu Vẽ Đoán';
+                    startBtn.addEventListener('click', () => {
+                        console.log(`[${GAME_ID}][DEBUG START] Host ${playerName} click START.`);
+                        socket.emit(`${GAME_ID}-start-game`, { roomCode });
+                    });
+                    
+                    if ($gameStatus) {
+                        $gameStatus.innerHTML = 'Nhấn'; 
+                        $gameStatus.appendChild(startBtn); 
+                        $gameStatus.insertAdjacentText('beforeend', ' để chơi!');
+                    }
                 }
-             }
-             startBtn.style.display = 'inline-block';
-             disableGuessInput(true); // Tắt đoán khi chờ
-        } else if(startBtn) {
-            startBtn.style.display = 'none';
-        }
-        
-        if (gameNotRunning && currentHost !== playerName) {
-            $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
-            disableGuessInput(true);
+                
+                // HIỂN THỊ NÚT
+                startBtn.style.display = 'inline-block';
+                disableGuessInput(true);
+            } else if(startBtn) {
+                // KHÔNG PHẢI HOST HOẶC GAME ĐÃ CHẠY: ẨN NÚT
+                startBtn.style.display = 'none';
+            }
+            
+            if (gameNotRunning && currentHost !== playerName) {
+                $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+                disableGuessInput(true);
+            }
+        } catch (e) {
+        console.error(`[${GAME_ID}] Lỗi xử lý ROOM UPDATE:`, e);
         }
     });
 
