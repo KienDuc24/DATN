@@ -1,4 +1,4 @@
-// public/game/DrawGuess/script.js (FIX LOGIC POPUP, BỎ NÚT THOÁT, FIX RESIZE)
+// public/game/DrawGuess/script.js (FIX LỖI handleDrawStart VÀ TẤT CẢ LOGIC)
 
 (() => {
     const GAME_ID = 'DG';
@@ -36,7 +36,6 @@
     const $penTool = document.getElementById('penTool');
     const $fillTool = document.getElementById('fillTool');
     const $colorPalette = document.getElementById('colorPalette'); 
-    // BỎ: $leaveRoomBtn
 
     let currentHost = null;
     let currentDrawer = null;
@@ -50,7 +49,6 @@
     
     const ctx = $canvas ? $canvas.getContext('2d') : null;
     
-    // SỬA LỖI RESIZE: Đặt kích thước pixel (context) của canvas
     if ($canvas) {
         $canvas.width = $canvas.offsetWidth;
         $canvas.height = $canvas.offsetHeight;
@@ -65,6 +63,7 @@
     clearCanvas();
 
     // --- LOGIC VẼ (KHAI BÁO HÀM LÊN TRÊN CÙNG) ---
+    
     function getMousePos(e) {
         if (!$canvas) return { x: 0, y: 0 };
         const rect = $canvas.getBoundingClientRect();
@@ -78,7 +77,6 @@
             clientY = e.clientY;
         }
 
-        // Tính toán tỷ lệ scale
         const scaleX = $canvas.width / rect.width;
         const scaleY = $canvas.height / rect.height;
         
@@ -426,162 +424,7 @@
         
         renderScores(scores, null, roomPlayers);
         disableGuessInput(true);
-        
-        // Hiển thị Pop-up xếp hạng (false = không phải cuối game, KHÔNG CÓ NÚT)
-        showRankingPopup(scores, false); 
-        
-        setTimeout(() => {
-            hidePopup(); // Tự động đóng popup
-            
-            const startBtn = document.getElementById('startGameBtn');
-            if (startBtn && currentHost === playerName) {
-                 if ($gameStatus) $gameStatus.textContent = '';
-                 if ($gameStatus) $gameStatus.appendChild(startBtn); 
-                 startBtn.style.display = 'inline-block';
-            } else if (currentHost !== playerName && $gameStatus) {
-                $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
-            }
-        }, 5000); // Đợi 5 giây
-    });
-    
-    // SỬA LỖI: LOGIC POPUP KẾT THÚC GAME
-    socket.on(`${GAME_ID}-game-over`, ({ finalScores }) => {
-        if ($gameStatus) $gameStatus.textContent = '🏆 TRÒ CHƠI KẾT THÚC!';
-        
-        disableGuessInput(true);
-        if ($drawingTools) $drawingTools.classList.add('hidden');
-        
-        // Hiển thị Pop-up xếp hạng cuối cùng (true = cuối game, CÓ NÚT)
-        showRankingPopup(finalScores, true); 
-    });
 
-    socket.on(`${GAME_ID}-room-update`, ({ state, room }) => {
-        
-        currentHost = room.host;
-        roomPlayers = room.players;
-        
-        if ($room) $room.textContent = room.code || '—';
-        if ($playersCount) $playersCount.textContent = roomPlayers.length;
-        
-        renderScores(state.scores, state.drawer, roomPlayers);
-        
-        let startBtn = document.getElementById('startGameBtn');
-        const gameNotRunning = !state.drawer;
-        
-        if (!startBtn) {
-            startBtn = document.createElement('button');
-            startBtn.id = 'startGameBtn';
-            startBtn.className = 'btn start-game-btn'; 
-            startBtn.textContent = '🚀 BẮT ĐẦU VẼ ĐOÁN';
-            startBtn.addEventListener('click', () => {
-                socket.emit(`${GAME_ID}-start-game`, { roomCode });
-            });
-            if ($gameStatus) {
-                $gameStatus.appendChild(startBtn);
-            }
-        }
-        
-        if (startBtn) {
-            if (currentHost === playerName && gameNotRunning) {
-                startBtn.style.display = 'inline-block';
-                if ($gameStatus) $gameStatus.textContent = '';
-                if ($gameStatus) $gameStatus.appendChild(startBtn); 
-            } else {
-                startBtn.style.display = 'none';
-            }
-        }
-
-        if (gameNotRunning) {
-            disableGuessInput(true); 
-            if ($drawingTools) $drawingTools.classList.add('hidden');
-            if ($wordHint) $wordHint.classList.add('hidden');
-
-            if (currentHost !== playerName && $gameStatus) {
-                $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
-            } else if (currentHost === playerName && $gameStatus) {
-                 $gameStatus.textContent = ''; 
-                 if (startBtn) $gameStatus.appendChild(startBtn);
-            }
-        }
-    });
-
-    socket.on(`${GAME_ID}-start-round`, ({ drawer, scores, round, wordHint }) => {
-        currentDrawer = drawer;
-        clearCanvas();
-        
-        if ($drawingTools) $drawingTools.classList.toggle('hidden', currentDrawer !== playerName);
-
-        if ($gameStatus) $gameStatus.textContent = `Vòng ${round}: ${drawer} đang vẽ...`;
-        
-        if ($hintText) $hintText.textContent = '_ '.repeat(wordHint).trim();
-        if ($wordHint) $wordHint.classList.remove('hidden');
-        
-        renderScores(scores, drawer, roomPlayers);
-        renderChatMessage('Hệ thống', `Vòng ${round} bắt đầu! ${drawer} đang vẽ.`, 'msg-system');
-        
-        disableGuessInput(currentDrawer === playerName);
-    });
-    
-    socket.on(`${GAME_ID}-secret-word`, ({ word }) => {
-        if ($gameStatus) $gameStatus.textContent = `BẠN ĐANG VẼ: ${word}`;
-        if ($wordHint) $wordHint.classList.remove('hidden');
-        if ($hintText) $hintText.textContent = word; 
-    });
-
-    socket.on(`${GAME_ID}-drawing`, (data) => {
-        if (currentDrawer !== playerName) {
-            draw(data);
-        }
-    });
-    
-    socket.on(`${GAME_ID}-fill-canvas`, ({ color }) => {
-        if (currentDrawer !== playerName && ctx) {
-            ctx.fillStyle = color;
-            ctx.fillRect(0, 0, $canvas.width, $canvas.height);
-        }
-    });
-    
-    socket.on(`${GAME_ID}-clear-canvas`, () => {
-        clearCanvas();
-    });
-
-    socket.on(`${GAME_ID}-timer`, ({ time }) => {
-        if ($timer) $timer.textContent = time;
-    });
-
-    socket.on(`${GAME_ID}-chat-message`, ({ player, message }) => {
-        const type = player === currentDrawer ? 'msg-drawer' : 'msg-guess';
-        renderChatMessage(player, message, type);
-    });
-
-    socket.on(`${GAME_ID}-correct-guess`, ({ player, scores, time }) => {
-        const bonus = time || 0;
-        renderChatMessage('Hệ thống', `${player} đã đoán đúng! 🎉 (+${50 + bonus} điểm)`, 'msg-correct');
-        
-        const playerRow = document.querySelector(`.score-row.you`);
-        if (player === playerName && playerRow) {
-            playerRow.classList.add('flash-correct');
-            setTimeout(() => { playerRow.classList.remove('flash-correct'); }, 1500);
-        }
-        
-        renderScores(scores, currentDrawer, roomPlayers);
-        
-        if (player === playerName) {
-            disableGuessInput(true);
-            if ($guessInput) $guessInput.placeholder = 'Bạn đã đoán đúng!';
-        }
-    });
-
-    // SỬA LỖI: LOGIC POPUP KẾT THÚC VÒNG
-    socket.on(`${GAME_ID}-end-round`, ({ word, scores, drawer, guessed }) => {
-        currentDrawer = null;
-        if ($drawingTools) $drawingTools.classList.add('hidden'); 
-        if ($gameStatus) $gameStatus.textContent = `Vòng kết thúc! Từ khóa là: ${word}`;
-        if ($wordHint) $wordHint.classList.add('hidden'); 
-        
-        renderScores(scores, null, roomPlayers);
-        disableGuessInput(true);
-        
         // Hiển thị Pop-up xếp hạng (false = không phải cuối game, KHÔNG CÓ NÚT)
         showRankingPopup(scores, false); 
         
@@ -687,23 +530,27 @@
         modal.innerHTML = `<div class="modal-content">${content}</div>`;
         document.body.appendChild(modal);
         
-        // Thêm CSS cho modal (Nên chuyển vào style.css)
-        const style = document.createElement('style');
-        style.innerHTML = `
-            .modal-overlay {
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0, 0, 0, 0.8); z-index: 1000;
-                display: flex; justify-content: center; align-items: center;
-                backdrop-filter: blur(5px);
-            }
-            .modal-content {
-                background: var(--card-bg); padding: 30px; border-radius: var(--border-radius);
-                box-shadow: var(--shadow-base); text-align: center; max-width: 90%;
-            }
-            .btn-danger { background-color: var(--text-accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
-            .btn-primary { background-color: var(--accent-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
-        `;
-        document.head.appendChild(style);
+        // Thêm CSS cho modal
+        const styleId = 'modal-styles';
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.innerHTML = `
+                .modal-overlay {
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    background: rgba(0, 0, 0, 0.8); z-index: 1000;
+                    display: flex; justify-content: center; align-items: center;
+                    backdrop-filter: blur(5px);
+                }
+                .modal-content {
+                    background: var(--card-bg); padding: 30px; border-radius: var(--border-radius);
+                    box-shadow: var(--shadow-base); text-align: center; max-width: 90%;
+                }
+                .btn-danger { background-color: var(--text-accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+                .btn-primary { background-color: var(--accent-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+            `;
+            document.head.appendChild(style);
+        }
 
         if (isFinal) {
             document.getElementById('popup-continue').addEventListener('click', () => {

@@ -1,4 +1,4 @@
-/* public/game/DrawGuess/style.css (FIX LỖI RESIZE CANVAS VÀ BỎ NÚT THOÁT) */
+/* public/game/DrawGuess/style.css (FIX LỖI CUỘN CHAT VÀ RESIZE) */
 
 @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600;700&display=swap');
 
@@ -46,7 +46,7 @@ body {
     color: var(--accent-yellow);
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
-.btn-home { /* Giữ lại style cho nút Trang chủ */
+.btn-home { 
     background-color: rgba(44, 62, 80, 0.7);
     color: var(--text-light);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -61,7 +61,7 @@ body {
 .room-actions { 
     display: flex; 
     gap: 10px;
-    min-width: 110px; /* Giữ không gian (cho nút Trang chủ) */
+    min-width: 110px; 
 }
 
 
@@ -127,7 +127,6 @@ body {
     color: var(--accent-green);
     flex-grow: 1;
 }
-/* Style cho nút Bắt đầu (được tạo bởi JS) */
 .btn.start-game-btn {
     background-color: var(--accent-green) !important;
     color: white !important;
@@ -163,8 +162,6 @@ body {
     width: 100%;
     flex-grow: 1; 
     height: auto; 
-    /* SỬA LỖI RESIZE: Bỏ aspect-ratio */
-    /* aspect-ratio: 4/3; */
     max-height: 600px; 
     cursor: crosshair;
 }
@@ -352,10 +349,14 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    /* FIX LỖI: Thêm overflow: hidden để ngăn con làm tràn */
+    overflow: hidden; 
 }
 #chatMessages {
     flex-grow: 1;
     min-height: 150px;
+    /* SỬA LỖI: Thêm max-height để cuộn */
+    max-height: 250px; 
     overflow-y: auto;
     background-color: var(--bg-medium);
     padding: 10px;
