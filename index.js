@@ -11,7 +11,7 @@ const cookieParser = require('cookie-parser');
 const adminAuth = require('./middleware/adminAuth');
 const User = require('./models/User'); 
 const setupGameWatcher = require('./watchGames'); // <-- THÊM MỚI: Import watcher
-const chatboxRoutes = require('./routes/chatboxRoutes');
+const chatboxRoutes = require('./routes/chatboxRoutes'); // <-- giữ duy nhất 1 khai báo
 
 const app = express();
 const server = http.createServer(app);
@@ -29,6 +29,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Mount chatbox route once under /api
+app.use('/api', chatboxRoutes);
+
 // --- 2. Khởi tạo Socket.IO và truyền 'io' vào routes ---
 const io = attachSocket(server); 
 
@@ -38,7 +41,7 @@ try {
   app.use('/admin', require('./routes/adminAuthRoutes')); 
   app.use('/api/admin', adminAuth, require('./routes/adminRoutes')(io)); 
   app.use('/api', require('./routes/publicRoutes'));
-  app.use('/api/chatbox', chatboxRoutes); // <-- THÊM MỚI: Mount chatbox routes
+  // REMOVE duplicate: app.use('/api/chatbox', chatboxRoutes);
   
   console.log('[index] All routes mounted successfully.');
 } catch (e) {

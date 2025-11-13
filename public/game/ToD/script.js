@@ -2,6 +2,7 @@
 (() => {
   // --- 1. KẾT NỐI SOCKET VÀ LẤY THÔNG TIN ---
   const SOCKET_URL = "https://datn-socket.up.railway.app";
+  window.__CHATBOX_API_BASE__ = 'https://datn-socket.up.railway.app/api';
   window.__SOCKET_URL__ = SOCKET_URL;
   window.socket = window.socket || (window.io && io(SOCKET_URL, { transports: ['websocket'], secure: true }));
 
