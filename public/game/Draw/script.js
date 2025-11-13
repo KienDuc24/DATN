@@ -1,8 +1,8 @@
-// public/game/DrawGuess/script.js (FIX LỖI isEraser is not defined)
+// public/game/DrawGuess/script.js (FIX LỖI CÔNG CỤ VẼ VÀ LOGIC POPUP)
 
 (() => {
     const GAME_ID = 'DG';
-    const SOCKET_URL = "https://datn-socket.up.railway.app"; // Đảm bảo URL này là chính xác
+    const SOCKET_URL = "https://datn-socket.up.railway.app";
     window.socket = window.socket || (window.io && io(SOCKET_URL, { transports: ['websocket'], secure: true }));
 
     const url = new URL(window.location.href);
@@ -116,13 +116,20 @@
     
     function setActiveTool(tool) {
         currentTool = tool;
-        isEraser = (tool === 'eraser'); // Hàm này gán giá trị
+        isEraser = (tool === 'eraser'); // Gán isEraser tại đây
         
         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
         if (activeBtn) activeBtn.classList.add('active');
 
-        if ($canvas) $canvas.style.cursor = (tool === 'pen' || tool === 'eraser') ? 'crosshair' : 'pointer';
+        // Cập nhật con trỏ chuột
+        if ($canvas) {
+            if (tool === 'fill') {
+                $canvas.style.cursor = 'pointer'; 
+            } else if (tool === 'pen' || tool === 'eraser') {
+                $canvas.style.cursor = 'crosshair';
+            }
+        }
     }
 
     // Xử lý ĐỔ MÀU
@@ -146,22 +153,23 @@
     
     // HÀM XỬ LÝ SỰ KIỆN VẼ CHÍNH
     function handleDrawStart(e) { 
-        if (currentDrawer !== playerName || !$canvas || currentTool === 'fill') return; 
+        // SỬA LỖI: Chỉ vẽ khi là 'pen' hoặc 'eraser'
+        if (currentDrawer !== playerName || !$canvas || (currentTool !== 'pen' && currentTool !== 'eraser')) return; 
+        
         isDrawing = true;
         const pos = getMousePos(e);
         lastX = pos.x;
         lastY = pos.y;
         
-        // Dòng này sử dụng 'isEraser'
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('start', lastX, lastY, drawColor, currentSize);
         e.preventDefault();
     }
 
     function handleDrawMove(e) { 
-        if (!isDrawing || currentDrawer !== playerName || !$canvas || currentTool === 'fill') return;
+        if (!isDrawing || currentDrawer !== playerName || !$canvas || (currentTool !== 'pen' && currentTool !== 'eraser')) return;
+        
         const pos = getMousePos(e);
-        // Dòng này sử dụng 'isEraser'
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('move', pos.x, pos.y, drawColor, currentSize);
         lastX = pos.x;
@@ -412,6 +420,7 @@
         }
     });
 
+    // SỬA LỖI: LOGIC POPUP KẾT THÚC VÒNG (Bỏ popup)
     socket.on(`${GAME_ID}-end-round`, ({ word, scores, drawer, guessed }) => {
         currentDrawer = null;
         if ($drawingTools) $drawingTools.classList.add('hidden'); 
@@ -427,10 +436,11 @@
         renderScores(scores, null, roomPlayers);
         disableGuessInput(true);
 
-        showRankingPopup(scores, false); 
+        // BỎ HIỂN THỊ POPUP KHI KẾT THÚC VÒNG
+        // showRankingPopup(scores, false); 
         
         setTimeout(() => {
-            hidePopup();
+            // hidePopup(); // Không cần nữa
             
             const startBtn = document.getElementById('startGameBtn');
             if (startBtn && currentHost === playerName) {
@@ -440,7 +450,7 @@
             } else if (currentHost !== playerName && $gameStatus) {
                 $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
             }
-        }, 5000); 
+        }, 5000); // Đợi 5 giây
     });
     
     socket.on(`${GAME_ID}-game-over`, ({ finalScores }) => {
@@ -529,7 +539,8 @@
         modal.className = 'modal-overlay';
         modal.innerHTML = `<div class="modal-content">${content}</div>`;
         document.body.appendChild(modal);
-        
+
+        // Thêm CSS cho modal
         const styleId = 'modal-styles';
         if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
@@ -552,17 +563,12 @@
         }
 
         if (isFinal) {
+            // SỬA LỖI: Gắn sự kiện cho nút "Chơi Lại" (Tiếp tục)
             document.getElementById('popup-continue').addEventListener('click', () => {
                 hidePopup(); 
                 
-                const startBtn = document.getElementById('startGameBtn');
-                if (startBtn && currentHost === playerName) {
-                     if ($gameStatus) $gameStatus.textContent = '';
-                     if ($gameStatus) $gameStatus.appendChild(startBtn); 
-                     startBtn.style.display = 'inline-block';
-                } else if (currentHost !== playerName && $gameStatus) {
-                    $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
-                }
+                // Gửi tín hiệu yêu cầu reset game/điểm về server
+                socket.emit(`${GAME_ID}-restart-game`, { roomCode }); 
             });
             document.getElementById('popup-exit').addEventListener('click', () => {
                 window.location.href = '/'; 

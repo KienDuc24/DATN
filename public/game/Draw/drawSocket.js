@@ -115,11 +115,10 @@ async function endRound(io, roomCode, guessed) {
     if (state.interval) clearInterval(state.interval);
 
     const room = await Room.findOne({ code: roomCode }).lean();
-    if (!room) return; // Thêm kiểm tra
+    if (!room) return; 
     const players = getPlayersFromRoom(room);
     const totalGuessers = state.guesses.size;
     
-    // TÍNH ĐIỂM HỌA SĨ
     if (totalGuessers > 0) {
         const drawerScore = 100 + (totalGuessers * 5);
         updateScores(state, state.drawer, drawerScore);
@@ -131,22 +130,19 @@ async function endRound(io, roomCode, guessed) {
         drawer: state.drawer,
         guessed: guessed
     });
-    // ----------------------------------------------------
-    // LOGIC KẾT THÚC VÒNG GAME VÀ CHUYỂN LƯỢT
-    // ----------------------------------------------------
+
     const maxTotalRounds = await getMaxRounds(roomCode);
     state.currentIndex++;
     
-    if (state.currentIndex > maxTotalRounds) {
+    if (state.currentIndex >= maxTotalRounds) { 
         // KẾT THÚC GAME
         io.to(roomCode).emit(`${GAME_ID}-game-over`, { finalScores: state.scores });
-        state.scores = {};
-        state.currentIndex = 0;
-        state.drawer = null;
-        return;
+        
+        // KHÔNG RESET ĐIỂM Ở ĐÂY. Chờ Host bấm "Chơi Lại".
+        state.drawer = null; // Đánh dấu game đã kết thúc
+        return; 
     }
     
-    // Chuyển sang lượt tiếp theo
     setTimeout(() => {
         startRound(io, roomCode);
     }, 5000); 
@@ -347,6 +343,34 @@ module.exports = (socket, io) => {
 
         } catch (e) {
             console.error(`[${GAME_ID}] Lỗi xử lý disconnect của ${player} trong phòng ${code}:`, e);
+        }
+    });
+    // --- 6. BỔ SUNG: LOGIC CHƠI LẠI (RESET ĐIỂM) ---
+    socket.on(`${GAME_ID}-restart-game`, async ({ roomCode }) => {
+        const state = getRoomState(roomCode);
+        const room = await Room.findOne({ code: roomCode });
+        const playerInfo = gameSocketMap.get(socket.id);
+
+        // Chỉ Host mới được quyền reset game
+        if (room && playerInfo && room.host === playerInfo.player) {
+            
+            // RESET ĐIỂM VÀ TRẠNG THÁI
+            state.scores = {};
+            state.currentIndex = 0;
+            state.drawer = null;
+            state.guesses = new Set();
+            state.currentWord = null;
+            if (state.interval) clearInterval(state.interval);
+            
+            console.log(`[${GAME_ID}] Game ${roomCode} được Host reset.`);
+
+            // Gửi trạng thái đã reset về cho mọi người
+            // Client (script.js) sẽ nhận 'room-update' và hiển thị lại nút "Bắt đầu Game" cho Host
+            const playersWithAvt = await attachAvatarsToPlayers(room.players);
+            io.to(roomCode).emit(`${GAME_ID}-room-update`, { 
+                state: getRoomState(roomCode), 
+                room: { ...room.toObject(), players: playersWithAvt } // Gửi lại full room info
+            });
         }
     });
 };
