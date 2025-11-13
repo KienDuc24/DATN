@@ -1,4 +1,4 @@
-// index.js
+// index.js (ĐÃ SỬA ĐỔI)
 
 require('dotenv').config();
 const mongoose = require('mongoose');
@@ -9,7 +9,8 @@ const path = require('path');
 const attachSocket = require('./socketServer');
 const cookieParser = require('cookie-parser');
 const adminAuth = require('./middleware/adminAuth');
-const User = require('./models/User'); // Import User model
+const User = require('./models/User'); 
+const setupGameWatcher = require('./watchGames'); // <-- THÊM MỚI: Import watcher
 
 const app = express();
 const server = http.createServer(app);
@@ -28,7 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- 2. Khởi tạo Socket.IO và truyền 'io' vào routes ---
-const io = attachSocket(server); // Lấy instance 'io'
+const io = attachSocket(server); 
 
 try {
   app.use('/api/debug', require('./routes/debugRoutes'));
@@ -43,7 +44,7 @@ try {
   console.error('[index] Error mounting routes:', e.message);
 }
 
-// --- 3. Các Route Trang Admin ---
+// --- 3. Các Route Trang Admin (Giữ nguyên) ---
 app.get('/admin-login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/admin-login.html'));
 });
@@ -82,7 +83,12 @@ async function start() {
     });
     console.log('[index] Connected to MongoDB.');
 
-    // --- Logic trạng thái người chơi 'Online' ---
+    // --- THÊM MỚI: Chạy watcher và cập nhật CSDL ---
+    const updateGamesFunction = setupGameWatcher();
+    await updateGamesFunction(); // Chạy lần đầu để đảm bảo CSDL được điền dữ liệu
+    // ----------------------------------------------------
+
+    // --- Logic trạng thái người chơi 'Online' (Giữ nguyên) ---
     io.on('connection', (socket) => {
         socket.on('registerSocket', async (username) => {
           if (!username || username.startsWith('guest_')) return;
