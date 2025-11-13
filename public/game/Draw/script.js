@@ -31,16 +31,21 @@
     const $drawingTools = document.getElementById('drawingTools');
     const $canvas = document.getElementById('drawingCanvas');
     const $clearBtn = document.getElementById('clearBtn');
-    const $colorPicker = document.getElementById('colorPicker');
     const $sizeSlider = document.getElementById('sizeSlider');
     const $eraseBtn = document.getElementById('eraseBtn');
-    const $leaveRoomBtn = document.getElementById('leaveRoomBtn'); // Nút thoát phòng
-
+    const $penTool = document.getElementById('penTool');
+    const $fillTool = document.getElementById('fillTool');
+    const $colorDisplayBtn = document.getElementById('colorDisplayBtn');
+    const $colorPicker = document.createElement('input'); // Tạo input color ẨN
+    $colorPicker.type = 'color';
+    $colorPicker.value = currentColor;    
+    
     let currentHost = null;
     let currentDrawer = null;
     let roomPlayers = []; 
     let isDrawing = false;
     let isEraser = false;
+    let currentTool = 'pen';
     let currentColor = $colorPicker ? $colorPicker.value : '#000000';
     let currentSize = $sizeSlider ? parseInt($sizeSlider.value) : 5;
     let lastX = 0;
@@ -60,6 +65,7 @@
         }
     }
     clearCanvas();
+    document.body.appendChild($colorPicker);
 
     // --- LOGIC VẼ (KHAI BÁO HÀM LÊN TRÊN CÙNG) ---
     
@@ -110,6 +116,74 @@
         draw(data);
     }
     
+    function setActiveTool(tool) {
+        currentTool = tool;
+        isEraser = (tool === 'eraser');
+        
+        // Cập nhật trạng thái Active trên các nút
+        document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        // Đặt con trỏ chuột
+        if ($canvas) $canvas.style.cursor = (tool === 'pen' || tool === 'eraser') ? 'crosshair' : 'pointer';
+    }
+
+    // 2. Xử lý ĐỔ MÀU
+    function handleFillCanvas(e) {
+        if (currentDrawer !== playerName || currentTool !== 'fill' || !ctx) return;
+        
+        // Lấy tọa độ click và tính toán màu
+        const pos = getMousePos(e);
+        
+        // Thao tác đổ màu (Flood Fill - Cần thuật toán phức tạp hơn cho flood fill)
+        // Để đơn giản, ta sẽ chỉ đổ màu toàn bộ canvas
+        ctx.fillStyle = currentColor;
+        ctx.fillRect(0, 0, $canvas.width, $canvas.height);
+        
+        // Gửi lệnh đổ màu đến server (Lưu ý: Bạn cần thêm logic xử lý 'fill' trong drawSocket.js)
+        socket.emit(`${GAME_ID}-fill`, { roomCode, color: currentColor }); 
+        
+        // Chuyển về bút vẽ sau khi đổ màu
+        setActiveTool('pen'); 
+    }
+
+    // 3. Xử lý sự kiện Canvas chính
+    function handleCanvasClick(e) {
+        if (currentTool === 'fill') {
+            handleFillCanvas(e);
+        }
+    }
+    
+    // Gắn sự kiện click (cho Fill Tool)
+    if ($canvas) {
+        $canvas.addEventListener('click', handleCanvasClick);
+    }
+    
+    // Gắn Event Listeners cho các nút công cụ
+    if ($penTool) $penTool.addEventListener('click', () => setActiveTool('pen'));
+    if ($eraseBtn) $eraseBtn.addEventListener('click', () => setActiveTool('eraser'));
+    if ($fillTool) $fillTool.addEventListener('click', () => setActiveTool('fill'));
+
+    // Gắn logic đổi màu
+    if ($colorDisplayBtn) $colorDisplayBtn.addEventListener('click', () => {
+        $colorPicker.click(); // Kích hoạt input color ẩn
+    });
+    
+    $colorPicker.addEventListener('input', (e) => {
+        currentColor = e.target.value;
+        if ($colorDisplayBtn) $colorDisplayBtn.style.backgroundColor = currentColor;
+        setActiveTool(currentTool); // Kích hoạt lại công cụ hiện tại để cập nhật màu
+    });
+    
+    // Đảm bảo nút Clear vẫn hoạt động
+    if ($clearBtn) $clearBtn.addEventListener('click', () => {
+        if (currentDrawer === playerName && confirm('Xác nhận xóa toàn bộ?')) {
+            socket.emit(`${GAME_ID}-clear`, { roomCode });
+            clearCanvas();
+        }
+    });
+
     // HÀM XỬ LÝ SỰ KIỆN VẼ CHÍNH
     function handleDrawStart(e) { 
         if (currentDrawer !== playerName || !$canvas) return; 
@@ -265,7 +339,7 @@
         if (!startBtn) {
             startBtn = document.createElement('button');
             startBtn.id = 'startGameBtn';
-            startBtn.className = 'btn start-game-btn'; 
+            startBtn.className = 'btn start-game-btn btn btn-primary'; 
             startBtn.textContent = '🚀 BẮT ĐẦU VẼ ĐOÁN';
             startBtn.addEventListener('click', () => {
                 socket.emit(`${GAME_ID}-start-game`, { roomCode });
@@ -326,6 +400,9 @@
         if (currentDrawer !== playerName) {
             draw(data);
         }
+        if (!ctx) return;
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, $canvas.width, $canvas.height);
     });
     
     socket.on(`${GAME_ID}-clear-canvas`, () => {

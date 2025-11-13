@@ -35,10 +35,26 @@
                 <canvas id="drawingCanvas"></canvas>
                 
                 <div id="drawingTools" class="drawing-tools hidden">
-                    <input type="color" id="colorPicker" value="#000000">
-                    <input type="range" id="sizeSlider" min="1" max="50" value="5">
-                    <button id="eraseBtn">Tẩy</button>
-                    <button id="clearBtn">Xóa Canvas</button>
+                    <button id="penTool" class="tool-btn active" data-tool="pen" title="Bút vẽ">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    
+                    <div class="color-picker-group">
+                        <button id="colorDisplayBtn" title="Chọn màu" style="background-color: var(--current-color);"></button>
+                        <button id="fillTool" class="tool-btn" data-tool="fill" title="Đổ màu">
+                            <i class="fas fa-fill-drip"></i>
+                        </button>
+                    </div>
+                    
+                    <input type="range" id="sizeSlider" min="1" max="50" value="5" title="Kích thước">
+                    
+                    <button id="eraseBtn" class="tool-btn" data-tool="eraser" title="Tẩy">
+                        <i class="fas fa-eraser"></i>
+                    </button>
+                    
+                    <button id="clearBtn" class="tool-btn clear-btn" title="Xóa Canvas">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
             </div>
 

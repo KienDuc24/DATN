@@ -378,6 +378,61 @@ body {
     border-radius: 5px;
 }
 
+.drawing-tools {
+    /* ... (Giữ nguyên Flexbox) ... */
+    padding: 10px;
+    border-radius: var(--border-radius);
+    background-color: var(--bg-medium); /* Đảm bảo nổi bật */
+}
+
+.drawing-tools .tool-btn {
+    background-color: var(--bg-light);
+    color: var(--text-light);
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.2em;
+    transition: background-color 0.2s;
+}
+
+.drawing-tools .tool-btn.active, 
+.drawing-tools .tool-btn:hover {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+/* Nhóm Màu và Đổ màu */
+.color-picker-group {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    border-right: 1px solid var(--border-color); /* Phân cách */
+    padding-right: 10px;
+}
+
+#colorDisplayBtn {
+    /* Nút hiển thị màu hiện tại */
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    border: 3px solid var(--text-light);
+    cursor: pointer;
+    box-shadow: 0 0 0 1px var(--bg-medium);
+    transition: transform 0.1s;
+    /* Loại bỏ style mặc định của button */
+    background-color: black; 
+    padding: 0;
+}
+
+#colorDisplayBtn:hover {
+    transform: scale(1.1);
+}
+/* Ẩn input color cũ nếu còn */
+#colorPicker {
+    display: none; 
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
     .game-main {
