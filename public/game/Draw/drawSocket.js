@@ -250,8 +250,9 @@ module.exports = (socket, io) => {
         const playerInfo = gameSocketMap.get(socket.id);
         
         if (playerInfo && playerInfo.player === state.drawer) {
-            console.log(`[Socket] Fill event received:`, { roomCode, color });
-            socket.to(roomCode).emit(`${GAME_ID}-fill-canvas`, { color });
+            // Thay socket.to bằng io.to để gửi cho TẤT CẢ (bao gồm người gửi, đảm bảo đồng bộ)
+            io.to(roomCode).emit(`${GAME_ID}-fill-canvas`, { color });
+            console.log(`[Socket] Fill broadcasted to room ${roomCode} with color: ${color}`);
         }
     });
 

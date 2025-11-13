@@ -427,12 +427,11 @@
         }
     });
     
-    socket.on(`${GAME_ID}-fill`, ({ roomCode, color }) => {
-        const state = getRoomState(roomCode);
-        const playerInfo = gameSocketMap.get(socket.id);
-        
-        if (playerInfo && playerInfo.player === state.drawer) {
-            socket.to(roomCode).emit(`${GAME_ID}-fill-canvas`, { color });
+    socket.on(`${GAME_ID}-fill-canvas`, ({ color }) => {
+        if (ctx) {
+            ctx.fillStyle = color;
+            ctx.fillRect(0, 0, $canvas.width, $canvas.height);
+            console.log('Nhận fill từ server với màu:', color);
         }
     });
     
