@@ -53,7 +53,7 @@ async function answerRuleQuestion(req, res) {
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+        const model = genAI.getGenerativeModel({ model: 'models/chat-bison-001' }); // Sử dụng model hợp lệ
         
         // Ghép prompt hệ thống và câu hỏi của người dùng
         const fullPrompt = `${systemPrompt} "${question}"`;
