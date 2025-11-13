@@ -196,6 +196,7 @@ module.exports = function attachSocket(server) {
 
     // --- LOGIC TRONG GAME (Gắn handler của game) ---
     todHandler(socket, io); // Truyền io vào game handler
+    drawGuessHandler(socket, io); // Truyền io vào game handler
 
     // --- LOGIC DISCONNECT (Chung) ---
     socket.on('disconnect', async () => {
