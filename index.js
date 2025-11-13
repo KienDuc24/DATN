@@ -68,7 +68,6 @@ app.get('/admin-login.js', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/admin-login.js'));
 });
 
-// --- Health Check Route ---
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
 });
