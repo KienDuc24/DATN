@@ -116,13 +116,12 @@
     
     function setActiveTool(tool) {
         currentTool = tool;
-        isEraser = (tool === 'eraser'); // Gán isEraser tại đây
+        isEraser = (tool === 'eraser'); 
         
         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
         if (activeBtn) activeBtn.classList.add('active');
 
-        // Cập nhật con trỏ chuột
         if ($canvas) {
             if (tool === 'fill') {
                 $canvas.style.cursor = 'pointer'; 
@@ -130,6 +129,7 @@
                 $canvas.style.cursor = 'crosshair';
             }
         }
+        console.log('Công cụ hiện tại:', currentTool, 'isEraser:', isEraser);
     }
 
     // Xử lý ĐỔ MÀU
@@ -142,6 +142,7 @@
         socket.emit(`${GAME_ID}-fill`, { roomCode, color: currentColor }); 
         
         setActiveTool('pen'); 
+        console.log('Công cụ hiện tại:', currentTool);
     }
 
     // Xử lý sự kiện Canvas chính
@@ -153,7 +154,8 @@
     
     // HÀM XỬ LÝ SỰ KIỆN VẼ CHÍNH
     function handleDrawStart(e) { 
-        // SỬA LỖI: Chỉ vẽ khi là 'pen' hoặc 'eraser'
+        // LÔI LOGIC CHÍNH: Nếu không phải pen hay eraser, THOÁT ra, để click sự kiện
+        // không bị chặn bởi sự kiện drag.
         if (currentDrawer !== playerName || !$canvas || (currentTool !== 'pen' && currentTool !== 'eraser')) return; 
         
         isDrawing = true;
@@ -161,10 +163,10 @@
         lastX = pos.x;
         lastY = pos.y;
         
-        // Dòng này sử dụng 'isEraser'
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('start', lastX, lastY, drawColor, currentSize);
         e.preventDefault();
+        console.log('Công cụ hiện tại:', currentTool);
     }
 
     function handleDrawMove(e) { 
@@ -544,9 +546,7 @@
         
         if (isFinal) {
             // SỬA LỖI: Chỉ Host thấy nút Chơi Lại
-            if (currentHost === playerName) {
-                content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
-            }
+            content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
             content += `<button id="popup-exit" class="btn btn-danger">Thoát</button>`;
         } else {
             content += `<p>Vòng tiếp theo sẽ bắt đầu sau 5 giây...</p>`;
@@ -586,7 +586,7 @@
             const continueBtn = document.getElementById('popup-continue');
             if (continueBtn) {
                 continueBtn.addEventListener('click', () => {
-                    // Không cần hidePopup(), server sẽ gửi tín hiệu
+                    hidePopup();
                     socket.emit(`${GAME_ID}-restart-game`, { roomCode }); 
                 });
             }
@@ -599,10 +599,8 @@
             }
         }
     }
-    
     function hidePopup() {
         const modal = document.getElementById('rankingModal');
         if (modal) modal.remove();
     }
-
 })();
