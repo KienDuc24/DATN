@@ -31,9 +31,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 const io = attachSocket(server); // Lấy instance 'io'
 
 try {
+  app.use('/api/debug', require('./routes/debugRoutes'));
   app.use('/api/room', require('./routes/roomRoutes'));
   app.use('/api/auth', require('./routes/authRoutes'));
-  app.use('/api/debug', require('./routes/debugRoutes'));
   app.use('/admin', require('./routes/adminAuthRoutes')); 
   app.use('/api/admin', adminAuth, require('./routes/adminRoutes')(io)); 
   app.use('/api', require('./routes/publicRoutes'));

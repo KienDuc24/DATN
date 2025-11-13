@@ -1,4 +1,4 @@
-// public/game/ToD/script.js (ĐÃ SỬA LỖI)
+// public/game/ToD/script.js (ĐÃ FIX LỖI CẤU TRÚC VÀ LỖI REQUIRE)
 (() => {
   // --- 1. KẾT NỐI SOCKET VÀ LẤY THÔNG TIN ---
   const SOCKET_URL = "https://datn-socket.up.railway.app";
@@ -53,7 +53,7 @@
   let currentAskedPlayer = null; 
   let currentHost = null;
 
-  // --- 2. XỬ LÝ SỰ KIỆN SOCKET (ĐÃ GOM LẠI) ---
+  // --- 2. XỬ LÝ SỰ KIỆN SOCKET (GIỮ NGUYÊN LOGIC GAME) ---
 
   socket.on('connect', () => {
     console.log('[ToD][client] socket connected', socket.id, { roomCode, playerName });
@@ -83,7 +83,7 @@
     return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
   }
 
-  // --- SỬA LỖI: Hàm Render Player (dùng CSS Grid và loại bỏ tính toán) ---
+  // --- Hàm Render Player (Giữ nguyên) ---
   function renderPlayers(players = [], askedName, host) { 
     if ($playersCount) $playersCount.textContent = `${players.length}`;
     if (!$avatars) return;
@@ -109,7 +109,6 @@
       
       const crown = (name === host) ? '<div class="crown">👑</div>' : '';
       
-      // SỬA LỖI: Bỏ left/top để CSS Grid tự sắp xếp
       el.innerHTML = `<div class="pic">${crown}<img src="${imgUrl}" alt="${name}"></div><div class="name">${name}</div>`;
       $avatars.appendChild(el);
     });
@@ -147,14 +146,10 @@
         controls.appendChild(startBtn);
       }
       
-      // --- SỬA LỖI Ở ĐÂY ---
-      // Chỉ hiện nút "Bắt đầu" cho Host nếu game chưa bị khóa hẳn (status != closed)
-      // Nút này sẽ bị ẩn khi sự kiện tod-your-turn được nhận.
       const isHost = (host && playerName === host);
       const isGameNotRunning = !currentAskedPlayer; // Nếu chưa có người được gán lượt chơi (lượt đầu)
       
       startBtn.style.display = (isHost && isGameNotRunning && status !== 'closed') ? 'inline-block' : 'none';
-      // --- HẾT SỬA LỖI ---
     }
   });
 
@@ -269,69 +264,11 @@
     };
   }
   if (typeof window.$actionBtns === 'undefined') window.$actionBtns = window.ActionBtns;
-
-  const API_BASE_URL = '/api/ai'; // Đường dẫn API
-
-  // Gọi API để tạo câu hỏi
-  async function generateAIQuestion() {
-    const prompt = document.getElementById('ai-question').value.trim();
-    if (!prompt) {
-      alert('Vui lòng nhập gợi ý để tạo câu hỏi.');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/generate-question`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-
-      const data = await response.json();
-      document.getElementById('generated-question').innerText = data.question || 'Không thể tạo câu hỏi.';
-    } catch (error) {
-      console.error('Lỗi khi tạo câu hỏi:', error);
-      alert('Không thể tạo câu hỏi. Vui lòng thử lại sau.');
-    }
-  }
-
-  // Gọi API để lấy hướng dẫn cách chơi
-  async function showInstructions(gameName) {
-    try {
-      const response = await fetch(`/api/ai/get-instructions?gameName=${encodeURIComponent(gameName)}`);
-      if (!response.ok) {
-        throw new Error('Không thể lấy hướng dẫn từ server.');
-      }
-
-      const data = await response.json();
-      document.getElementById('instructions').innerText = data.instructions || 'Không thể lấy hướng dẫn.';
-      document.getElementById('instructions').style.display = 'block';
-    } catch (error) {
-      console.error('Lỗi khi lấy hướng dẫn:', error);
-      alert('Không thể lấy hướng dẫn. Vui lòng thử lại sau.');
-    }
-  }
-
-  async function fetchRuleJson() {
-    try {
-      const response = await fetch('./rule.json'); // Đường dẫn tương đối từ index.html
-      if (!response.ok) {
-        throw new Error('Không thể tải file rule.json');
-      }
-      const rules = await response.json();
-      console.log('Nội dung rule.json:', rules);
-      return rules;
-    } catch (error) {
-      console.error('Lỗi khi tải rule.json:', error);
-      return null;
-    }
-  }
-
-  // Gọi hàm để tải file rule.json
-  fetchRuleJson();
 })();
+
+// --- LOGIC CHATBOX AI (ĐƯA VÀO IIFE RIÊNG) ---
 (() => {
-  const API_BASE_URL = '/api/ai'; // Đường dẫn API
+  const API_BASE_URL = '/api/ai'; // Đường dẫn API Backend
 
   const aiToolsIcon = document.getElementById('ai-tools-icon');
   const aiChatbox = document.getElementById('ai-chatbox');
@@ -340,24 +277,45 @@
   const chatMessages = document.getElementById('chatMessages');
   const closeChatbox = document.getElementById('closeChatbox');
 
+  if (!aiToolsIcon || !aiChatbox || !chatInput || !sendChat || !chatMessages || !closeChatbox) {
+      console.warn('AI Chatbox elements not found. Skipping AI chat logic.');
+      return;
+  }
+
   // Hiển thị hoặc ẩn chatbox
   aiToolsIcon.addEventListener('click', () => {
     aiChatbox.classList.toggle('hidden');
+    // Khởi tạo tin nhắn đầu tiên nếu trống
+    if (!chatMessages.children.length) {
+        const initialMessage = document.createElement('div');
+        initialMessage.className = 'chat-message ai';
+        initialMessage.textContent = '🤖 Chào bạn. Tôi là AI Hướng dẫn. Hãy hỏi tôi về luật chơi hoặc cách chơi Sự thật hay Thử thách!';
+        chatMessages.appendChild(initialMessage);
+    }
   });
 
   closeChatbox.addEventListener('click', () => {
     aiChatbox.classList.add('hidden');
   });
 
-  // Gửi câu hỏi đến API
-  async function sendQuestionToAI(question) {
+  // Gửi câu hỏi đến API Backend (Chỉ để lấy hướng dẫn)
+  async function getInstructionsFromAI(question) {
+    // QUESTION DÙNG ĐỂ LẤY CONTEXT TRẢ LỜI, NHƯNG HIỆN TẠI CHỈ GỌI ENDPOINT CỨNG
     try {
-      const response = await fetch(`${API_BASE_URL}/get-instructions?gameName=Truth or Dare`);
+      // Gọi endpoint đã được fix lỗi đường dẫn file rule.json trên Backend
+      const response = await fetch('/api/debug/ai/get-instructions');
       const data = await response.json();
-      return data.instructions || 'Không thể lấy hướng dẫn.';
+      
+      if (!response.ok) {
+          return data.error || 'Lỗi server khi lấy hướng dẫn.';
+      }
+      
+      // Sử dụng tóm tắt luật chơi (đã được trích xuất từ Backend)
+      return '📜 Luật chơi:\n' + data.instructions; 
+      
     } catch (error) {
       console.error('Lỗi khi lấy hướng dẫn:', error);
-      return 'Không thể lấy hướng dẫn. Vui lòng thử lại sau.';
+      return '❌ Lỗi kết nối server.';
     }
   }
 
@@ -365,6 +323,10 @@
   sendChat.addEventListener('click', async () => {
     const question = chatInput.value.trim();
     if (!question) return;
+    
+    // Vô hiệu hóa input/button để tránh spam
+    chatInput.disabled = true;
+    sendChat.disabled = true;
 
     // Hiển thị câu hỏi trong chat
     const userMessage = document.createElement('div');
@@ -372,35 +334,30 @@
     userMessage.textContent = question;
     chatMessages.appendChild(userMessage);
 
-    // Gửi câu hỏi đến AI
-    const aiResponse = await sendQuestionToAI(question);
+    // Thêm loader
+    const loaderMessage = document.createElement('div');
+    loaderMessage.className = 'chat-message ai loader';
+    loaderMessage.innerHTML = '<span>🤖 Đang trả lời...</span>';
+    chatMessages.appendChild(loaderMessage);
 
-    // Hiển thị câu trả lời từ AI
+
+    // Gửi câu hỏi đến AI
+    const aiResponse = await getInstructionsFromAI(question);
+
+    // Xóa loader và hiển thị câu trả lời từ AI
+    chatMessages.removeChild(loaderMessage);
+
     const aiMessage = document.createElement('div');
     aiMessage.className = 'chat-message ai';
     aiMessage.textContent = aiResponse;
     chatMessages.appendChild(aiMessage);
+
+    // Kích hoạt lại input/button
+    chatInput.disabled = false;
+    sendChat.disabled = false;
 
     // Xóa input
     chatInput.value = '';
     chatMessages.scrollTop = chatMessages.scrollHeight;
   });
 })();
-const express = require('express');
-const router = express.Router();
-const fs = require('fs');
-const path = require('path');
-
-// Endpoint hướng dẫn cách chơi
-router.get('/ai/get-instructions', async (req, res) => {
-  try {
-    const filePath = './rule.json'; // Đường dẫn tương đối từ index.html
-    const rules = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    res.json({ instructions: rules.rules_summary });
-  } catch (error) {
-    console.error('Lỗi khi đọc rule.json:', error);
-    res.status(500).json({ error: 'Không thể lấy hướng dẫn.' });
-  }
-});
-
-module.exports = router;
