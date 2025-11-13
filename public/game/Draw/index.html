@@ -8,17 +8,23 @@
     <link rel="icon" type="image/x-icon" href="Img/logo.png">
 </head>
 <body>
-    <div class="game-container">
-        <div class="game-header">
-            <h1>Vẽ Nhanh Đoán Nhanh</h1>
-            <div class="room-info">
+    <header class="game-top-bar">
+        <a href="/" class="btn-home"><i class="fas fa-home"></i> Trang chủ</a>
+        
+        <div class="game-title">Vẽ Nhanh Đoán Nhanh</div>
+        
+        <div class="room-actions">
+            <button id="leaveRoomBtn" class="btn-leave-room"><i class="fas fa-sign-out-alt"></i> Thoát Phòng</button>
+        </div>
+    </header>
+
+    <div class="playground-container">
+        <div class="game-main">
+            <div class="room-info-bar">
                 <span>Phòng: <span id="roomCode">---</span></span>
                 <span>Người chơi: <span id="playersCount">0</span></span>
-                <span id="hostDisplay">Host: Đang tải...</span> 
             </div>
-        </div>
 
-        <div class="game-main">
             <div class="canvas-section">
                 <div class="canvas-info">
                     <span id="game-status">Đang chờ Host bắt đầu...</span>
@@ -39,14 +45,12 @@
             <div class="game-sidebar">
                 <div class="game-info-box">
                     <h3>Điểm số</h3>
-                    <div id="scoreGrid">
-                        </div>
+                    <div id="scoreGrid"></div>
                 </div>
 
                 <div class="chat-section">
                     <h3>Chat & Đoán</h3>
-                    <div id="chatMessages">
-                        </div>
+                    <div id="chatMessages"></div>
                     <div class="chat-input-group">
                         <input type="text" id="guessInput" placeholder="Nhập từ khóa đoán hoặc chat...">
                         <button id="sendGuess">Gửi</button>

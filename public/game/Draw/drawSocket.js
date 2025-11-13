@@ -1,28 +1,27 @@
-// backend/sockets/drawGuessSocket.js
+// backend/sockets/drawSocket.js
 
 const fs = require('fs');
 const path = require('path');
-// (Giả định Room và User model đã được định nghĩa)
 const Room = require('../../../models/Room'); 
-const User = require('../../../models/User'); 
+const User = require('../../../models/User'); // Cần import User
 
 // --- Cấu hình Game ---
 const GAME_ID = 'DG';
 const ROUND_TIME = 90; // Giây
+const MAX_ROUNDS_PER_PLAYER = 1; // Số vòng mỗi người chơi được vẽ
 const WORDS_PATH = path.resolve(__dirname, '../../../public/game/Draw/words.json');
 let WORDS = []; 
 try {
   const raw = fs.readFileSync(WORDS_PATH, 'utf8');
   WORDS = JSON.parse(raw || '[]');
-  console.log(`[${GAME_ID}] words.json loaded ->`, WORDS_PATH, 'words:', WORDS.length);
 } catch (err) {
   console.warn(`[${GAME_ID}] cannot load words.json`, err && err.message);
   WORDS = ["Lửa trại", "Cây nấm", "Thịt nướng", "Lều cắm trại", "Mặt trời", "Con sông"];
 }
 const ROOM_STATE = {}; 
-const gameSocketMap = new Map(); // Theo dõi người chơi đang tham gia
+const gameSocketMap = new Map();
 
-// --- Helper Functions (Tương tự ToD) ---
+// --- Helper Functions ---
 function getRoomState(code) {
   if (!ROOM_STATE[code]) {
     ROOM_STATE[code] = { 
@@ -30,8 +29,8 @@ function getRoomState(code) {
       currentWord: null, 
       drawer: null, 
       timer: ROUND_TIME, 
-      guesses: new Set(), // Lưu trữ những người đã đoán đúng
-      drawingData: [], // Lưu trữ các nét vẽ
+      guesses: new Set(),
+      drawingData: [], 
       interval: null,
       scores: {} 
     };
@@ -40,18 +39,34 @@ function getRoomState(code) {
 }
 
 function getPlayersFromRoom(room) {
-    // Tái sử dụng logic lấy danh sách người chơi từ room model (như ToD)
     if (!room) return [];
-    let raw = [];
-    if (Array.isArray(room.players) && room.players.length) raw = room.players;
-    else if (Array.isArray(room.participants) && room.participants.length) raw = room.participants;
-    else if (Array.isArray(room.playersList) && room.playersList.length) raw = room.playersList;
-    else if (room.players && typeof room.players === 'object' && !Array.isArray(room.players)) raw = Object.values(room.players).filter(Boolean);
-    else return [];
+    let raw = room.players || [];
+    return raw.map(p => ({ name: p.name, displayName: p.displayName || p.name, avatar: p.avatar || null }));
+}
+
+async function attachAvatarsToPlayers(players) {
+  const names = (players || []).map(p => p.name).filter(Boolean);
+  if (!names.length) {
+    return players;
+  }
+  let users = [];
+  try {
+    users = await User.find({ username: { $in: names } }).lean();
+  } catch (e) {
+    console.warn('[Draw] attachAvatarsToPlayers user lookup failed', e && e.message);
+    users = [];
+  }
+  
+  const map = {};
+  users.forEach(u => { map[u.username] = u; });
+
+  return (players || []).map(p => {
+    const user = map[p.name];
+    const avatar = p.avatar || (user ? (user.avatarUrl || user.avatar || null) : null);
+    const outDisplayName = p.displayName || (user ? (user.displayName || user.name || null) : null);
     
-    // Tái sử dụng logic normalize (giả định có sẵn normalizePlayerInput)
-    // Giả định: raw.map(p => ({ name: p.name, displayName: p.displayName || p.name }))
-    return raw.map(p => ({ name: p.name, displayName: p.displayName || p.name }));
+    return { name: p.name, displayName: outDisplayName || null, avatar: avatar || null };
+  });
 }
 
 function getRandomWord() {
@@ -61,9 +76,8 @@ function getRandomWord() {
 
 function isCorrectGuess(guess, word) {
     if (!word) return false;
-    const normalizedWord = word.toUpperCase().replace(/\s/g, '');
-    const normalizedGuess = guess.toUpperCase().replace(/\s/g, '');
-    // Logic đơn giản: đoán khớp hoàn toàn (có thể phức tạp hóa sau)
+    const normalizedWord = word.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const normalizedGuess = guess.toUpperCase().replace(/[^A-Z0-9]/g, '');
     return normalizedGuess === normalizedWord;
 }
 
@@ -87,20 +101,29 @@ function updateScores(state, player, score) {
     state.scores[player] += score;
 }
 
+async function getMaxRounds(roomCode) {
+    const room = await Room.findOne({ code: roomCode }).lean();
+    if (!room) return 0;
+    const players = getPlayersFromRoom(room);
+    return players.length * MAX_ROUNDS_PER_PLAYER;
+}
+
+
+// --- SỬA LOGIC TÍNH ĐIỂM TRONG endRound ---
 async function endRound(io, roomCode, guessed) {
     const state = getRoomState(roomCode);
     if (state.interval) clearInterval(state.interval);
 
-    const timeBonus = state.timer > 0 ? (state.timer * 5) : 0;
-    const baseScore = guessed ? 50 : 0;
+    const room = await Room.findOne({ code: roomCode }).lean();
+    const players = getPlayersFromRoom(room);
+    const totalGuessers = state.guesses.size;
     
-    if (guessed) {
-        // Tặng điểm cho Họa sĩ (dựa trên số lượng người đoán đúng)
-        const drawerScore = 150 + (state.guesses.size * 25) + timeBonus;
+    // TÍNH ĐIỂM HỌA SĨ
+    if (totalGuessers > 0) {
+        // Họa sĩ được điểm nếu có người đoán đúng
+        const drawerScore = 100 + (totalGuessers * 5); // 100 điểm cơ bản + 5 điểm/người đoán
         updateScores(state, state.drawer, drawerScore);
     }
-    
-    // Bỏ điểm của người chơi nếu không đoán được
     
     io.to(roomCode).emit(`${GAME_ID}-end-round`, { 
         word: state.currentWord, 
@@ -109,9 +132,21 @@ async function endRound(io, roomCode, guessed) {
         guessed: guessed
     });
 
+    // ----------------------------------------------------
+    // LOGIC KẾT THÚC VÒNG GAME VÀ CHUYỂN LƯỢT
+    // ----------------------------------------------------
+    const maxTotalRounds = await getMaxRounds(roomCode);
+    state.currentIndex++;
+    
+    if (state.currentIndex > maxTotalRounds) {
+        // KẾT THÚC GAME
+        io.to(roomCode).emit(`${GAME_ID}-game-over`, { finalScores: state.scores });
+        // Cần thêm logic reset/đóng trạng thái phòng ở đây
+        return;
+    }
+    
     // Chuyển sang lượt tiếp theo
     setTimeout(() => {
-        state.currentIndex = (state.currentIndex + 1); 
         startRound(io, roomCode);
     }, 5000); 
 }
@@ -140,7 +175,6 @@ async function startRound(io, roomCode) {
         scores: state.scores,
         round: state.currentIndex + 1,
         playersCount: players.length,
-        // Chỉ gửi độ dài từ khóa (hoặc từ khóa bị ẩn)
         wordHint: state.currentWord.length 
     });
 
@@ -164,14 +198,19 @@ module.exports = (socket, io) => {
     socket.on(`${GAME_ID}-join`, async ({ roomCode, player }) => {
         try {
             const room = await Room.findOne({ code: roomCode }).lean();
-            // ... (Logic kiểm tra phòng, kiểm tra player tương tự ToD)
             const isPlayerInRoom = room.players.some(p => p.name === player.name);
             if (!isPlayerInRoom) return socket.emit(`${GAME_ID}-join-failed`, { reason: 'Bạn không có trong danh sách phòng này.' });
 
             socket.join(roomCode);
             gameSocketMap.set(socket.id, { player: player.name, code: roomCode });
             getRoomState(roomCode);
-            io.to(roomCode).emit(`${GAME_ID}-room-update`, { state: getRoomState(roomCode), room: room });
+            
+            const playersWithAvt = await attachAvatarsToPlayers(room.players);
+
+            io.to(roomCode).emit(`${GAME_ID}-room-update`, { 
+                state: getRoomState(roomCode), 
+                room: { ...room, players: playersWithAvt }
+            });
 
         } catch (e) { console.error(`[${GAME_ID}] join error`, e); }
     });
@@ -194,7 +233,6 @@ module.exports = (socket, io) => {
 
         if (playerInfo && playerInfo.player === state.drawer) {
             state.drawingData.push(data);
-            // Phát sóng nét vẽ đến TẤT CẢ người chơi khác trong phòng
             socket.to(roomCode).emit(`${GAME_ID}-drawing`, data);
         }
     });
@@ -211,11 +249,14 @@ module.exports = (socket, io) => {
     });
 
     // --- 4. XỬ LÝ ĐOÁN ---
-    socket.on(`${GAME_ID}-guess`, ({ roomCode, player, guess }) => {
+    socket.on(`${GAME_ID}-guess`, async ({ roomCode, player, guess }) => {
         const state = getRoomState(roomCode);
         const drawer = state.drawer;
         
-        if (player === drawer) return; // Họa sĩ không được đoán
+        // Họa sĩ chỉ được chat thông thường
+        if (player === drawer) { 
+             return io.to(roomCode).emit(`${GAME_ID}-chat-message`, { player: player, message: guess });
+        }
 
         io.to(roomCode).emit(`${GAME_ID}-chat-message`, { 
             player: player, 
@@ -225,20 +266,25 @@ module.exports = (socket, io) => {
         if (isCorrectGuess(guess, state.currentWord)) {
             if (state.guesses.has(player)) return; // Đã đoán đúng rồi
 
-            updateScores(state, player, 100 + state.timer); // Điểm bonus dựa trên thời gian
+            // TÍNH ĐIỂM NGƯỜI ĐOÁN
+            const remainingTime = state.timer > 0 ? state.timer : 0;
+            const guesserScore = 50 + remainingTime; // 50 điểm cơ bản + 1 điểm/giây còn lại
+            updateScores(state, player, guesserScore);
+            
             state.guesses.add(player);
             
             io.to(roomCode).emit(`${GAME_ID}-correct-guess`, { 
                 player: player, 
-                scores: state.scores 
+                scores: state.scores,
+                time: remainingTime 
             });
 
-            const roomSockets = io.sockets.adapter.rooms.get(roomCode);
-            const totalPlayers = roomSockets ? roomSockets.size : 0;
-            const guessersCount = totalPlayers - 1; // Số người chơi trừ Họa sĩ
-
-            // Nếu tất cả người chơi khác đã đoán đúng (hoặc gần hết)
-            if (state.guesses.size >= (guessersCount - 1) && guessersCount > 1) { 
+            // LOGIC CHUYỂN LƯỢT NẾU ĐOÁN HẾT
+            const room = await Room.findOne({ code: roomCode }).lean();
+            const totalGuessers = Math.max(0, getPlayersFromRoom(room).length - 1);
+            
+            if (state.guesses.size >= totalGuessers) { 
+                 // Nếu tất cả đã đoán đúng, kết thúc vòng ngay lập tức
                  endRound(io, roomCode, true);
             }
         }
@@ -246,11 +292,10 @@ module.exports = (socket, io) => {
 
     // --- 5. DISCONNECT ---
     socket.on('disconnect', async () => {
-        // 1. Lấy thông tin người chơi và phòng từ Map/Session
         const userInfo = gameSocketMap.get(socket.id);
         if (!userInfo) return; 
 
-        const { player, code } = userInfo; // Tên người chơi và mã phòng
+        const { player, code } = userInfo;
         gameSocketMap.delete(socket.id); 
 
         try {
@@ -260,16 +305,12 @@ module.exports = (socket, io) => {
             let newHost = room.host;
             const wasHost = (room.host === player);
             
-            // 2. XÓA NGƯỜI CHƠI KHỎI PHÒNG DB
             room.players = room.players.filter(p => p.name !== player);
             
-            // 3. CHUYỂN HOST (nếu người thoát là host)
             if (wasHost && room.players.length > 0) {
                 newHost = room.players[0].name;
                 room.host = newHost;
-                console.log(`[${GAME_ID}] Host ${player} disconnected. New host is ${newHost}.`);
             } else if (room.players.length === 0) {
-                // Đóng phòng nếu không còn ai
                 room.status = 'closed';
                 delete ROOM_STATE[code]; 
                 await room.save();
@@ -279,19 +320,16 @@ module.exports = (socket, io) => {
 
             await room.save();
             
-            // 4. THÔNG BÁO CHO CÁC NGƯỜI CHƠI CÒN LẠI VÀ RENDER LẠI
             const playersWithAvt = await attachAvatarsToPlayers(room.players);
             const state = getRoomState(code);
 
-            // SỬA LỖI QUAN TRỌNG: Phát sự kiện cập nhật phòng ĐÚNG tên
             io.to(code).emit(`${GAME_ID}-room-update`, { 
                 state, 
-                room: { code: room.code, host: newHost, players: playersWithAvt } // Gửi dữ liệu phòng mới
+                room: { code: room.code, host: newHost, players: playersWithAvt }
             });
             io.emit('admin-rooms-changed'); 
             
-            // 5. THÊM: Gửi tin nhắn hệ thống vào chat
-            io.to(code).emit(`${GAME_ID}-chat`, { 
+            io.to(code).emit(`${GAME_ID}-chat-message`, { 
                 player: 'Hệ thống', 
                 message: `${player} đã rời phòng.`, 
                 type: 'msg-system' 
