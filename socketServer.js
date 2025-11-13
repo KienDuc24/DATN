@@ -4,6 +4,7 @@ const Room = require('./models/Room');
 const User = require('./models/User'); // Import User
 // Sửa đường dẫn: Giả sử todSocket ở public/game/ToD/
 const todHandler = require('./public/game/ToD/todSocket.js'); 
+const todHandler = require('./public/game/Draw/drawSocket.js'); 
 
 const socketUserMap = new Map();
 
