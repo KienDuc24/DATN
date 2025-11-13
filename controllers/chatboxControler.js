@@ -70,7 +70,20 @@ async function answerRuleQuestion(req, res) {
     }
 }
 
-// 5. Export hàm mới
+// 5. Danh sách các model khả dụng
+async function listAvailableModels() {
+    try {
+        const models = await genAI.listModels();
+        console.log('[ChatboxController] Danh sách model khả dụng:', models);
+    } catch (error) {
+        console.error('[ChatboxController] Lỗi khi gọi ListModels:', error.message);
+    }
+}
+
+// Gọi hàm này khi khởi động server để kiểm tra model
+listAvailableModels();
+
+// 6. Export hàm mới
 // (Bạn có thể xóa các hàm generateQuestion, getGameInstructions cũ dùng OpenAI)
 module.exports = {
     answerRuleQuestion
