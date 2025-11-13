@@ -14,7 +14,6 @@ router.get('/games', async (req, res) => {
   }
 });
 
-// Ví dụ: POST /api/chatbox/ask
 router.post('/api/chatbox/ask', answerRuleQuestion);
 
 module.exports = router;

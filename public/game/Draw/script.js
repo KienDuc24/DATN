@@ -343,9 +343,10 @@
     });
 
     function pickAvatarFor(name) {
-        const player = roomPlayers.find(p => p.name === name);
-        if (player && player.avatar) return player.avatar;
-        return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
+        const safeName = name || 'guest';
+        const player = roomPlayers.find(p => p.name === safeName);
+        if (player?.avatar) return player.avatar;
+        return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
     }
 
     socket.on(`${GAME_ID}-room-update`, ({ state, room }) => {

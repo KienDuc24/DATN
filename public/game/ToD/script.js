@@ -75,12 +75,12 @@
     window.location.href = '/';
   });
 
-  function pickAvatarFor(playerObj) {
-    const name = typeof playerObj === 'string' ? playerObj : (playerObj && playerObj.name) ? playerObj.name : String(playerObj || '');
-    const providedAvatar = (providedAvatar) ? providedAvatar : null;
-    if (providedAvatar) return providedAvatar;
-    if (name === playerName && avatarUrl) return avatarUrl;
-    return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
+  function pickAvatarFor(playerObj = {}) {
+    const avatarUrl = playerObj.avatar || playerObj.avatarUrl;
+    if (avatarUrl) return avatarUrl;
+
+    const fallbackName = playerObj.name || playerObj.username || 'guest';
+    return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(fallbackName)}`;
   }
 
   // --- Hàm Render Player (Giữ nguyên) ---
@@ -268,7 +268,10 @@
 
 // --- LOGIC CHATBOX AI (ĐƯA VÀO IIFE RIÊNG) ---
 (() => {
-  const API_BASE_URL = '/api/ai'; // Đường dẫn API Backend
+  const API_BASE_URL =
+    window.__CHATBOX_API_BASE__ ||
+    document.body.dataset.apiBase ||
+    '/api';
 
   const aiToolsIcon = document.getElementById('ai-tools-icon');
   const aiChatbox = document.getElementById('ai-chatbox');
@@ -301,25 +304,22 @@
   // Gửi câu hỏi đến API Backend (ĐÃ SỬA)
   async function getInstructionsFromAI(question) {
     try {
-      // SỬA: Gửi POST request với câu hỏi đến endpoint mới
-      const response = await fetch('/api/ai/ask', { 
+      const response = await fetch(`${API_BASE_URL}/ai/ask`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ question: question }), // Gửi câu hỏi trong body
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question })
       });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-          // Hiển thị lỗi từ server (nếu có)
-          return data.error || 'Lỗi server khi hỏi AI.';
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const raw = await response.text();
+        console.error('Unexpected AI response:', raw);
+        return '❌ Server trả về dữ liệu không hợp lệ.';
       }
-      
-      // Trả về câu trả lời trực tiếp từ AI
-      return data.answer; 
-      
+
+      const data = await response.json();
+      if (!response.ok) return data.error || 'Lỗi server khi hỏi AI.';
+      return data.answer;
     } catch (error) {
       console.error('Lỗi khi hỏi AI:', error);
       return '❌ Lỗi kết nối server.';
