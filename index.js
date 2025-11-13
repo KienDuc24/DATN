@@ -11,6 +11,7 @@ const cookieParser = require('cookie-parser');
 const adminAuth = require('./middleware/adminAuth');
 const User = require('./models/User'); 
 const setupGameWatcher = require('./watchGames'); // <-- THÊM MỚI: Import watcher
+const chatboxRoutes = require('./routes/chatboxRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -38,6 +39,7 @@ try {
   app.use('/admin', require('./routes/adminAuthRoutes')); 
   app.use('/api/admin', adminAuth, require('./routes/adminRoutes')(io)); 
   app.use('/api', require('./routes/publicRoutes'));
+  app.use('/api/chatbox', chatboxRoutes); // <-- THÊM MỚI: Mount chatbox routes
   
   console.log('[index] All routes mounted successfully.');
 } catch (e) {
@@ -118,3 +120,5 @@ app.use((err, req, res, next) => {
     error: err.message || 'Internal Server Error',
   });
 });
+
+// Mount router

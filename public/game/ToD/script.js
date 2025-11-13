@@ -77,7 +77,7 @@
 
   function pickAvatarFor(playerObj) {
     const name = typeof playerObj === 'string' ? playerObj : (playerObj && playerObj.name) ? playerObj.name : String(playerObj || '');
-    const providedAvatar = (playerObj && playerObj.avatar) ? playerObj.avatar : null;
+    const providedAvatar = (providedAvatar) ? providedAvatar : null;
     if (providedAvatar) return providedAvatar;
     if (name === playerName && avatarUrl) return avatarUrl;
     return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
@@ -298,23 +298,30 @@
     aiChatbox.classList.add('hidden');
   });
 
-  // Gửi câu hỏi đến API Backend (Chỉ để lấy hướng dẫn)
+  // Gửi câu hỏi đến API Backend (ĐÃ SỬA)
   async function getInstructionsFromAI(question) {
-    // QUESTION DÙNG ĐỂ LẤY CONTEXT TRẢ LỜI, NHƯNG HIỆN TẠI CHỈ GỌI ENDPOINT CỨNG
     try {
-      // Gọi endpoint đã được fix lỗi đường dẫn file rule.json trên Backend
-      const response = await fetch('/api/debug/ai/get-instructions');
+      // SỬA: Gửi POST request với câu hỏi đến endpoint mới
+      const response = await fetch('/api/ai/ask', { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ question: question }), // Gửi câu hỏi trong body
+      });
+      
       const data = await response.json();
       
       if (!response.ok) {
-          return data.error || 'Lỗi server khi lấy hướng dẫn.';
+          // Hiển thị lỗi từ server (nếu có)
+          return data.error || 'Lỗi server khi hỏi AI.';
       }
       
-      // Sử dụng tóm tắt luật chơi (đã được trích xuất từ Backend)
-      return '📜 Luật chơi:\n' + data.instructions; 
+      // Trả về câu trả lời trực tiếp từ AI
+      return data.answer; 
       
     } catch (error) {
-      console.error('Lỗi khi lấy hướng dẫn:', error);
+      console.error('Lỗi khi hỏi AI:', error);
       return '❌ Lỗi kết nối server.';
     }
   }

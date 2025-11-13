@@ -1,0 +1,72 @@
+{
+  "game_name": {
+    "vi": "Vẽ Nhanh Đoán Nhanh",
+    "en": "Draw & Guess"
+  },
+  "summary": {
+    "vi": "Trò chơi luân phiên, một người vẽ một từ khóa bí mật, những người chơi khác phải đoán từ đó trong thời gian giới hạn để tích lũy điểm.",
+    "en": "An alternating game where one player draws a secret word, and others must guess the word within a time limit to earn points."
+  },
+  "actions": [
+    {
+      "type": "Draw",
+      "vi": "Vẽ",
+      "description": {
+        "vi": "Họa sĩ sử dụng công cụ vẽ để thể hiện từ khóa được giao.",
+        "en": "The artist uses drawing tools to represent the assigned secret word."
+      }
+    },
+    {
+      "type": "Guess",
+      "vi": "Đoán",
+      "description": {
+        "vi": "Người chơi nhập từ khóa đoán qua kênh chat.",
+        "en": "Players enter their word guesses via the chat channel."
+      }
+    }
+  ],
+  "mechanics": {
+    "start": {
+      "vi": "Người chơi đầu tiên hoặc Host nhấn nút 'Bắt đầu' để bắt đầu lượt vẽ đầu tiên.",
+      "en": "The first player or Host presses 'Start' to begin the first drawing round."
+    },
+    "flow": {
+      "vi": "Người chơi lần lượt đóng vai trò Họa sĩ. Vòng chơi kết thúc khi tất cả người chơi đã đoán đúng hoặc hết thời gian.",
+      "en": "Players take turns being the Artist. A round ends when all players have guessed correctly or the time runs out."
+    },
+    "completion": {
+      "vi": "Sau mỗi vòng, điểm số được cập nhật. Lượt chơi chuyển sang người tiếp theo.",
+      "en": "After each round, scores are updated. The turn moves to the next player."
+    }
+  },
+  "scoring_system": {
+    "purpose": {
+      "vi": "Đánh giá tốc độ và sự sáng tạo trong quá trình vẽ và đoán.",
+      "en": "Evaluate speed and creativity during the drawing and guessing process."
+    },
+    "scoring": {
+      "correct_guess": {
+        "vi": "50 điểm cơ bản + 1 điểm cho mỗi giây còn lại (Bonus Tốc độ).",
+        "en": "50 base points + 1 point for every remaining second (Speed Bonus)."
+      },
+      "artist_reward": {
+        "vi": "100 điểm cơ bản + 5 điểm cho mỗi người chơi đoán đúng.",
+        "en": "100 base points + 5 points for every player who guessed correctly."
+      }
+    },
+    "game_over": {
+      "vi": "Trò chơi kết thúc sau khi tất cả người chơi đã hoàn thành vai trò Họa sĩ một số lần nhất định.",
+      "en": "The game concludes after all players have completed the role of Artist a predetermined number of times."
+    }
+  },
+  "ai_focus": {
+    "vi": [
+      "Kiểm tra và xác thực từ khóa đoán nhanh.",
+      "Đảm bảo các từ khóa vẽ đa dạng và phù hợp với chủ đề."
+    ],
+    "en": [
+      "Quickly check and validate guessed words.",
+      "Ensure diverse and contextually relevant drawing words."
+    ]
+  }
+}

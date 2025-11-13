@@ -3,6 +3,9 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 
+// Import controller chatbox
+const { answerRuleQuestion } = require('../controllers/chatboxControler');
+
 // Endpoint hướng dẫn cách chơi
 router.get('/ai/get-instructions', async (req, res) => {
   try {
@@ -33,5 +36,9 @@ router.get('/ai/get-instructions', async (req, res) => {
     res.status(500).json({ error: 'Lỗi server: Không thể đọc hoặc parse file luật chơi.' });
   }
 });
+
+// Route để AI trả lời câu hỏi về luật chơi
+// Client gửi POST request đến /api/ai/ask với body { question: "..." }
+router.post('/ai/ask', answerRuleQuestion);
 
 module.exports = router;
