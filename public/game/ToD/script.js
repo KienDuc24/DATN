@@ -1,363 +1,464 @@
-// public/game/ToD/script.js (ĐÃ FIX LỖI CẤU TRÚC VÀ LỖI REQUIRE)
+// public/game/DrawGuess/script.js (ĐÃ CẢI TIẾN GIAO DIỆN & FIX LỖI)
+
 (() => {
-  // --- 1. KẾT NỐI SOCKET VÀ LẤY THÔNG TIN ---
-  const SOCKET_URL = "https://datn-socket.up.railway.app";
-  window.socket = window.socket || (window.io && io(SOCKET_URL, { transports: ['websocket'], secure: true }));
+    const GAME_ID = 'DG';
+    const SOCKET_URL = "https://datn-socket.up.railway.app";
+    window.socket = window.socket || (window.io && io(SOCKET_URL, { transports: ['websocket'], secure: true }));
 
-  const url = new URL(window.location.href);
-  const params = new URLSearchParams(url.search);
-  const roomCode = params.get('code') || '';
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.search);
+    const roomCode = params.get('code') || '';
+    let playerName = params.get('user'); 
 
-  let playerName = params.get('user'); 
-  
-  if (!playerName || !roomCode) {
-    alert('Lỗi: Thiếu thông tin phòng hoặc người dùng. Đang quay về trang chủ.');
-    window.location.href = '/'; 
-    return; 
-  }
+    // --- DEBUG 1: KIỂM TRA KHỞI TẠO PLAYER VÀ ROOM CODE ---
+    console.log(`[${GAME_ID}][DEBUG INIT] PlayerName (từ URL):`, playerName);
+    console.log(`[${GAME_ID}][DEBUG INIT] RoomCode (từ URL):`, roomCode);
+    // -----------------------------------------------------
 
-  window.playerName = playerName;
-  try { localStorage.setItem('playerName', playerName); } catch (e) { /* ignore */ }
-
-  const avatarParam = params.get('avatar');
-  if (avatarParam) { try { localStorage.setItem('avatarUrl', avatarParam); } catch (e) { /* ignore */ } }
-  let avatarUrl = localStorage.getItem('avatarUrl') || sessionStorage.getItem('avatarUrl') || null;
-  sessionStorage.setItem('playerName', playerName);
-
-  const $room = document.getElementById('roomCode');
-  const $playersCount = document.getElementById('playersCount');
-  const $avatars = document.getElementById('avatars');
-  const $question = document.getElementById('questionCard');
-  
-  const $voteInfo = document.getElementById('voteInfo');
-  const $voteCount = document.getElementById('voteCount');
-  const $voteTotal = document.getElementById('voteTotal');
-  
-  const controls = document.getElementById('controls');
-  let $actionBtns = document.getElementById('actionBtns');
-  if (! $actionBtns && controls) {
-    $actionBtns = document.createElement('div');
-    $actionBtns.id = 'actionBtns';
-    $actionBtns.className = 'action-btns';
-    controls.appendChild($actionBtns);
-  }
-  let $turnText = document.getElementById('turnText');
-  if (! $turnText && controls) {
-    $turnText = document.createElement('div');
-    $turnText.id = 'turnText';
-    $turnText.className = 'turn-text';
-    controls.insertBefore($turnText, $actionBtns || null);
-  }
-  
-  const socket = window.socket;
-  let currentAskedPlayer = null; 
-  let currentHost = null;
-
-  // --- 2. XỬ LÝ SỰ KIỆN SOCKET (GIỮ NGUYÊN LOGIC GAME) ---
-
-  socket.on('connect', () => {
-    console.log('[ToD][client] socket connected', socket.id, { roomCode, playerName });
-    socket.emit('tod-join', { roomCode, player: playerName });
-    socket.emit('tod-who', { roomCode });
-    setTimeout(()=> socket.emit('tod-who', { roomCode }), 200); 
-  });
-
-  socket.on('connect_error', (err) => console.warn('[ToD][client] connect_error', err));
-  socket.on('disconnect', (reason) => console.log('[ToD][client] disconnect', reason));
-
-  socket.on('tod-join-failed', ({ reason }) => {
-    alert(reason || 'Không thể vào phòng');
-    window.location.href = '/';
-  });
-
-  socket.on('kicked', (data) => {
-    alert(data.message || 'Bạn đã bị Admin kick khỏi phòng.');
-    window.location.href = '/';
-  });
-
-  function pickAvatarFor(playerObj) {
-    const name = typeof playerObj === 'string' ? playerObj : (playerObj && playerObj.name) ? playerObj.name : String(playerObj || '');
-    const providedAvatar = (playerObj && playerObj.avatar) ? playerObj.avatar : null;
-    if (providedAvatar) return providedAvatar;
-    if (name === playerName && avatarUrl) return avatarUrl;
-    return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
-  }
-
-  // --- Hàm Render Player (Giữ nguyên) ---
-  function renderPlayers(players = [], askedName, host) { 
-    if ($playersCount) $playersCount.textContent = `${players.length}`;
-    if (!$avatars) return;
-    $avatars.innerHTML = ''; 
+    if (!playerName || !roomCode) {
+        alert('Lỗi: Thiếu thông tin phòng hoặc người dùng. Đang quay về trang chủ.');
+        window.location.href = '/'; 
+        return; 
+    }
+    window.playerName = playerName;
     
-    // Thêm đống lửa
-    const campfireEl = document.createElement('div');
-    campfireEl.className = 'campfire';
-    campfireEl.innerHTML = `<img src="/game/ToD/Img/campfire.gif" alt="Campfire" class="campfire-gif">`;
-    $avatars.appendChild(campfireEl);
+    // --- KHAI BÁO BIẾN DOM ---
+    const $room = document.getElementById('roomCode');
+    const $playersCount = document.getElementById('playersCount');
+    const $gameStatus = document.getElementById('game-status');
+    const $wordHint = document.getElementById('word-hint');
+    const $hintText = document.getElementById('hint-text');
+    const $timer = document.getElementById('timer');
+    const $scoreGrid = document.getElementById('scoreGrid');
+    const $chatMessages = document.getElementById('chatMessages');
+    const $guessInput = document.getElementById('guessInput');
+    const $sendGuess = document.getElementById('sendGuess');
+    const $drawingTools = document.getElementById('drawingTools');
+    const $canvas = document.getElementById('drawingCanvas');
+    const $clearBtn = document.getElementById('clearBtn');
+    const $colorPicker = document.getElementById('colorPicker');
+    const $sizeSlider = document.getElementById('sizeSlider');
+    const $eraseBtn = document.getElementById('eraseBtn');
     
-    if (!players.length) return;
+    // THÊM MỚI: DOM Element cho danh sách người chơi (đã có từ trước)
+    let $playerListContainer; 
+    
+    const ctx = $canvas.getContext('2d');
+    const socket = window.socket;
 
-    players.forEach((p, i) => {
-      const name = p && p.name ? p.name : String(p);
-      const imgUrl = pickAvatarFor(p);
-      const el = document.createElement('div');
-      
-      el.className = 'player' + 
-                    (name === playerName ? ' you' : '') + 
-                    (name === askedName ? ' asked' : '') +
-                    (name === host ? ' host' : ''); // Thêm class host
-      
-      const crown = (name === host) ? '<div class="crown">👑</div>' : '';
-      
-      el.innerHTML = `<div class="pic">${crown}<img src="${imgUrl}" alt="${name}"></div><div class="name">${name}</div>`;
-      $avatars.appendChild(el);
+    let currentHost = null;
+    let currentDrawer = null;
+    let roomPlayers = []; // Danh sách người chơi trong phòng
+    let isDrawing = false;
+    let isEraser = false;
+    let lastX = 0;
+    let lastY = 0;
+    let currentColor = $colorPicker.value;
+    let currentSize = parseInt($sizeSlider.value);
+    
+    // Khởi tạo Canvas (đặt kích thước gốc)
+    $canvas.width = 800; // Có thể điều chỉnh tùy thuộc vào bố cục CSS
+    $canvas.height = 600; // Có thể điều chỉnh tùy thuộc vào bố cục CSS
+    
+    function clearCanvas() {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, $canvas.width, $canvas.height);
+    }
+    clearCanvas();
+
+    // --- 1. LOGIC VẼ ---
+    function emitDraw(type, x, y, color = currentColor, size = currentSize) {
+        if (currentDrawer !== playerName) return; 
+
+        const data = { type, x, y, color, size };
+        socket.emit(`${GAME_ID}-draw`, { roomCode, data });
+        draw(data);
+    }
+
+    function draw({ type, x, y, color, size }) {
+        if (type === 'start') {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        } else if (type === 'move') {
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+    }
+    
+    function getMousePos(e) {
+        const rect = $canvas.getBoundingClientRect();
+        let clientX, clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        const scaleX = $canvas.width / rect.width;
+        const scaleY = $canvas.height / rect.height;
+        
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+
+    function handleDrawStart(e) {
+        if (currentDrawer !== playerName) return; // Chỉ drawer mới được vẽ
+        isDrawing = true;
+        const pos = getMousePos(e);
+        lastX = pos.x;
+        lastY = pos.y;
+        
+        const drawColor = isEraser ? 'white' : currentColor;
+        emitDraw('start', lastX, lastY, drawColor, currentSize);
+        e.preventDefault();
+    }
+
+    function handleDrawMove(e) {
+        if (!isDrawing || currentDrawer !== playerName) return; // Chỉ drawer mới được vẽ
+        const pos = getMousePos(e);
+        const drawColor = isEraser ? 'white' : currentColor;
+        emitDraw('move', pos.x, pos.y, drawColor, currentSize);
+        lastX = pos.x;
+        lastY = pos.y;
+        e.preventDefault();
+    }
+
+    function handleDrawEnd() {
+        if (currentDrawer !== playerName) return; // Chỉ drawer mới được vẽ
+        isDrawing = false;
+    }
+
+    // Gắn sự kiện vẽ
+    $canvas.addEventListener('mousedown', handleDrawStart);
+    $canvas.addEventListener('mousemove', handleDrawMove);
+    $canvas.addEventListener('mouseup', handleDrawEnd);
+    $canvas.addEventListener('mouseout', handleDrawEnd);
+
+    $canvas.addEventListener('touchstart', handleDrawStart);
+    $canvas.addEventListener('touchmove', handleDrawMove);
+    $canvas.addEventListener('touchend', handleDrawEnd);
+
+    // Xử lý thanh công cụ
+    $colorPicker.addEventListener('input', (e) => {
+        currentColor = e.target.value;
+        isEraser = false;
+        $eraseBtn.classList.remove('active');
     });
-  }
-  // --- HẾT HÀM RENDER ---
-
-  socket.on('tod-joined', (payload) => {
-    console.log('[ToD][client] evt tod-joined', payload);
-
-    const rc = (payload && (payload.roomCode || (payload.data && payload.data.roomCode))) || roomCode || '';
-    const host = (payload && (payload.host || (payload.data && payload.data.host))) || '';
-    const players = (payload && (payload.players || (payload.data && payload.data.participants))) || [];
-    const participantsCount = payload && (payload.participantsCount || (payload.data && payload.data.participantsCount)) || players.length || 0;
-    const status = (payload && payload.status) || 'open';
     
-    currentHost = host; 
+    $sizeSlider.addEventListener('input', (e) => currentSize = parseInt(e.target.value));
+    
+    $clearBtn.addEventListener('click', () => {
+        if (currentDrawer === playerName && confirm('Xác nhận xóa toàn bộ?')) {
+            socket.emit(`${GAME_ID}-clear`, { roomCode });
+            clearCanvas();
+        }
+    });
 
-    if ($room) $room.textContent = rc || '—';
-    if ($playersCount) $playersCount.textContent = participantsCount;
+    $eraseBtn.addEventListener('click', () => {
+        isEraser = true;
+        $eraseBtn.classList.add('active');
+    });
+    
+    $colorPicker.addEventListener('click', () => {
+        isEraser = false;
+        $eraseBtn.classList.remove('active');
+    });
 
-    renderPlayers(players, currentAskedPlayer, currentHost);
+    // --- 2. LOGIC CHAT & ĐOÁN ---
+    function renderChatMessage(player, message, type = 'msg-guess') {
+        const el = document.createElement('div');
+        el.className = `chat-message ${type}`;
+        el.innerHTML = `<strong>${player}:</strong> ${message}`;
+        $chatMessages.appendChild(el);
+        $chatMessages.scrollTop = $chatMessages.scrollHeight;
+    }
 
-    if (controls) {
-      let startBtn = document.getElementById('startRoundBtn');
-      if (!startBtn) {
-        startBtn = document.createElement('button');
-        startBtn.id = 'startRoundBtn';
-        startBtn.className = 'btn btn-primary';
-        startBtn.textContent = '🚀 Bắt đầu';
-        startBtn.style.margin = '0.5rem';
-        startBtn.addEventListener('click', () => {
-          console.log('[ToD][client] start clicked by', playerName);
-          socket.emit('tod-start-round', { roomCode: rc });
+    function disableGuessInput(disabled = true) {
+        $guessInput.disabled = disabled;
+        $sendGuess.disabled = disabled;
+        if (disabled) {
+            $guessInput.placeholder = currentDrawer === playerName ? 'Bạn là Họa sĩ, không được đoán.' : 'Chờ vòng mới...';
+        } else {
+            $guessInput.placeholder = 'Nhập từ khóa đoán hoặc chat...';
+        }
+    }
+
+    function handleSendGuess() {
+        const guess = $guessInput.value.trim();
+        if (!guess) return;
+
+        $guessInput.value = '';
+        
+        // Họa sĩ không đoán, chỉ chat
+        if (currentDrawer === playerName) {
+            socket.emit(`${GAME_ID}-guess`, { roomCode, player: playerName, guess: `(Chat): ${guess}` });
+        } else {
+            socket.emit(`${GAME_ID}-guess`, { roomCode, player: playerName, guess });
+        }
+    }
+
+    $sendGuess.addEventListener('click', handleSendGuess);
+    $guessInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleSendGuess();
+    });
+
+    // --- 3. LOGIC SOCKET GAME ---
+    socket.on('connect', () => {
+        console.log(`[${GAME_ID}][client] socket connected`);
+        const playerObj = { name: playerName }; // Đảm bảo playerName được định nghĩa
+        console.log(`[${GAME_ID}][DEBUG JOIN] Gửi join request: room=${roomCode}, player=${playerName}`);
+        socket.emit(`${GAME_ID}-join`, { roomCode, player: playerObj });
+    });
+
+    function pickAvatarFor(name) {
+        const player = roomPlayers.find(p => p.name === name);
+        if (player && player.avatar) return player.avatar;
+        return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
+    }
+
+    socket.on(`${GAME_ID}-room-update`, ({ state, room }) => {
+        // --- DEBUG 3: KIỂM TRA TRẠNG THÁI HOST/PLAYER VÀ ĐIỀU KIỆN NÚT BẮT ĐẦU ---
+        console.log(`[${GAME_ID}][DEBUG ROOM] Data nhận về: Host=${room.host}, Drawer=${state.drawer}`);
+        console.log(`[${GAME_ID}][DEBUG ROOM] Điều kiện Host: (Host === Player) => ${room.host === playerName}`);
+        console.log(`[${GAME_ID}][DEBUG ROOM] Điều kiện Game: (!Drawer) => ${!state.drawer}`);
+        // -------------------------------------------------------------------------
+
+        currentHost = room.host;
+        roomPlayers = room.players;
+        
+        if ($room) $room.textContent = room.code || '—';
+        if ($playersCount) $playersCount.textContent = roomPlayers.length;
+        
+        // Render điểm số
+        renderScores(state.scores, state.drawer, roomPlayers);
+        
+        // Render danh sách người chơi
+        renderPlayerList(roomPlayers);
+        
+        // --- CẬP NHẬT HIỂN THỊ TÊN HOST RÕ RÀNG TRONG ROOM INFO ---
+        const hostEl = document.getElementById('hostDisplay');
+        if (hostEl) hostEl.remove();
+
+        const newHostEl = document.createElement('span');
+        newHostEl.id = 'hostDisplay';
+        newHostEl.style.fontWeight = 'bold';
+        newHostEl.style.color = 'var(--accent-yellow)';
+        newHostEl.textContent = `👑 Host: ${currentHost}`;
+
+        const roomInfo = document.querySelector('.room-info');
+        if (roomInfo) {
+             roomInfo.appendChild(newHostEl);
+        }
+        
+        // --- XỬ LÝ NÚT BẮT ĐẦU GAME ---
+        let startBtn = document.getElementById('startGameBtn');
+        const gameNotRunning = !state.drawer;
+        
+        // Tạo nút nếu chưa có và là host, game chưa chạy
+        if (!startBtn && currentHost === playerName && gameNotRunning) {
+            startBtn = document.createElement('button');
+            startBtn.id = 'startGameBtn';
+            startBtn.className = 'btn btn-primary start-game-btn'; // Thêm class để dễ style
+            startBtn.textContent = '🚀 BẮT ĐẦU VẼ ĐOÁN';
+            startBtn.addEventListener('click', () => {
+                console.log(`[${GAME_ID}][DEBUG START] Host ${playerName} click START.`);
+                socket.emit(`${GAME_ID}-start-game`, { roomCode });
+            });
+            
+            // Chèn nút vào vị trí phù hợp (ví dụ: trong game-status)
+            if ($gameStatus) {
+                $gameStatus.innerHTML = ''; // Xóa text cũ nếu có
+                $gameStatus.appendChild(startBtn);
+            }
+        }
+        
+        // Hiển thị/Ẩn nút dựa vào trạng thái
+        if (startBtn) {
+            if (currentHost === playerName && gameNotRunning) {
+                startBtn.style.display = 'inline-block';
+                $gameStatus.classList.remove('status-waiting'); // Loại bỏ trạng thái chờ
+            } else {
+                startBtn.style.display = 'none';
+            }
+        }
+
+        // Cập nhật trạng thái hiển thị
+        if (gameNotRunning) {
+            if (currentHost !== playerName) {
+                $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+                $gameStatus.classList.add('status-waiting'); // Thêm class cho trạng thái chờ
+            } else if (!startBtn || startBtn.style.display === 'none') {
+                // Nếu là host nhưng nút bị ẩn (do game đã chạy), hoặc chưa tạo nút
+                $gameStatus.textContent = ''; // Xóa text nếu host đang thấy nút
+            }
+            disableGuessInput(true);
+            $drawingTools.classList.add('hidden'); // Ẩn công cụ vẽ khi chưa bắt đầu
+            $wordHint.classList.add('hidden'); // Ẩn gợi ý khi chưa bắt đầu
+        } else {
+            // Game đang chạy
+            $gameStatus.classList.remove('status-waiting');
+        }
+    });
+
+    socket.on(`${GAME_ID}-start-round`, ({ drawer, scores, round, wordHint }) => {
+        currentDrawer = drawer;
+        clearCanvas();
+        
+        // Hiển thị công cụ vẽ cho Họa sĩ, ẩn cho người đoán
+        $drawingTools.classList.toggle('hidden', currentDrawer !== playerName);
+
+        $gameStatus.textContent = `Vòng ${round}: ${drawer} đang vẽ...`;
+        
+        // Hiện gợi ý từ khóa
+        $hintText.textContent = '_ '.repeat(wordHint).trim();
+        $wordHint.classList.remove('hidden');
+        
+        renderScores(scores, drawer, roomPlayers);
+        renderChatMessage('Hệ thống', `Vòng ${round} bắt đầu! ${drawer} đang vẽ.`, 'msg-system');
+        
+        disableGuessInput(currentDrawer === playerName); // Họa sĩ không được đoán
+    });
+    
+    socket.on(`${GAME_ID}-secret-word`, ({ word }) => {
+        $gameStatus.textContent = `BẠN ĐANG VẼ: ${word}`;
+        $wordHint.classList.remove('hidden'); // Đảm bảo gợi ý từ khóa hiện
+        $hintText.textContent = word; // Hiện từ khóa đầy đủ cho họa sĩ
+    });
+
+    socket.on(`${GAME_ID}-drawing`, (data) => {
+        if (currentDrawer !== playerName) { // Chỉ người khác nhận mới vẽ
+            draw(data);
+        }
+    });
+    
+    socket.on(`${GAME_ID}-clear-canvas`, () => {
+        clearCanvas();
+    });
+
+    socket.on(`${GAME_ID}-timer`, ({ time }) => {
+        $timer.textContent = time;
+    });
+
+    socket.on(`${GAME_ID}-chat-message`, ({ player, message }) => {
+        const type = player === currentDrawer ? 'msg-drawer' : 'msg-guess';
+        renderChatMessage(player, message, type);
+    });
+
+    socket.on(`${GAME_ID}-correct-guess`, ({ player, scores }) => {
+        renderChatMessage('Hệ thống', `${player} đã đoán đúng! 🎉`, 'msg-correct');
+        renderScores(scores, currentDrawer, roomPlayers);
+        
+        if (player === playerName) {
+            disableGuessInput(true);
+            $guessInput.placeholder = 'Bạn đã đoán đúng!';
+        }
+    });
+
+    socket.on(`${GAME_ID}-end-round`, ({ word, scores, drawer, guessed }) => {
+        currentDrawer = null;
+        $drawingTools.classList.add('hidden'); // Ẩn công cụ vẽ
+        $gameStatus.textContent = `Vòng kết thúc! Từ khóa là: ${word}`;
+        $wordHint.classList.add('hidden'); // Ẩn gợi ý
+        
+        if (guessed) {
+            renderChatMessage('Hệ thống', `Từ khóa đã được đoán đúng.`, 'msg-system');
+        } else {
+            renderChatMessage('Hệ thống', `Hết giờ! Không ai đoán được.`, 'msg-system');
+        }
+        
+        renderScores(scores, null, roomPlayers);
+        disableGuessInput(true);
+        
+        // Hiển thị lại nút Bắt đầu Game sau một thời gian (nếu là Host)
+        setTimeout(() => {
+            const startBtn = document.getElementById('startGameBtn');
+            if (startBtn && currentHost === playerName) {
+                startBtn.style.display = 'inline-block';
+                $gameStatus.textContent = ''; // Xóa text cũ
+                $gameStatus.appendChild(startBtn); 
+            } else if (currentHost !== playerName) {
+                $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+            }
+        }, 5000); // 5 giây chờ trước khi hiển thị lại nút
+    });
+    
+    // --- 4. HÀM RENDER ĐIỂM SỐ CÓ AVATAR ---
+    function renderScores(scores, drawerName, playerList = []) {
+        if (!$scoreGrid) return;
+        $scoreGrid.innerHTML = '';
+        
+        const playerNames = playerList.map(p => p.name);
+        const mergedScores = playerNames.reduce((acc, name) => ({ ...acc, [name]: scores[name] || 0 }), { ...scores });
+        const sortedPlayers = playerNames.sort((a, b) => mergedScores[b] - mergedScores[a]);
+
+        sortedPlayers.forEach(name => {
+            const isDrawer = name === drawerName;
+            
+            const playerRow = document.createElement('div');
+            playerRow.className = 'score-row';
+            if (isDrawer) playerRow.classList.add('drawer-turn');
+            if (name === playerName) playerRow.classList.add('you');
+
+            playerRow.innerHTML = `
+                <div class="score-avatar-name">
+                    <img src="${pickAvatarFor(name)}" alt="${name}" class="player-avatar">
+                    <span class="player-name">${isDrawer ? '🎨 ' : ''}${name}</span>
+                </div>
+                <div class="score-value">${mergedScores[name] || 0}</div>
+            `;
+            $scoreGrid.appendChild(playerRow);
         });
-        controls.appendChild(startBtn);
-      }
-      
-      const isHost = (host && playerName === host);
-      const isGameNotRunning = !currentAskedPlayer; // Nếu chưa có người được gán lượt chơi (lượt đầu)
-      
-      startBtn.style.display = (isHost && isGameNotRunning && status !== 'closed') ? 'inline-block' : 'none';
     }
-  });
 
-  socket.on('tod-your-turn', ({ player }) => {
-    currentAskedPlayer = player; 
-    socket.emit('tod-who', { roomCode }); // Render lại (để highlight)
-    
-    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thử thách' : `⏳ ${player} đang chọn...`;
-    
-    // Ẩn nút "Bắt đầu" ngay khi lượt chơi đầu tiên bắt đầu
-    const startBtn = document.getElementById('startRoundBtn');
-    if (startBtn) startBtn.style.display = 'none'; 
+    // --- 5. HÀM HIỂN THỊ DANH SÁCH NGƯỜI CHƠI (Tối ưu) ---
+    function renderPlayerList(players) {
+        // Tạo container nếu chưa có (chỉ 1 lần)
+        if (!$playerListContainer) {
+            $playerListContainer = document.createElement('div');
+            $playerListContainer.id = 'playerList';
+            $playerListContainer.className = 'player-list-section'; // Thêm class để style
+            
+            // Tìm vị trí để chèn, ví dụ sau scoreGrid
+            const scoreSection = document.getElementById('scoreSection'); // Giả sử có một div với id='scoreSection'
+            if (scoreSection) {
+                scoreSection.insertAdjacentElement('afterend', $playerListContainer);
+            } else {
+                // Nếu không tìm thấy scoreSection, chèn vào cuối #gameContainer
+                const gameContainer = document.getElementById('gameContainer');
+                if (gameContainer) gameContainer.appendChild($playerListContainer);
+            }
+        }
 
-    if (player === playerName) {
-      if ($actionBtns) $actionBtns.innerHTML = '';
-      const btnT = document.createElement('button'); btnT.className='btn btn-accept'; btnT.textContent='Sự thật'; btnT.onclick = () => socket.emit('tod-choice', { roomCode, player: playerName, choice: 'truth' });
-      const btnD = document.createElement('button'); btnD.className='btn btn-reject'; btnD.textContent='Thử thách'; btnD.onclick = () => socket.emit('tod-choice', { roomCode, player: playerName, choice: 'dare' });
-      $actionBtns && $actionBtns.appendChild(btnT) && $actionBtns.appendChild(btnD);
-    } else {
-        if ($actionBtns) $actionBtns.innerHTML = '';
+        $playerListContainer.innerHTML = '<h3>Mọi người trong phòng</h3><ul class="player-list-ul"></ul>'; // Reset và thêm tiêu đề
+        const ul = $playerListContainer.querySelector('.player-list-ul');
+        if (!ul) return;
+        
+        players.forEach(p => {
+            const li = document.createElement('li');
+            li.className = 'player-list-item';
+            
+            const isHost = p.name === currentHost;
+            const isYou = p.name === playerName;
+
+            li.innerHTML = `
+                <img src="${pickAvatarFor(p.name)}" alt="${p.name}" class="player-list-avatar">
+                <span class="player-list-name">${p.name}</span>
+                ${isHost ? '<span class="player-tag host-tag">👑 Host</span>' : ''}
+                ${isYou && !isHost ? '<span class="player-tag you-tag">(Bạn)</span>' : ''}
+            `;
+            ul.appendChild(li);
+        });
     }
-  });
 
-  function toggleQuestionExpand() {
-    if (!$question) return;
-    $question.classList.toggle('collapsed');
-    if (!$question.classList.contains('collapsed')) $question.focus();
-  }
-  const toggleBtn = document.getElementById('toggleQuestion');
-  toggleBtn && toggleBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleQuestionExpand(); });
-
-  socket.on('tod-question', ({ player, choice, question, totalVoters }) => {
-    currentAskedPlayer = player; 
-    socket.emit('tod-who', { roomCode }); // Render lại (để highlight)
-
-    if ($question) {
-      $question.classList.remove('hidden');
-      $question.classList.remove('collapsed');
-      $question.classList.toggle('truth', choice === 'truth');
-      $question.classList.toggle('dare', choice === 'dare');
-      const qText = $question.querySelector('.q-text');
-      if (qText) qText.textContent = `${player} chọn ${choice === 'truth' ? 'Sự thật' : 'Thử thách'}: ${question}`;
-    }
-    if ($turnText) $turnText.textContent = `${player} đang thực hiện`;
-    
-    if (playerName === player) { 
-      $actionBtns && ($actionBtns.innerHTML = ''); 
-    } else {
-      if ($actionBtns) {
-        $actionBtns.innerHTML = '';
-        const a = document.createElement('button'); a.className='btn btn-accept'; a.textContent='Thông qua'; a.onclick = () => { socket.emit('tod-vote', { roomCode, player: playerName, vote: 'accept' }); $actionBtns.innerHTML = ''; };
-        const r = document.createElement('button'); r.className='btn btn-reject'; r.textContent='Không thông qua'; r.onclick = () => { socket.emit('tod-vote', { roomCode, player: playerName, vote: 'reject' }); $actionBtns.innerHTML = ''; };
-        $actionBtns.appendChild(a); $actionBtns.appendChild(r);
-      }
-      
-      if ($voteInfo) $voteInfo.style.display = 'block';
-      if ($voteCount) $voteCount.textContent = '0';
-      if ($voteTotal) $voteTotal.textContent = totalVoters || '?'; 
-    }
-  });
-
-  socket.on('tod-voted', ({ player, vote, acceptCount, voted, total }) => {
-      console.log(`Vote received: ${player} voted ${vote}. Total: ${voted}/${total}`);
-      if ($voteInfo && $voteInfo.style.display !== 'none') {
-        if ($voteCount) $voteCount.textContent = voted;
-        if ($voteTotal) $voteTotal.textContent = total;
-      }
-  });
-
-  socket.on('tod-result', ({ result }) => {
-    currentAskedPlayer = null; 
-    socket.emit('tod-who', { roomCode }); 
-    
-    if ($voteInfo) $voteInfo.style.display = 'none';
-    if ($turnText) $turnText.textContent = result === 'accepted' ? '✅ Đa số chấp nhận' : '❌ Không đủ, thử lại';
-    if (result === 'accepted' && $question) $question.classList.add('hidden');
-  });
-
-  socket.onAny((ev,p) => console.debug('evt',ev,p));
-
-  window.addEventListener('resize', () => {
-    socket.emit('tod-who', { roomCode }); 
-  });
-
-  window.addEventListener('beforeunload', () => {
-    socket.disconnect();
-    console.log('[ToD][client] Disconnecting (beforeunload)');
-  });
-  
-  const backBtn = document.querySelector('.back-btn');
-  if (backBtn) {
-      backBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          if (confirm('Bạn có chắc muốn rời khỏi phòng game?')) {
-              socket.disconnect(); 
-              window.location.href = '/'; 
-          }
-      });
-  }
-
-  if (typeof window.ActionBtns === 'undefined') {
-    window.ActionBtns = {
-      disable(selector) {
-        document.querySelectorAll(selector || '.action-btn').forEach(b => { try { b.disabled = true; } catch(e){} });
-      },
-      enable(selector) {
-        document.querySelectorAll(selector || '.action-btn').forEach(b => { try { b.disabled = false; } catch(e){} });
-      },
-      setDisabled(disabled, selector) {
-        return disabled ? this.disable(selector) : this.enable(selector);
-      }
-    };
-  }
-  if (typeof window.$actionBtns === 'undefined') window.$actionBtns = window.ActionBtns;
-})();
-
-// --- LOGIC CHATBOX AI (ĐƯA VÀO IIFE RIÊNG) ---
-(() => {
-  const API_BASE_URL = '/api/ai'; // Đường dẫn API Backend
-
-  const aiToolsIcon = document.getElementById('ai-tools-icon');
-  const aiChatbox = document.getElementById('ai-chatbox');
-  const chatInput = document.getElementById('chatInput');
-  const sendChat = document.getElementById('sendChat');
-  const chatMessages = document.getElementById('chatMessages');
-  const closeChatbox = document.getElementById('closeChatbox');
-
-  if (!aiToolsIcon || !aiChatbox || !chatInput || !sendChat || !chatMessages || !closeChatbox) {
-      console.warn('AI Chatbox elements not found. Skipping AI chat logic.');
-      return;
-  }
-
-  // Hiển thị hoặc ẩn chatbox
-  aiToolsIcon.addEventListener('click', () => {
-    aiChatbox.classList.toggle('hidden');
-    // Khởi tạo tin nhắn đầu tiên nếu trống
-    if (!chatMessages.children.length) {
-        const initialMessage = document.createElement('div');
-        initialMessage.className = 'chat-message ai';
-        initialMessage.textContent = '🤖 Chào bạn. Tôi là AI Hướng dẫn. Hãy hỏi tôi về luật chơi hoặc cách chơi Sự thật hay Thử thách!';
-        chatMessages.appendChild(initialMessage);
-    }
-  });
-
-  closeChatbox.addEventListener('click', () => {
-    aiChatbox.classList.add('hidden');
-  });
-
-  // Gửi câu hỏi đến API Backend (Chỉ để lấy hướng dẫn)
-  async function getInstructionsFromAI(question) {
-    // QUESTION DÙNG ĐỂ LẤY CONTEXT TRẢ LỜI, NHƯNG HIỆN TẠI CHỈ GỌI ENDPOINT CỨNG
-    try {
-      // Gọi endpoint đã được fix lỗi đường dẫn file rule.json trên Backend
-      const response = await fetch('/api/debug/ai/get-instructions');
-      const data = await response.json();
-      
-      if (!response.ok) {
-          return data.error || 'Lỗi server khi lấy hướng dẫn.';
-      }
-      
-      // Sử dụng tóm tắt luật chơi (đã được trích xuất từ Backend)
-      return '📜 Luật chơi:\n' + data.instructions; 
-      
-    } catch (error) {
-      console.error('Lỗi khi lấy hướng dẫn:', error);
-      return '❌ Lỗi kết nối server.';
-    }
-  }
-
-  // Xử lý gửi câu hỏi
-  sendChat.addEventListener('click', async () => {
-    const question = chatInput.value.trim();
-    if (!question) return;
-    
-    // Vô hiệu hóa input/button để tránh spam
-    chatInput.disabled = true;
-    sendChat.disabled = true;
-
-    // Hiển thị câu hỏi trong chat
-    const userMessage = document.createElement('div');
-    userMessage.className = 'chat-message user';
-    userMessage.textContent = question;
-    chatMessages.appendChild(userMessage);
-
-    // Thêm loader
-    const loaderMessage = document.createElement('div');
-    loaderMessage.className = 'chat-message ai loader';
-    loaderMessage.innerHTML = '<span>🤖 Đang trả lời...</span>';
-    chatMessages.appendChild(loaderMessage);
-
-
-    // Gửi câu hỏi đến AI
-    const aiResponse = await getInstructionsFromAI(question);
-
-    // Xóa loader và hiển thị câu trả lời từ AI
-    chatMessages.removeChild(loaderMessage);
-
-    const aiMessage = document.createElement('div');
-    aiMessage.className = 'chat-message ai';
-    aiMessage.textContent = aiResponse;
-    chatMessages.appendChild(aiMessage);
-
-    // Kích hoạt lại input/button
-    chatInput.disabled = false;
-    sendChat.disabled = false;
-
-    // Xóa input
-    chatInput.value = '';
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  });
 })();

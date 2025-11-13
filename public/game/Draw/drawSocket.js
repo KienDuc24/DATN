@@ -245,59 +245,60 @@ module.exports = (socket, io) => {
     });
 
     // --- 5. DISCONNECT ---
-    socket.on('disconnecting', async () => {
+    socket.on('disconnect', async () => {
+        // 1. Lấy thông tin người chơi và phòng từ Map/Session
+        const userInfo = gameSocketMap.get(socket.id);
+        if (!userInfo) return; 
+
+        const { player, code } = userInfo; // Tên người chơi và mã phòng
+        gameSocketMap.delete(socket.id); 
+
         try {
-          const userInfo = gameSocketMap.get(socket.id);
-          if (!userInfo) {
-            console.log(`[ToD] Disconnect: socket ${socket.id} not in gameSocketMap.`);
-            return; 
-          }
-    
-          const { player, code } = userInfo;
-          gameSocketMap.delete(socket.id); 
-    
-          const room = await Room.findOne({ code: code });
-          if (!room) return;
-    
-          let newHost = room.host;
-          const wasHost = (room.host === player);
-          
-          room.players = room.players.filter(p => p.name !== player);
-          
-          if (wasHost && room.players.length > 0) {
-            newHost = room.players[0].name;
-            room.host = newHost;
-            console.log(`[ToD] Host ${player} disconnected. New host is ${newHost}.`);
-          } else if (room.players.length === 0) {
-            // SỬA: Cập nhật status thành 'closed'
-            room.status = 'closed';
+            const room = await Room.findOne({ code });
+            if (!room) return;
+
+            let newHost = room.host;
+            const wasHost = (room.host === player);
+            
+            // 2. XÓA NGƯỜI CHƠI KHỎI PHÒNG DB
+            room.players = room.players.filter(p => p.name !== player);
+            
+            // 3. CHUYỂN HOST (nếu người thoát là host)
+            if (wasHost && room.players.length > 0) {
+                newHost = room.players[0].name;
+                room.host = newHost;
+                console.log(`[${GAME_ID}] Host ${player} disconnected. New host is ${newHost}.`);
+            } else if (room.players.length === 0) {
+                // Đóng phòng nếu không còn ai
+                room.status = 'closed';
+                delete ROOM_STATE[code]; 
+                await room.save();
+                io.emit('admin-rooms-changed'); 
+                return; 
+            }
+
             await room.save();
-            delete ROOM_STATE[code]; 
-            console.log(`[ToD] Room ${code} is empty and set to 'closed'.`);
+            
+            // 4. THÔNG BÁO CHO CÁC NGƯỜI CHƠI CÒN LẠI VÀ RENDER LẠI
+            const playersWithAvt = await attachAvatarsToPlayers(room.players);
+            const state = getRoomState(code);
+
+            // SỬA LỖI QUAN TRỌNG: Phát sự kiện cập nhật phòng ĐÚNG tên
+            io.to(code).emit(`${GAME_ID}-room-update`, { 
+                state, 
+                room: { code: room.code, host: newHost, players: playersWithAvt } // Gửi dữ liệu phòng mới
+            });
             io.emit('admin-rooms-changed'); 
-            return; 
-          }
-    
-          await room.save();
-          
-          // SỬA: Xóa logic cập nhật status. socketServer.js sẽ xử lý
-          // (Khi socket game disconnect, socket chính (nếu có) sẽ tự động registerSocket)
-          // if (!player.startsWith('guest_')) {
-          //     await User.findOneAndUpdate({ username: player }, { status: 'online' });
-          //     io.emit('admin-user-status-changed');
-          // }
-          
-          const playersWithAvt = await attachAvatarsToPlayers(room.players);
-          const payload = {
-            roomCode: room.code, host: newHost, status: room.status,
-            participantsCount: room.players.length, players: playersWithAvt,
-            createdAt: room.createdAt || null, updatedAt: room.updatedAt || null, state: getRoomState(code)
-          };
-          io.to(code).emit('tod-joined', payload);
-          io.emit('admin-rooms-changed'); 
-    
+            
+            // 5. THÊM: Gửi tin nhắn hệ thống vào chat
+            io.to(code).emit(`${GAME_ID}-chat`, { 
+                player: 'Hệ thống', 
+                message: `${player} đã rời phòng.`, 
+                type: 'msg-system' 
+            });
+
         } catch (e) {
-          console.error('[ToD] disconnecting handler error', e);
+            console.error(`[${GAME_ID}] Lỗi xử lý disconnect của ${player} trong phòng ${code}:`, e);
         }
-      });
+    });
 };

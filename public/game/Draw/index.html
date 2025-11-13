@@ -3,74 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vẽ Nhanh Đoán Nhanh - Draw & Guess</title>
-    <link rel="icon" href="Img/logo.png" />
-    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>  
+    <title>Vẽ Nhanh Đoán Nhanh</title>
+    <link rel="stylesheet" href="/assets/global.css"> <link rel="stylesheet" href="./style.css"> <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <style>
+        /* Tùy chỉnh nhỏ hoặc override nếu cần */
+        body {
+            /* Example: Adjust background if global.css overrides it */
+            background-image: url('../../assets/bg_camping.jpg'); 
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+    </style>
 </head>
 <body>
-    <div class="background-wrapper">
-        <div class="overlay"></div>
-
-        <header class="game-header">
-             <a href="/" class="back-btn" title="Về trang chủ">
-                <i class="fas fa-home"></i>
-                <span>Trang chủ</span>
-            </a>
-            <h1 class="game-title">Vẽ Nhanh Đoán Nhanh</h1>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>Vẽ Nhanh Đoán Nhanh</h1>
             <div class="room-info">
-                <span>Phòng: <span id="roomCode">...</span></span>
-                <span><i class="fas fa-users"></i> <span id="playersCount">0</span></span>
+                <span>Phòng: <span id="roomCode">---</span></span>
+                <span>Người chơi: <span id="playersCount">0</span></span>
+                <span id="hostDisplay">Host: Đang tải...</span> 
             </div>
-        </header>
+        </div>
 
-        <div class="playground-container">
-            <main class="game-container">
-                
-                <section class="drawing-area">
-                    <div class="info-top">
-                        <div id="game-status" class="game-status">Đang chờ Host bắt đầu...</div>
-                        <div class="timer-display">
-                            <i class="fas fa-clock"></i> <span id="timer">90</span>s
+        <div class="game-main">
+            <div class="canvas-section">
+                <div class="game-info-box" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span id="game-status">Đang chờ Host bắt đầu...</span>
+                    <span id="timer" style="font-size:1.5em; font-weight:bold;">90</span>
+                </div>
+                <div id="word-hint" class="hidden"></div>
+                <canvas id="drawingCanvas"></canvas>
+                <div id="drawingTools" class="drawing-tools hidden">
+                    <input type="color" id="colorPicker" value="#000000">
+                    <input type="range" id="sizeSlider" min="1" max="50" value="5">
+                    <button id="eraseBtn">Eraser</button>
+                    <button id="clearBtn">Clear</button>
+                </div>
+            </div>
+
+            <div class="game-sidebar">
+                <div class="game-info-box">
+                    <h3>Điểm số</h3>
+                    <div id="scoreGrid">
                         </div>
-                    </div>
-                    
-                    <div id="word-hint" class="word-hint hidden">Từ khóa: <span id="hint-text"></span></div>
-                    
-                    <canvas id="drawingCanvas" width="800" height="600"></canvas>
+                </div>
 
-                    <div id="drawingTools" class="drawing-tools hidden">
-                        <button id="clearBtn" title="Xóa tất cả"><i class="fas fa-trash"></i></button>
-                        <input type="color" id="colorPicker" value="#000000" title="Chọn màu">
-                        <input type="range" id="sizeSlider" min="2" max="20" value="5" title="Chọn kích cỡ nét vẽ">
-                        <button id="eraseBtn" title="Tẩy" data-color="#FFFFFF"><i class="fas fa-eraser"></i></button>
-                    </div>
-                </section>
-                
-                <section class="sidebar">
-                    <div id="camp" class="player-camp">
-                        <h3>Điểm số</h3>
-                        <div id="scoreGrid" class="score-grid">
-                            </div>
-                    </div>
-                    
-                    <div class="chat-area">
-                        <h3>Chat & Đoán</h3>
-                        <div id="chatMessages" class="chat-messages">
-                            </div>
-                        <div class="chat-input-area">
-                            <input type="text" id="guessInput" placeholder="Nhập từ khóa đoán hoặc chat..." />
-                            <button id="sendGuess"><i class="fas fa-paper-plane"></i></button>
+                <div id="playerList">
+                    <h3>Danh sách người chơi</h3>
+                    <ul class="player-list-ul">
+                        </ul>
+                </div>
+
+                <div class="chat-section">
+                    <h3>Chat & Đoán</h3>
+                    <div id="chatMessages">
                         </div>
+                    <div class="chat-input-group">
+                        <input type="text" id="guessInput" placeholder="Nhập từ khóa đoán hoặc chat...">
+                        <button id="sendGuess">Gửi</button>
                     </div>
-                </section>
-
-            </main>
+                </div>
+            </div>
         </div>
     </div>
-    
-    <script src="script.js"></script>
+
+    <script src="./script.js"></script>
 </body>
 </html>
