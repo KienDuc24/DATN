@@ -1,4 +1,4 @@
-// public/game/DrawGuess/script.js (ĐÃ CẢI TIẾN VÀ THÊM DANH SÁCH NGƯỜI CHƠI)
+// public/game/DrawGuess/script.js (ĐÃ CẢI TIẾN HIỂN THỊ HOST)
 
 (() => {
     const GAME_ID = 'DG';
@@ -67,7 +67,6 @@
     clearCanvas();
 
     // --- 1. LOGIC VẼ (GIỮ NGUYÊN) ---
-    // ... (logic vẽ không thay đổi)
     function emitDraw(type, x, y, color = currentColor, size = currentSize) {
         if (currentDrawer !== playerName) return; 
 
@@ -221,9 +220,6 @@
     socket.on('connect', () => {
         console.log(`[${GAME_ID}][client] socket connected`);
         const playerObj = { name: playerName };
-        // --- DEBUG 2: KIỂM TRA DỮ LIỆU GỬI ĐI KHI JOIN ---
-        console.log(`[${GAME_ID}][DEBUG JOIN] Gửi join request: room=${roomCode}, player=${playerName}`);
-        // ----------------------------------------------------
         socket.emit(`${GAME_ID}-join`, { roomCode, player: playerObj });
     });
 
@@ -251,12 +247,28 @@
         // Render điểm số (dùng danh sách player)
         renderScores(state.scores, state.drawer, roomPlayers);
         
-        // THÊM MỚI: Render danh sách người chơi
+        // Render danh sách người chơi
         renderPlayerList(roomPlayers);
         
         // --- XỬ LÝ NÚT BẮT ĐẦU GAME ---
         let startBtn = document.getElementById('startGameBtn');
         const gameNotRunning = !state.drawer;
+        
+        // CẬP NHẬT TRẠNG THÁI CHUNG HIỂN THỊ TÊN HOST
+        const hostEl = document.getElementById('hostDisplay');
+        if (hostEl) hostEl.remove(); // Xóa cũ nếu có
+
+        const newHostEl = document.createElement('span');
+        newHostEl.id = 'hostDisplay';
+        newHostEl.style.fontWeight = 'bold';
+        newHostEl.style.color = 'var(--accent-yellow)';
+        newHostEl.textContent = `Host: ${currentHost}`;
+
+        const roomInfo = document.querySelector('.room-info');
+        if (roomInfo) {
+             // Chèn tên Host vào khu vực room-info
+             roomInfo.appendChild(newHostEl);
+        }
         
         if (currentHost === playerName && gameNotRunning) {
              if (!startBtn) {
@@ -397,7 +409,7 @@
 
             li.innerHTML = `
                 <img src="${pickAvatarFor(p.name)}" alt="${p.name}">
-                <span>${p.name} ${isHost ? '👑' : ''} ${isYou ? '(Bạn)' : ''}</span>
+                <span>${p.name} ${isHost ? '👑 (Host)' : ''} ${isYou && !isHost ? '(Bạn)' : ''}</span>
             `;
             ul.appendChild(li);
         });
