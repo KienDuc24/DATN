@@ -1,4 +1,4 @@
-// public/admin.js
+// public/admin.js (ĐÃ SỬA LỖI MẤT DỮ LIỆU GAME KHI CẬP NHẬT)
 
 const ADMIN_API = 'https://datn-socket.up.railway.app'; 
 let allGamesCache = []; // Cache để lấy thông tin game
@@ -35,7 +35,7 @@ function el(id){return document.getElementById(id);}
 function showOverlay(show){ el('popupOverlay').style.display = show ? 'block' : 'none'; }
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
 
-// --- LOGIC THANH XÁC NHẬN (Giữ nguyên) ---
+// --- LOGIC THANH XÁC NHẬN ---
 function updateConfirmBar() {
     const bar = el('confirmBar');
     const countEl = el('pendingChangesCount');
@@ -121,7 +121,6 @@ function showTab(tabId){
 }
 
 // --- HÀM checkAnalyticsStatus (GIỮ CHỖ) ---
-// Giữ hàm này đề phòng bạn muốn hiển thị lại trạng thái tích hợp Vercel Analytics.
 function checkAnalyticsStatus() {
     const scriptStatusEl = el('analyticsScriptStatus');
     const idInput = el('vercelAnalyticsId');
@@ -306,7 +305,7 @@ function renderGamesTable(games){
   tbody.querySelectorAll('.icon-delete').forEach(b=>b.addEventListener('click', onDeleteGame));
 }
 
-// --- Handlers (Giữ nguyên) ---
+// --- Handlers ---
 function openUserForm(user){ 
   showOverlay(true); el('userFormPopup').style.display = 'block'; 
   el('userFormTitle').innerText = user ? 'Sửa người dùng' : 'Thêm người dùng'; 
@@ -342,29 +341,26 @@ async function onDeleteUser(e){
   el(`user-row-${id}`).classList.add('row-to-be-deleted');
 }
 
-// SỬA: Hàm openRoomForm (Chuẩn bị dữ liệu cho form)
+// Hàm openRoomForm
 function openRoomForm(room){ 
   showOverlay(true); 
   el('roomFormPopup').style.display = 'block'; 
   el('roomFormTitle').innerText = room ? 'Sửa phòng' : 'Thêm phòng'; 
   
-  // Gán code/id vào roomId
   el('roomId').value = room? (room.code || room.id || room._id || '') : ''; 
   
   el('roomName').value = room? (room.name || '') : ''; 
   const sel = el('roomGame');
-  // Lấy ID game từ object game.
   const gameId = room ? ( (room.game && (room.game.id || room.game.type)) || '' ) : '';
   if(sel) sel.value = gameId || '';
   
-  // roomOwner là trường Host
   el('roomOwner').value = room? (room.owner || room.host || '') : ''; 
   el('roomStatus').value = room? (room.status || 'Đang chờ') : 'Đang chờ'; 
 }
 function closeRoomForm(){ el('roomFormPopup').style.display='none'; showOverlay(false); }
 async function onEditRoom(e){ const id = e.currentTarget.dataset.id; try{ const rooms = await fetchRooms(); const r = rooms.find(x=>x.code===id); if(!r) return alert('Room not found'); openRoomForm(r); }catch(err){ console.error(err); alert('Lỗi'); } }
 
-// SỬA: Hàm saveRoom (Sử dụng các trường ID/Name/Owner đúng)
+// Hàm saveRoom
 async function saveRoom(e){
   e.preventDefault();
   
@@ -430,28 +426,42 @@ async function onEditGame(e){
 }
 async function saveGame(e){
   e.preventDefault();
-    const id = el('gameId').value.trim(); 
+  const id = el('gameId').value.trim(); 
   const idOrig = el('gameIdOrig').value.trim();
   
   if (!id) return alert('Game ID không được để trống');
   
-  const payload = {
-    id: id,
-    name: { 
-      vi: el('gameNameVI').value.trim(), 
-      en: el('gameNameEN').value.trim() 
-    },
-    desc: { 
-      vi: el('gameDescVI').value.trim(), 
-      en: el('gameDescEN').value.trim() 
-    },
-    players: el('gamePlayers').value.trim(),
-    category: { 
-      vi: el('gameCatVI').value.trim(), 
-      en: el('gameCatEN').value.trim() 
-    }
+  // KHỞI TẠO PAYLOAD TỪ GAME GỐC ĐỂ TRÁNH MẤT DỮ LIỆU
+  let payload = {};
+  if (idOrig) {
+      const original = allGamesCache.find(g => g.id === idOrig);
+      if (original) {
+          payload = { ...original }; // Giữ lại TẤT CẢ thông tin gốc
+          if (id !== idOrig) payload.id = id; 
+      }
+  }
+
+  // GHI ĐÈ các trường từ form
+  payload.id = id;
+  payload.name = { 
+    vi: el('gameNameVI').value.trim(), 
+    en: el('gameNameEN').value.trim() 
+  };
+  payload.desc = { 
+    vi: el('gameDescVI').value.trim(), 
+    en: el('gameDescEN').value.trim() 
+  };
+  payload.players = el('gamePlayers').value.trim();
+  payload.category = { 
+    vi: el('gameCatVI').value.trim(), 
+    en: el('gameCatEN').value.trim() 
   };
   
+  // Đảm bảo trường featured không bị mất
+  if (typeof payload.featured === 'undefined') {
+       payload.featured = false;
+  }
+
   const action = idOrig ? 'update' : 'save';
   addChange({ type: 'game', action: action, id: id, payload: payload, idOrig: idOrig });
   alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
@@ -472,7 +482,6 @@ async function onFeatureGame(e) {
   console.log('--- Debug onFeatureGame ---');
   console.log('gameUniqueId từ checkbox (data-id):', id);
   console.log('Giá trị checked:', checked);
-  console.log('allGamesCache hiện tại:', allGamesCache);
 
   const originalGame = allGamesCache.find(g => g.id === id);
   if (!originalGame) {
@@ -482,6 +491,7 @@ async function onFeatureGame(e) {
   
   console.log('Game tìm thấy trong cache:', originalGame);
 
+  // Đảm bảo payload là game gốc + trường featured mới
   const payload = { ...originalGame, featured: !!checked };
   
   addChange({ type: 'game', action: 'update', id: id, payload: payload });
