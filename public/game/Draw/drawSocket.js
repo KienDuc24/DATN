@@ -232,7 +232,7 @@ module.exports = (socket, io) => {
         const playerInfo = gameSocketMap.get(socket.id);
 
         if (playerInfo && playerInfo.player === state.drawer) {
-            state.drawingData.push(data);
+            // (Không cần lưu data vẽ, chỉ phát sóng)
             socket.to(roomCode).emit(`${GAME_ID}-drawing`, data);
         }
     });
@@ -245,6 +245,16 @@ module.exports = (socket, io) => {
         if (playerInfo && playerInfo.player === state.drawer) {
             state.drawingData = [];
             socket.to(roomCode).emit(`${GAME_ID}-clear-canvas`);
+        }
+    });
+
+    socket.on(`${GAME_ID}-fill`, ({ roomCode, color }) => {
+        const state = getRoomState(roomCode);
+        const playerInfo = gameSocketMap.get(socket.id);
+        
+        if (playerInfo && playerInfo.player === state.drawer) {
+            // Phát sóng sự kiện đổ màu đến người khác
+            socket.to(roomCode).emit(`${GAME_ID}-fill-canvas`, { color });
         }
     });
 

@@ -1,4 +1,4 @@
-// public/game/DrawGuess/script.js (ĐÃ FIX LỖI handleDrawStart is not defined)
+// public/game/DrawGuess/script.js (FIX LỖI RESIZE, POPUP VÀ FILL)
 
 (() => {
     const GAME_ID = 'DG';
@@ -36,27 +36,34 @@
     const $penTool = document.getElementById('penTool');
     const $fillTool = document.getElementById('fillTool');
     const $colorDisplayBtn = document.getElementById('colorDisplayBtn');
-    const $colorPicker = document.createElement('input'); // Tạo input color ẨN
+    const $leaveRoomBtn = document.getElementById('leaveRoomBtn');
+    
+    // Tạo input color ẨN
+    const $colorPicker = document.createElement('input'); 
     $colorPicker.type = 'color';
-    $colorPicker.value = currentColor;    
     
     let currentHost = null;
     let currentDrawer = null;
     let roomPlayers = []; 
     let isDrawing = false;
-    let isEraser = false;
     let currentTool = 'pen';
-    let currentColor = $colorPicker ? $colorPicker.value : '#000000';
+    let currentColor = '#000000';
     let currentSize = $sizeSlider ? parseInt($sizeSlider.value) : 5;
     let lastX = 0;
     let lastY = 0;
     
     const ctx = $canvas ? $canvas.getContext('2d') : null;
+    $colorPicker.value = currentColor;
 
+    // SỬA LỖI RESIZE: Bỏ set width/height cố định.
+    // CSS (aspect-ratio và flex-grow) sẽ xử lý việc co giãn.
+    // Chúng ta cần set width/height GỐC cho canvas context.
     if ($canvas) {
-        $canvas.width = 800; 
-        $canvas.height = 600; 
+        // Đặt kích thước pixel gốc (để nét vẽ không bị mờ)
+        $canvas.width = $canvas.offsetWidth;
+        $canvas.height = $canvas.offsetHeight;
     }
+
 
     function clearCanvas() {
         if (ctx) {
@@ -81,7 +88,8 @@
             clientX = e.clientX;
             clientY = e.clientY;
         }
-
+        
+        // Tính toán tỷ lệ scale giữa kích thước pixel (width/height) và kích thước hiển thị (offsetWidth/Height)
         const scaleX = $canvas.width / rect.width;
         const scaleY = $canvas.height / rect.height;
         
@@ -120,73 +128,36 @@
         currentTool = tool;
         isEraser = (tool === 'eraser');
         
-        // Cập nhật trạng thái Active trên các nút
         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
         if (activeBtn) activeBtn.classList.add('active');
 
-        // Đặt con trỏ chuột
         if ($canvas) $canvas.style.cursor = (tool === 'pen' || tool === 'eraser') ? 'crosshair' : 'pointer';
     }
 
-    // 2. Xử lý ĐỔ MÀU
+    // Xử lý ĐỔ MÀU
     function handleFillCanvas(e) {
         if (currentDrawer !== playerName || currentTool !== 'fill' || !ctx) return;
         
-        // Lấy tọa độ click và tính toán màu
-        const pos = getMousePos(e);
-        
-        // Thao tác đổ màu (Flood Fill - Cần thuật toán phức tạp hơn cho flood fill)
-        // Để đơn giản, ta sẽ chỉ đổ màu toàn bộ canvas
+        // Đổ màu toàn bộ canvas (Logic Flood Fill phức tạp hơn)
         ctx.fillStyle = currentColor;
         ctx.fillRect(0, 0, $canvas.width, $canvas.height);
         
-        // Gửi lệnh đổ màu đến server (Lưu ý: Bạn cần thêm logic xử lý 'fill' trong drawSocket.js)
         socket.emit(`${GAME_ID}-fill`, { roomCode, color: currentColor }); 
         
-        // Chuyển về bút vẽ sau khi đổ màu
         setActiveTool('pen'); 
     }
 
-    // 3. Xử lý sự kiện Canvas chính
+    // Xử lý sự kiện Canvas chính
     function handleCanvasClick(e) {
         if (currentTool === 'fill') {
             handleFillCanvas(e);
         }
     }
     
-    // Gắn sự kiện click (cho Fill Tool)
-    if ($canvas) {
-        $canvas.addEventListener('click', handleCanvasClick);
-    }
-    
-    // Gắn Event Listeners cho các nút công cụ
-    if ($penTool) $penTool.addEventListener('click', () => setActiveTool('pen'));
-    if ($eraseBtn) $eraseBtn.addEventListener('click', () => setActiveTool('eraser'));
-    if ($fillTool) $fillTool.addEventListener('click', () => setActiveTool('fill'));
-
-    // Gắn logic đổi màu
-    if ($colorDisplayBtn) $colorDisplayBtn.addEventListener('click', () => {
-        $colorPicker.click(); // Kích hoạt input color ẩn
-    });
-    
-    $colorPicker.addEventListener('input', (e) => {
-        currentColor = e.target.value;
-        if ($colorDisplayBtn) $colorDisplayBtn.style.backgroundColor = currentColor;
-        setActiveTool(currentTool); // Kích hoạt lại công cụ hiện tại để cập nhật màu
-    });
-    
-    // Đảm bảo nút Clear vẫn hoạt động
-    if ($clearBtn) $clearBtn.addEventListener('click', () => {
-        if (currentDrawer === playerName && confirm('Xác nhận xóa toàn bộ?')) {
-            socket.emit(`${GAME_ID}-clear`, { roomCode });
-            clearCanvas();
-        }
-    });
-
     // HÀM XỬ LÝ SỰ KIỆN VẼ CHÍNH
     function handleDrawStart(e) { 
-        if (currentDrawer !== playerName || !$canvas) return; 
+        if (currentDrawer !== playerName || !$canvas || currentTool === 'fill') return; 
         isDrawing = true;
         const pos = getMousePos(e);
         lastX = pos.x;
@@ -198,7 +169,7 @@
     }
 
     function handleDrawMove(e) { 
-        if (!isDrawing || currentDrawer !== playerName || !$canvas) return;
+        if (!isDrawing || currentDrawer !== playerName || !$canvas || currentTool === 'fill') return;
         const pos = getMousePos(e);
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('move', pos.x, pos.y, drawColor, currentSize);
@@ -222,8 +193,9 @@
         });
     }
 
-    // GẮN EVENT LISTENERS CHO VẼ (SAU KHI CÁC HÀM ĐÃ ĐƯỢC KHAI BÁO)
+    // GẮN EVENT LISTENERS
     if ($canvas) {
+        $canvas.addEventListener('click', handleCanvasClick); // Cho Fill
         $canvas.addEventListener('mousedown', handleDrawStart);
         $canvas.addEventListener('mousemove', handleDrawMove);
         $canvas.addEventListener('mouseup', handleDrawEnd);
@@ -233,14 +205,19 @@
         $canvas.addEventListener('touchend', handleDrawEnd);
     }
     
-    // Xử lý thanh công cụ (Chỉ gắn nếu tồn tại)
-    if ($colorPicker) $colorPicker.addEventListener('input', (e) => {
-        currentColor = e.target.value;
-        isEraser = false;
-        if ($eraseBtn) $eraseBtn.classList.remove('active');
+    // Gắn Event Listeners cho các nút công cụ
+    if ($penTool) $penTool.addEventListener('click', () => setActiveTool('pen'));
+    if ($eraseBtn) $eraseBtn.addEventListener('click', () => setActiveTool('eraser'));
+    if ($fillTool) $fillTool.addEventListener('click', () => setActiveTool('fill'));
+
+    if ($colorDisplayBtn) $colorDisplayBtn.addEventListener('click', () => {
+        $colorPicker.click(); 
     });
     
-    if ($sizeSlider) $sizeSlider.addEventListener('input', (e) => currentSize = parseInt(e.target.value));
+    $colorPicker.addEventListener('input', (e) => {
+        currentColor = e.target.value;
+        if ($colorDisplayBtn) $colorDisplayBtn.style.backgroundColor = currentColor;
+    });
     
     if ($clearBtn) $clearBtn.addEventListener('click', () => {
         if (currentDrawer === playerName && confirm('Xác nhận xóa toàn bộ?')) {
@@ -249,18 +226,7 @@
         }
     });
 
-    if ($eraseBtn) $eraseBtn.addEventListener('click', () => {
-        isEraser = true;
-        if ($eraseBtn) $eraseBtn.classList.add('active');
-    });
-    
-    if ($colorPicker) $colorPicker.addEventListener('click', () => {
-        isEraser = false;
-        if ($eraseBtn) $eraseBtn.classList.remove('active');
-    });
-
-
-    // --- 2. LOGIC CHAT & ĐOÁN (Đã sửa lỗi chat) ---
+    // --- 2. LOGIC CHAT & ĐOÁN ---
     function renderChatMessage(player, message, type = 'msg-guess') { 
         if (!$chatMessages) return; 
         const el = document.createElement('div');
@@ -327,19 +293,15 @@
         if ($room) $room.textContent = room.code || '—';
         if ($playersCount) $playersCount.textContent = roomPlayers.length;
         
-        const hostDisplay = document.getElementById('hostDisplay');
-        if(hostDisplay) hostDisplay.textContent = `👑 Host: ${currentHost}`;
-
         renderScores(state.scores, state.drawer, roomPlayers);
         
-        // --- XỬ LÝ NÚT BẮT ĐẦU GAME ---
         let startBtn = document.getElementById('startGameBtn');
         const gameNotRunning = !state.drawer;
         
         if (!startBtn) {
             startBtn = document.createElement('button');
             startBtn.id = 'startGameBtn';
-            startBtn.className = 'btn start-game-btn btn btn-primary'; 
+            startBtn.className = 'btn start-game-btn'; 
             startBtn.textContent = '🚀 BẮT ĐẦU VẼ ĐOÁN';
             startBtn.addEventListener('click', () => {
                 socket.emit(`${GAME_ID}-start-game`, { roomCode });
@@ -396,13 +358,18 @@
         if ($hintText) $hintText.textContent = word; 
     });
 
+    // SỬA LỖI: Tách riêng 'drawing' và 'fill-canvas'
     socket.on(`${GAME_ID}-drawing`, (data) => {
         if (currentDrawer !== playerName) {
             draw(data);
         }
-        if (!ctx) return;
-        ctx.fillStyle = color;
-        ctx.fillRect(0, 0, $canvas.width, $canvas.height);
+    });
+    
+    socket.on(`${GAME_ID}-fill-canvas`, ({ color }) => {
+        if (currentDrawer !== playerName && ctx) {
+            ctx.fillStyle = color;
+            ctx.fillRect(0, 0, $canvas.width, $canvas.height);
+        }
     });
     
     socket.on(`${GAME_ID}-clear-canvas`, () => {
@@ -436,22 +403,23 @@
         }
     });
 
+    // BỔ SUNG: LOGIC POPUP KẾT THÚC VÒNG
     socket.on(`${GAME_ID}-end-round`, ({ word, scores, drawer, guessed }) => {
         currentDrawer = null;
         if ($drawingTools) $drawingTools.classList.add('hidden'); 
         if ($gameStatus) $gameStatus.textContent = `Vòng kết thúc! Từ khóa là: ${word}`;
         if ($wordHint) $wordHint.classList.add('hidden'); 
         
-        if (guessed) {
-            renderChatMessage('Hệ thống', `Từ khóa đã được đoán đúng.`, 'msg-system');
-        } else {
-            renderChatMessage('Hệ thống', `Hết giờ! Không ai đoán được.`, 'msg-system');
-        }
-        
         renderScores(scores, null, roomPlayers);
         disableGuessInput(true);
         
+        // Hiển thị Pop-up xếp hạng vòng (false = không phải cuối game)
+        showRankingPopup(scores, false); 
+        
         setTimeout(() => {
+            hidePopup(); // Tự động đóng popup
+            
+            // Hiển thị lại nút Bắt đầu cho Host
             const startBtn = document.getElementById('startGameBtn');
             if (startBtn && currentHost === playerName) {
                  if ($gameStatus) $gameStatus.textContent = '';
@@ -460,22 +428,21 @@
             } else if (currentHost !== playerName && $gameStatus) {
                 $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
             }
-        }, 5000); 
+        }, 5000); // Đợi 5 giây
     });
     
-    // THÊM SỰ KIỆN KẾT THÚC GAME
+    // BỔ SUNG: LOGIC POPUP KẾT THÚC GAME
     socket.on(`${GAME_ID}-game-over`, ({ finalScores }) => {
         if ($gameStatus) $gameStatus.textContent = '🏆 TRÒ CHƠI KẾT THÚC!';
         
-        const sorted = Object.entries(finalScores).sort(([, a], [, b]) => b - a);
-        
-        renderChatMessage('Hệ thống', `🎉 Người chiến thắng là: ${sorted[0][0]} với ${sorted[0][1]} điểm!`, 'msg-system');
-        
         disableGuessInput(true);
         if ($drawingTools) $drawingTools.classList.add('hidden');
+        
+        // Hiển thị Pop-up xếp hạng cuối cùng (true = cuối game)
+        showRankingPopup(finalScores, true); 
     });
 
-    // --- 4. HÀM RENDER ĐIỂM SỐ CÓ AVATAR (Tối ưu hiển thị dọc) ---
+    // --- 4. HÀM RENDER ĐIỂM SỐ (Đã có logic vương miện/icon vẽ) ---
     function renderScores(scores, drawerName, playerList = []) {
         if (!$scoreGrid) return;
         $scoreGrid.innerHTML = '';
@@ -511,4 +478,80 @@
             $scoreGrid.appendChild(row);
         });
     }
+    
+    // --- 5. BỔ SUNG: HÀM POP-UP XẾP HẠNG ---
+    function getSortedScores(scores) {
+        return Object.entries(scores)
+            .sort(([, a], [, b]) => b - a);
+    }
+    
+    function showRankingPopup(scores, isFinal) {
+        // Xóa popup cũ nếu có
+        hidePopup(); 
+        
+        const sortedScores = getSortedScores(scores);
+        const title = isFinal ? '🏆 BẢNG XẾP HẠNG CUỐI CÙNG' : '✨ KẾT QUẢ VÒNG ĐẤU';
+        
+        let content = `<h2 style="color:var(--accent-yellow); margin-bottom: 20px;">${title}</h2>`;
+        
+        content += '<ol style="padding: 0; list-style-position: inside; text-align: left; font-size: 1.1em; max-height: 250px; overflow-y: auto;">';
+        sortedScores.forEach(([player, score], index) => {
+            const isWinner = index === 0 && isFinal;
+            const rankStyle = isWinner ? 'color: var(--accent-green); font-weight: bold;' : '';
+            content += `<li style="${rankStyle}"><strong>${player}</strong>: ${score} điểm</li>`;
+        });
+        content += '</ol>';
+        
+        content += '<div id="popup-actions" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">';
+        
+        if (isFinal) {
+            // Nút Chơi Lại (reload) và Thoát (về home)
+            content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
+            content += `<button id="popup-exit" class="btn btn-danger">Thoát Phòng</button>`;
+        } else {
+            // Thông báo chờ
+            content += `<p>Vòng tiếp theo sẽ bắt đầu sau 5 giây...</p>`;
+        }
+        content += '</div>';
+
+        const modal = document.createElement('div');
+        modal.id = 'rankingModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `<div class="modal-content">${content}</div>`;
+        document.body.appendChild(modal);
+        
+        // Thêm CSS cho modal (Nên chuyển vào style.css)
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .modal-overlay {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0, 0, 0, 0.8); z-index: 1000;
+                display: flex; justify-content: center; align-items: center;
+                backdrop-filter: blur(5px);
+            }
+            .modal-content {
+                background: var(--card-bg); padding: 30px; border-radius: var(--border-radius);
+                box-shadow: var(--shadow-base); text-align: center; max-width: 90%;
+            }
+            .btn-danger { background-color: var(--text-accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+            .btn-primary { background-color: var(--accent-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        `;
+        document.head.appendChild(style);
+
+        // Gắn sự kiện cho nút (nếu là cuối game)
+        if (isFinal) {
+            document.getElementById('popup-continue').addEventListener('click', () => {
+                window.location.reload(); // Cách đơn giản nhất để chơi lại
+            });
+            document.getElementById('popup-exit').addEventListener('click', () => {
+                window.location.href = '/'; // Về trang chủ
+            });
+        }
+    }
+    
+    function hidePopup() {
+        const modal = document.getElementById('rankingModal');
+        if (modal) modal.remove();
+    }
+
 })();
