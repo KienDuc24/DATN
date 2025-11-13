@@ -1,14 +1,15 @@
-// socketServer.js
 const { Server } = require('socket.io');
 const Room = require('./models/Room');
 const User = require('./models/User'); // Import User
-// Sửa đường dẫn: Giả sử todSocket ở public/game/ToD/
+
+// 1. SỬA CHỮA: Sử dụng tên biến khác nhau cho mỗi handler
+// Lưu ý: Đường dẫn bên dưới cần khớp với cấu trúc thư mục của bạn
 const todHandler = require('./public/game/ToD/todSocket.js'); 
-const todHandler = require('./public/game/Draw/drawSocket.js'); 
+const drawGuessHandler = require('./public/game/Draw/drawSocket.js'); // Đổi tên biến và đường dẫn
 
 const socketUserMap = new Map();
 
-// --- HÀM HELPER XỬ LÝ RỜI PHÒNG ---
+// --- HÀM HELPER XỬ LÝ RỜI PHÒNG (Giữ nguyên) ---
 async function handlePlayerLeave(socketId, io) {
   const userInfo = socketUserMap.get(socketId);
   if (!userInfo) return; 
@@ -30,7 +31,7 @@ async function handlePlayerLeave(socketId, io) {
     
     room.players = room.players.filter(p => p.name !== player);
 
-    // SỬA: Cập nhật status thành 'closed' thay vì xóa
+    // Cập nhật status thành 'closed' thay vì xóa
     if (room.players.length === 0 && room.status === 'open') {
       room.status = 'closed';
       console.log(`[SocketServer] Empty lobby room ${code} set to 'closed'.`);
@@ -44,7 +45,7 @@ async function handlePlayerLeave(socketId, io) {
 
     await room.save();
     
-    // THÊM: Cập nhật status người chơi về 'online'
+    // Cập nhật status người chơi về 'online'
     if (!player.startsWith('guest_')) {
         await User.findOneAndUpdate({ username: player }, { status: 'online' });
         io.emit('admin-user-status-changed');
