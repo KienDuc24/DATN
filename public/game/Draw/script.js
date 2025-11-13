@@ -1,4 +1,4 @@
-// public/game/DrawGuess/script.js (FIX LỖI RESIZE, POPUP VÀ FILL)
+// public/game/DrawGuess/script.js (FIX LOGIC POPUP, BỎ NÚT THOÁT, FIX RESIZE)
 
 (() => {
     const GAME_ID = 'DG';
@@ -35,35 +35,26 @@
     const $eraseBtn = document.getElementById('eraseBtn');
     const $penTool = document.getElementById('penTool');
     const $fillTool = document.getElementById('fillTool');
-    const $colorDisplayBtn = document.getElementById('colorDisplayBtn');
-    const $leaveRoomBtn = document.getElementById('leaveRoomBtn');
-    
-    // Tạo input color ẨN
-    const $colorPicker = document.createElement('input'); 
-    $colorPicker.type = 'color';
-    
+    const $colorPalette = document.getElementById('colorPalette'); 
+    // BỎ: $leaveRoomBtn
+
     let currentHost = null;
     let currentDrawer = null;
     let roomPlayers = []; 
     let isDrawing = false;
     let currentTool = 'pen';
-    let currentColor = '#000000';
+    let currentColor = '#000000'; 
     let currentSize = $sizeSlider ? parseInt($sizeSlider.value) : 5;
     let lastX = 0;
     let lastY = 0;
     
     const ctx = $canvas ? $canvas.getContext('2d') : null;
-    $colorPicker.value = currentColor;
-
-    // SỬA LỖI RESIZE: Bỏ set width/height cố định.
-    // CSS (aspect-ratio và flex-grow) sẽ xử lý việc co giãn.
-    // Chúng ta cần set width/height GỐC cho canvas context.
+    
+    // SỬA LỖI RESIZE: Đặt kích thước pixel (context) của canvas
     if ($canvas) {
-        // Đặt kích thước pixel gốc (để nét vẽ không bị mờ)
         $canvas.width = $canvas.offsetWidth;
         $canvas.height = $canvas.offsetHeight;
     }
-
 
     function clearCanvas() {
         if (ctx) {
@@ -72,10 +63,8 @@
         }
     }
     clearCanvas();
-    document.body.appendChild($colorPicker);
 
     // --- LOGIC VẼ (KHAI BÁO HÀM LÊN TRÊN CÙNG) ---
-    
     function getMousePos(e) {
         if (!$canvas) return { x: 0, y: 0 };
         const rect = $canvas.getBoundingClientRect();
@@ -88,8 +77,8 @@
             clientX = e.clientX;
             clientY = e.clientY;
         }
-        
-        // Tính toán tỷ lệ scale giữa kích thước pixel (width/height) và kích thước hiển thị (offsetWidth/Height)
+
+        // Tính toán tỷ lệ scale
         const scaleX = $canvas.width / rect.width;
         const scaleY = $canvas.height / rect.height;
         
@@ -139,7 +128,6 @@
     function handleFillCanvas(e) {
         if (currentDrawer !== playerName || currentTool !== 'fill' || !ctx) return;
         
-        // Đổ màu toàn bộ canvas (Logic Flood Fill phức tạp hơn)
         ctx.fillStyle = currentColor;
         ctx.fillRect(0, 0, $canvas.width, $canvas.height);
         
@@ -183,19 +171,11 @@
         isDrawing = false;
     }
 
-    // --- LOGIC THOÁT PHÒNG ---
-    if ($leaveRoomBtn) {
-        $leaveRoomBtn.addEventListener('click', () => {
-            if (confirm('Bạn có chắc chắn muốn rời khỏi phòng này không?')) {
-                socket.emit('leaveGame', { roomCode, player: playerName });
-                window.location.href = '/'; 
-            }
-        });
-    }
+    // --- BỎ LOGIC NÚT THOÁT PHÒNG ---
 
     // GẮN EVENT LISTENERS
     if ($canvas) {
-        $canvas.addEventListener('click', handleCanvasClick); // Cho Fill
+        $canvas.addEventListener('click', handleCanvasClick); 
         $canvas.addEventListener('mousedown', handleDrawStart);
         $canvas.addEventListener('mousemove', handleDrawMove);
         $canvas.addEventListener('mouseup', handleDrawEnd);
@@ -210,14 +190,7 @@
     if ($eraseBtn) $eraseBtn.addEventListener('click', () => setActiveTool('eraser'));
     if ($fillTool) $fillTool.addEventListener('click', () => setActiveTool('fill'));
 
-    if ($colorDisplayBtn) $colorDisplayBtn.addEventListener('click', () => {
-        $colorPicker.click(); 
-    });
-    
-    $colorPicker.addEventListener('input', (e) => {
-        currentColor = e.target.value;
-        if ($colorDisplayBtn) $colorDisplayBtn.style.backgroundColor = currentColor;
-    });
+    if ($sizeSlider) $sizeSlider.addEventListener('input', (e) => currentSize = parseInt(e.target.value));
     
     if ($clearBtn) $clearBtn.addEventListener('click', () => {
         if (currentDrawer === playerName && confirm('Xác nhận xóa toàn bộ?')) {
@@ -225,6 +198,39 @@
             clearCanvas();
         }
     });
+    
+    // KHỞI TẠO BẢNG MÀU MỚI
+    const colors = [
+        '#FFFFFF', '#000000', '#C1C1C1', '#4D4D4D', '#EF130B', '#740B07', 
+        '#FF7100', '#C23800', '#FFE400', '#E8A200', '#00CC00', '#005510',
+        '#00B2FF', '#00569E', '#231FD3', '#0E0865', '#A300BA', '#550069',
+        '#D37CAA', '#A75574', '#A0522D', '#63300D'
+    ];
+    
+    if ($colorPalette) {
+        colors.forEach((color, index) => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.style.backgroundColor = color;
+            swatch.dataset.color = color;
+            
+            if (index === 1) { 
+                swatch.classList.add('active');
+                currentColor = color;
+            }
+            
+            swatch.addEventListener('click', () => {
+                currentColor = color;
+                $colorPalette.querySelector('.active')?.classList.remove('active');
+                swatch.classList.add('active');
+                
+                if (currentTool === 'eraser') {
+                    setActiveTool('pen');
+                }
+            });
+            $colorPalette.appendChild(swatch);
+        });
+    }
 
     // --- 2. LOGIC CHAT & ĐOÁN ---
     function renderChatMessage(player, message, type = 'msg-guess') { 
@@ -244,6 +250,8 @@
         
         if (currentDrawer === playerName) {
              $guessInput.placeholder = 'Bạn là Họa sĩ. Chỉ có thể chat.';
+             $guessInput.disabled = false; // Họa sĩ luôn được chat
+             $sendGuess.disabled = false;
         } else {
              $guessInput.placeholder = 'Nhập từ khóa đoán hoặc chat...';
         }
@@ -256,6 +264,7 @@
     }
 
     function handleSendGuess() {
+        if (!$guessInput) return;
         const guess = $guessInput.value.trim();
         if (!guess) return;
 
@@ -358,7 +367,6 @@
         if ($hintText) $hintText.textContent = word; 
     });
 
-    // SỬA LỖI: Tách riêng 'drawing' và 'fill-canvas'
     socket.on(`${GAME_ID}-drawing`, (data) => {
         if (currentDrawer !== playerName) {
             draw(data);
@@ -403,23 +411,28 @@
         }
     });
 
-    // BỔ SUNG: LOGIC POPUP KẾT THÚC VÒNG
+    // SỬA LỖI: LOGIC POPUP KẾT THÚC VÒNG
     socket.on(`${GAME_ID}-end-round`, ({ word, scores, drawer, guessed }) => {
         currentDrawer = null;
         if ($drawingTools) $drawingTools.classList.add('hidden'); 
         if ($gameStatus) $gameStatus.textContent = `Vòng kết thúc! Từ khóa là: ${word}`;
         if ($wordHint) $wordHint.classList.add('hidden'); 
         
+        if (guessed) {
+            renderChatMessage('Hệ thống', `Từ khóa đã được đoán đúng.`, 'msg-system');
+        } else {
+            renderChatMessage('Hệ thống', `Hết giờ! Không ai đoán được.`, 'msg-system');
+        }
+        
         renderScores(scores, null, roomPlayers);
         disableGuessInput(true);
         
-        // Hiển thị Pop-up xếp hạng vòng (false = không phải cuối game)
+        // Hiển thị Pop-up xếp hạng (false = không phải cuối game, KHÔNG CÓ NÚT)
         showRankingPopup(scores, false); 
         
         setTimeout(() => {
             hidePopup(); // Tự động đóng popup
             
-            // Hiển thị lại nút Bắt đầu cho Host
             const startBtn = document.getElementById('startGameBtn');
             if (startBtn && currentHost === playerName) {
                  if ($gameStatus) $gameStatus.textContent = '';
@@ -431,14 +444,169 @@
         }, 5000); // Đợi 5 giây
     });
     
-    // BỔ SUNG: LOGIC POPUP KẾT THÚC GAME
+    // SỬA LỖI: LOGIC POPUP KẾT THÚC GAME
     socket.on(`${GAME_ID}-game-over`, ({ finalScores }) => {
         if ($gameStatus) $gameStatus.textContent = '🏆 TRÒ CHƠI KẾT THÚC!';
         
         disableGuessInput(true);
         if ($drawingTools) $drawingTools.classList.add('hidden');
         
-        // Hiển thị Pop-up xếp hạng cuối cùng (true = cuối game)
+        // Hiển thị Pop-up xếp hạng cuối cùng (true = cuối game, CÓ NÚT)
+        showRankingPopup(finalScores, true); 
+    });
+
+    socket.on(`${GAME_ID}-room-update`, ({ state, room }) => {
+        
+        currentHost = room.host;
+        roomPlayers = room.players;
+        
+        if ($room) $room.textContent = room.code || '—';
+        if ($playersCount) $playersCount.textContent = roomPlayers.length;
+        
+        renderScores(state.scores, state.drawer, roomPlayers);
+        
+        let startBtn = document.getElementById('startGameBtn');
+        const gameNotRunning = !state.drawer;
+        
+        if (!startBtn) {
+            startBtn = document.createElement('button');
+            startBtn.id = 'startGameBtn';
+            startBtn.className = 'btn start-game-btn'; 
+            startBtn.textContent = '🚀 BẮT ĐẦU VẼ ĐOÁN';
+            startBtn.addEventListener('click', () => {
+                socket.emit(`${GAME_ID}-start-game`, { roomCode });
+            });
+            if ($gameStatus) {
+                $gameStatus.appendChild(startBtn);
+            }
+        }
+        
+        if (startBtn) {
+            if (currentHost === playerName && gameNotRunning) {
+                startBtn.style.display = 'inline-block';
+                if ($gameStatus) $gameStatus.textContent = '';
+                if ($gameStatus) $gameStatus.appendChild(startBtn); 
+            } else {
+                startBtn.style.display = 'none';
+            }
+        }
+
+        if (gameNotRunning) {
+            disableGuessInput(true); 
+            if ($drawingTools) $drawingTools.classList.add('hidden');
+            if ($wordHint) $wordHint.classList.add('hidden');
+
+            if (currentHost !== playerName && $gameStatus) {
+                $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+            } else if (currentHost === playerName && $gameStatus) {
+                 $gameStatus.textContent = ''; 
+                 if (startBtn) $gameStatus.appendChild(startBtn);
+            }
+        }
+    });
+
+    socket.on(`${GAME_ID}-start-round`, ({ drawer, scores, round, wordHint }) => {
+        currentDrawer = drawer;
+        clearCanvas();
+        
+        if ($drawingTools) $drawingTools.classList.toggle('hidden', currentDrawer !== playerName);
+
+        if ($gameStatus) $gameStatus.textContent = `Vòng ${round}: ${drawer} đang vẽ...`;
+        
+        if ($hintText) $hintText.textContent = '_ '.repeat(wordHint).trim();
+        if ($wordHint) $wordHint.classList.remove('hidden');
+        
+        renderScores(scores, drawer, roomPlayers);
+        renderChatMessage('Hệ thống', `Vòng ${round} bắt đầu! ${drawer} đang vẽ.`, 'msg-system');
+        
+        disableGuessInput(currentDrawer === playerName);
+    });
+    
+    socket.on(`${GAME_ID}-secret-word`, ({ word }) => {
+        if ($gameStatus) $gameStatus.textContent = `BẠN ĐANG VẼ: ${word}`;
+        if ($wordHint) $wordHint.classList.remove('hidden');
+        if ($hintText) $hintText.textContent = word; 
+    });
+
+    socket.on(`${GAME_ID}-drawing`, (data) => {
+        if (currentDrawer !== playerName) {
+            draw(data);
+        }
+    });
+    
+    socket.on(`${GAME_ID}-fill-canvas`, ({ color }) => {
+        if (currentDrawer !== playerName && ctx) {
+            ctx.fillStyle = color;
+            ctx.fillRect(0, 0, $canvas.width, $canvas.height);
+        }
+    });
+    
+    socket.on(`${GAME_ID}-clear-canvas`, () => {
+        clearCanvas();
+    });
+
+    socket.on(`${GAME_ID}-timer`, ({ time }) => {
+        if ($timer) $timer.textContent = time;
+    });
+
+    socket.on(`${GAME_ID}-chat-message`, ({ player, message }) => {
+        const type = player === currentDrawer ? 'msg-drawer' : 'msg-guess';
+        renderChatMessage(player, message, type);
+    });
+
+    socket.on(`${GAME_ID}-correct-guess`, ({ player, scores, time }) => {
+        const bonus = time || 0;
+        renderChatMessage('Hệ thống', `${player} đã đoán đúng! 🎉 (+${50 + bonus} điểm)`, 'msg-correct');
+        
+        const playerRow = document.querySelector(`.score-row.you`);
+        if (player === playerName && playerRow) {
+            playerRow.classList.add('flash-correct');
+            setTimeout(() => { playerRow.classList.remove('flash-correct'); }, 1500);
+        }
+        
+        renderScores(scores, currentDrawer, roomPlayers);
+        
+        if (player === playerName) {
+            disableGuessInput(true);
+            if ($guessInput) $guessInput.placeholder = 'Bạn đã đoán đúng!';
+        }
+    });
+
+    // SỬA LỖI: LOGIC POPUP KẾT THÚC VÒNG
+    socket.on(`${GAME_ID}-end-round`, ({ word, scores, drawer, guessed }) => {
+        currentDrawer = null;
+        if ($drawingTools) $drawingTools.classList.add('hidden'); 
+        if ($gameStatus) $gameStatus.textContent = `Vòng kết thúc! Từ khóa là: ${word}`;
+        if ($wordHint) $wordHint.classList.add('hidden'); 
+        
+        renderScores(scores, null, roomPlayers);
+        disableGuessInput(true);
+        
+        // Hiển thị Pop-up xếp hạng (false = không phải cuối game, KHÔNG CÓ NÚT)
+        showRankingPopup(scores, false); 
+        
+        setTimeout(() => {
+            hidePopup(); // Tự động đóng popup
+            
+            const startBtn = document.getElementById('startGameBtn');
+            if (startBtn && currentHost === playerName) {
+                 if ($gameStatus) $gameStatus.textContent = '';
+                 if ($gameStatus) $gameStatus.appendChild(startBtn); 
+                 startBtn.style.display = 'inline-block';
+            } else if (currentHost !== playerName && $gameStatus) {
+                $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+            }
+        }, 5000); // Đợi 5 giây
+    });
+    
+    // SỬA LỖI: LOGIC POPUP KẾT THÚC GAME
+    socket.on(`${GAME_ID}-game-over`, ({ finalScores }) => {
+        if ($gameStatus) $gameStatus.textContent = '🏆 TRÒ CHƠI KẾT THÚC!';
+        
+        disableGuessInput(true);
+        if ($drawingTools) $drawingTools.classList.add('hidden');
+        
+        // Hiển thị Pop-up xếp hạng cuối cùng (true = cuối game, CÓ NÚT)
         showRankingPopup(finalScores, true); 
     });
 
@@ -479,14 +647,13 @@
         });
     }
     
-    // --- 5. BỔ SUNG: HÀM POP-UP XẾP HẠNG ---
+    // --- 5. BỔ SUNG: HÀM POP-UP XẾP HẠNG (ĐÃ SỬA LOGIC NÚT) ---
     function getSortedScores(scores) {
         return Object.entries(scores)
             .sort(([, a], [, b]) => b - a);
     }
     
     function showRankingPopup(scores, isFinal) {
-        // Xóa popup cũ nếu có
         hidePopup(); 
         
         const sortedScores = getSortedScores(scores);
@@ -507,9 +674,9 @@
         if (isFinal) {
             // Nút Chơi Lại (reload) và Thoát (về home)
             content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
-            content += `<button id="popup-exit" class="btn btn-danger">Thoát Phòng</button>`;
+            content += `<button id="popup-exit" class="btn btn-danger">Thoát</button>`;
         } else {
-            // Thông báo chờ
+            // SỬA LỖI: Chỉ hiển thị text, không có nút
             content += `<p>Vòng tiếp theo sẽ bắt đầu sau 5 giây...</p>`;
         }
         content += '</div>';
@@ -538,13 +705,12 @@
         `;
         document.head.appendChild(style);
 
-        // Gắn sự kiện cho nút (nếu là cuối game)
         if (isFinal) {
             document.getElementById('popup-continue').addEventListener('click', () => {
-                window.location.reload(); // Cách đơn giản nhất để chơi lại
+                window.location.reload(); 
             });
             document.getElementById('popup-exit').addEventListener('click', () => {
-                window.location.href = '/'; // Về trang chủ
+                window.location.href = '/'; 
             });
         }
     }

@@ -115,13 +115,13 @@ async function endRound(io, roomCode, guessed) {
     if (state.interval) clearInterval(state.interval);
 
     const room = await Room.findOne({ code: roomCode }).lean();
+    if (!room) return; // Thêm kiểm tra
     const players = getPlayersFromRoom(room);
     const totalGuessers = state.guesses.size;
     
     // TÍNH ĐIỂM HỌA SĨ
     if (totalGuessers > 0) {
-        // Họa sĩ được điểm nếu có người đoán đúng
-        const drawerScore = 100 + (totalGuessers * 5); // 100 điểm cơ bản + 5 điểm/người đoán
+        const drawerScore = 100 + (totalGuessers * 5);
         updateScores(state, state.drawer, drawerScore);
     }
     
@@ -131,7 +131,6 @@ async function endRound(io, roomCode, guessed) {
         drawer: state.drawer,
         guessed: guessed
     });
-
     // ----------------------------------------------------
     // LOGIC KẾT THÚC VÒNG GAME VÀ CHUYỂN LƯỢT
     // ----------------------------------------------------
@@ -141,7 +140,9 @@ async function endRound(io, roomCode, guessed) {
     if (state.currentIndex > maxTotalRounds) {
         // KẾT THÚC GAME
         io.to(roomCode).emit(`${GAME_ID}-game-over`, { finalScores: state.scores });
-        // Cần thêm logic reset/đóng trạng thái phòng ở đây
+        state.scores = {};
+        state.currentIndex = 0;
+        state.drawer = null;
         return;
     }
     
@@ -253,7 +254,6 @@ module.exports = (socket, io) => {
         const playerInfo = gameSocketMap.get(socket.id);
         
         if (playerInfo && playerInfo.player === state.drawer) {
-            // Phát sóng sự kiện đổ màu đến người khác
             socket.to(roomCode).emit(`${GAME_ID}-fill-canvas`, { color });
         }
     });

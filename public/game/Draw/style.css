@@ -1,4 +1,4 @@
-/* public/game/DrawGuess/style.css (ĐÃ SỬA LỖI TRÀN KÍCH THƯỚC VÀ CLASS) */
+/* public/game/DrawGuess/style.css (FIX LỖI RESIZE CANVAS VÀ BỎ NÚT THOÁT) */
 
 @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600;700&display=swap');
 
@@ -46,7 +46,7 @@ body {
     color: var(--accent-yellow);
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
-.btn-home, .btn-leave-room {
+.btn-home { /* Giữ lại style cho nút Trang chủ */
     background-color: rgba(44, 62, 80, 0.7);
     color: var(--text-light);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -57,15 +57,15 @@ body {
     cursor: pointer;
     transition: all 0.2s ease;
 }
-.btn-leave-room {
-    background-color: var(--text-accent);
-}
 .btn-home:hover { background-color: rgba(44, 62, 80, 0.9); }
-.btn-leave-room:hover { background-color: #d1354f; }
-.room-actions { display: flex; gap: 10px; }
+.room-actions { 
+    display: flex; 
+    gap: 10px;
+    min-width: 110px; /* Giữ không gian (cho nút Trang chủ) */
+}
 
 
-/* SỬA LỖI: Đổi tên .game-container thành .playground-container */
+/* KHUNG CHÍNH GAME (Playground Container) */
 .playground-container {
     position: relative;
     z-index: 1;
@@ -88,7 +88,6 @@ body {
     grid-template-columns: 3fr 1fr; 
     gap: 20px;
     width: 100%;
-    /* SỬA LỖI: Bỏ max-height 90vh để tránh tràn màn hình */
     min-height: 70vh;
 }
 
@@ -130,10 +129,10 @@ body {
 }
 /* Style cho nút Bắt đầu (được tạo bởi JS) */
 .btn.start-game-btn {
-    background-color: var(--accent-green);
-    color: white;
-    font-size: 1em;
-    padding: 8px 15px;
+    background-color: var(--accent-green) !important;
+    color: white !important;
+    padding: 8px 15px !important;
+    font-size: 1em !important;
     border-radius: 8px;
     border: none;
     cursor: pointer;
@@ -164,23 +163,82 @@ body {
     width: 100%;
     flex-grow: 1; 
     height: auto; 
-    /* SỬA LỖI: aspect-ratio là nguyên nhân chính gây resize */
-    /* aspect-ratio: 4/3;  (Bỏ đi) */
-    /* Thay vào đó, chúng ta sẽ để canvas tự co giãn theo flex-grow */
+    /* SỬA LỖI RESIZE: Bỏ aspect-ratio */
+    /* aspect-ratio: 4/3; */
     max-height: 600px; 
     cursor: crosshair;
 }
 
+/* --- THANH CÔNG CỤ VẼ MỚI --- */
 .drawing-tools {
     display: flex;
-    gap: 10px;
+    gap: 15px;
     justify-content: center;
+    align-items: center;
     flex-wrap: wrap;
-    padding-top: 10px;
+    padding: 10px;
     border-top: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    margin: 0 -20px -20px -20px;
 }
-.drawing-tools button, .drawing-tools input[type="color"], .drawing-tools input[type="range"] {
-    min-width: 40px; 
+.tools-group, .size-group, .palette-group, .action-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.palette-group {
+    flex-wrap: wrap;
+    max-width: 200px;
+    justify-content: center;
+}
+
+.drawing-tools .tool-btn {
+    background-color: var(--bg-medium);
+    color: var(--text-light);
+    border: 2px solid var(--border-color);
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.2em;
+    transition: all 0.2s;
+}
+.drawing-tools .tool-btn.active, 
+.drawing-tools .tool-btn:hover {
+    background-color: var(--accent-yellow);
+    color: var(--bg-dark);
+    border-color: var(--accent-yellow);
+}
+.drawing-tools .clear-btn {
+    background-color: var(--text-accent);
+    border-color: var(--text-accent);
+    color: white;
+}
+.drawing-tools .clear-btn:hover {
+    background-color: #d1354f;
+    border-color: #d1354f;
+}
+#sizeSlider {
+    width: 100px;
+}
+.color-swatch {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    border: 2px solid var(--text-light);
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+.color-swatch:hover {
+    transform: scale(1.1);
+}
+.color-swatch.active {
+    border: 3px solid var(--accent-yellow);
+    transform: scale(1.1);
+}
+#colorDisplayBtn, #colorPicker {
+    display: none;
 }
 
 /* Sidebar */
@@ -298,8 +356,6 @@ body {
 #chatMessages {
     flex-grow: 1;
     min-height: 150px;
-    /* SỬA LỖI: Để chat chiếm không gian còn lại */
-    /* max-height: 250px; (Bỏ max-height) */
     overflow-y: auto;
     background-color: var(--bg-medium);
     padding: 10px;
@@ -327,51 +383,6 @@ body {
     font-weight: bold;
     cursor: pointer;
 }
-
-/* Style cho các công cụ (Tool buttons) */
-.drawing-tools .tool-btn {
-    background-color: var(--bg-medium);
-    color: var(--text-light);
-    border: none;
-    padding: 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1.2em;
-    transition: background-color 0.2s;
-}
-
-.drawing-tools .tool-btn.active, 
-.drawing-tools .tool-btn:hover {
-    background-color: var(--accent-yellow); /* Màu active mới */
-    color: var(--bg-dark);
-}
-
-.color-picker-group {
-    display: flex;
-    gap: 5px;
-    align-items: center;
-    border-right: 1px solid var(--border-color);
-    padding-right: 10px;
-}
-
-#colorDisplayBtn {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    border: 3px solid var(--text-light);
-    cursor: pointer;
-    box-shadow: 0 0 0 1px var(--bg-medium);
-    transition: transform 0.1s;
-    background-color: black; 
-    padding: 0;
-}
-#colorDisplayBtn:hover {
-    transform: scale(1.1);
-}
-#colorPicker {
-    display: none; 
-}
-
 
 /* Responsive adjustments */
 @media (max-width: 1024px) {
