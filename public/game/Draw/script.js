@@ -18,6 +18,7 @@
     window.playerName = playerName;
     
     // --- KHAI BÁO BIẾN DOM ---
+    // SỬA LỖI: Thay đổi cách lấy các nút công cụ từ getElementById sang querySelector với data-tool
     const $room = document.getElementById('roomCode');
     const $playersCount = document.getElementById('playersCount');
     const $gameStatus = document.getElementById('game-status');
@@ -32,9 +33,10 @@
     const $canvas = document.getElementById('drawingCanvas');
     const $clearBtn = document.getElementById('clearBtn');
     const $sizeSlider = document.getElementById('sizeSlider');
-    const $eraseBtn = document.getElementById('eraseBtn');
-    const $penTool = document.getElementById('penTool');
-    const $fillTool = document.getElementById('fillTool');
+    // SỬA LỖI: Sử dụng querySelector với data-tool thay vì ID
+    const $eraseBtn = document.querySelector('.tool-btn[data-tool="eraser"]');
+    const $penTool = document.querySelector('.tool-btn[data-tool="pen"]');
+    const $fillTool = document.querySelector('.tool-btn[data-tool="fill"]');
     const $colorPalette = document.getElementById('colorPalette'); 
 
     let currentHost = null;
@@ -134,7 +136,10 @@
 
     // Xử lý ĐỔ MÀU
     function handleFillCanvas(e) {
-        if (currentDrawer !== playerName || currentTool !== 'fill' || !ctx) return;
+        if (currentDrawer !== playerName || currentTool !== 'fill' || !ctx) {
+            console.log('Không thể đổ màu: drawer:', currentDrawer, 'tool:', currentTool, 'ctx:', !!ctx);
+            return;
+        }
         
         ctx.fillStyle = currentColor;
         ctx.fillRect(0, 0, $canvas.width, $canvas.height);
@@ -142,7 +147,7 @@
         socket.emit(`${GAME_ID}-fill`, { roomCode, color: currentColor }); 
         
         setActiveTool('pen'); 
-        console.log('Công cụ hiện tại:', currentTool);
+        console.log('Đã đổ màu với màu:', currentColor);
     }
 
     // Xử lý sự kiện Canvas chính
@@ -154,14 +159,20 @@
     
     // HÀM XỬ LÝ SỰ KIỆN VẼ CHÍNH
     function handleDrawStart(e) {
-        if (currentDrawer !== playerName || !$canvas) return;
+        if (currentDrawer !== playerName || !$canvas) {
+            console.log('Không thể bắt đầu vẽ: drawer:', currentDrawer, 'canvas:', !!$canvas);
+            return;
+        }
 
         if (currentTool === 'fill') {
             handleFillCanvas(e); // Gọi hàm xử lý đổ màu
             return;
         }
 
-        if (currentTool !== 'pen' && currentTool !== 'eraser') return;
+        if (currentTool !== 'pen' && currentTool !== 'eraser') {
+            console.log('Công cụ không hợp lệ:', currentTool);
+            return;
+        }
 
         isDrawing = true;
         const pos = getMousePos(e);
@@ -170,6 +181,7 @@
 
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('start', lastX, lastY, drawColor, currentSize);
+        console.log('Bắt đầu vẽ với công cụ:', currentTool, 'màu:', drawColor);
         e.preventDefault();
     }
 
@@ -203,9 +215,33 @@
     }
     
     // Gắn Event Listeners cho các nút công cụ
-    if ($penTool) $penTool.addEventListener('click', () => setActiveTool('pen'));
-    if ($eraseBtn) $eraseBtn.addEventListener('click', () => setActiveTool('eraser'));
-    if ($fillTool) $fillTool.addEventListener('click', () => setActiveTool('fill'));
+    // SỬA LỖI: Thêm kiểm tra console.log để debug
+    if ($penTool) {
+        $penTool.addEventListener('click', () => {
+            setActiveTool('pen');
+            console.log('Nút bút vẽ được nhấn');
+        });
+    } else {
+        console.error('Không tìm thấy nút bút vẽ');
+    }
+
+    if ($eraseBtn) {
+        $eraseBtn.addEventListener('click', () => {
+            setActiveTool('eraser');
+            console.log('Nút tẩy được nhấn');
+        });
+    } else {
+        console.error('Không tìm thấy nút tẩy');
+    }
+
+    if ($fillTool) {
+        $fillTool.addEventListener('click', () => {
+            setActiveTool('fill');
+            console.log('Nút đổ màu được nhấn');
+        });
+    } else {
+        console.error('Không tìm thấy nút đổ màu');
+    }
 
     if ($sizeSlider) $sizeSlider.addEventListener('input', (e) => currentSize = parseInt(e.target.value));
     
