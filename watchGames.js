@@ -1,4 +1,4 @@
-// watchGames.js
+// watchGames.js (TỐI ƯU HÓA: Chỉ thực hiện Upsert, không bao gồm logic xóa)
 
 const chokidar = require('chokidar');
 const fs = require('fs');
@@ -9,7 +9,10 @@ const Game = require('./models/Game'); // Import Game model
 const gamesDir = path.join(__dirname, 'public', 'game');
 const gamesJson = path.join(__dirname, 'public', 'games.json');
 
-// Hàm quét thư mục game và cập nhật games.json
+/**
+ * Quét thư mục game, tạo games.json, và thực hiện Upsert (Insert/Update)
+ * các game lên MongoDB. KHÔNG bao gồm logic xóa game khỏi database.
+ */
 async function updateGamesJson() {
   const games = [];
   const dbOperations = []; // Lưu trữ các thao tác CSDL
@@ -21,6 +24,9 @@ async function updateGamesJson() {
         let info = JSON.parse(fs.readFileSync(infoPath, 'utf8'));
         if (Array.isArray(info)) info = info[0];
         if (!info.id) info.id = folder;
+
+        // Bỏ qua các game không có ID nghiệp vụ hợp lệ
+        if (!info.id || typeof info.id !== 'string') return;
 
         games.push(info);
         
@@ -34,10 +40,10 @@ async function updateGamesJson() {
                 desc: info.desc,
                 players: info.players,
                 category: info.category,
-                featured: info.featured || false, // Đảm bảo có giá trị mặc định
+                featured: info.featured || false,
               }
             },
-            { upsert: true } // Nếu không tìm thấy, tạo mới
+            { upsert: true } // Nếu không tìm thấy, tạo mới (Upsert)
           )
         );
 
@@ -52,10 +58,10 @@ async function updateGamesJson() {
   console.log('games.json đã được cập nhật!');
 
   // Thực hiện các thao tác CSDL
-  if (mongoose.connection.readyState === 1) { // Chỉ chạy khi đã kết nối
+  if (mongoose.connection.readyState === 1) {
     try {
         await Promise.all(dbOperations);
-        console.log(`[DB] Đã cập nhật/thêm ${dbOperations.length} game vào MongoDB.`);
+        console.log(`[DB] Đã cập nhật/thêm ${dbOperations.length} game vào MongoDB (Upsert).`);
     } catch (dbErr) {
         console.error('[DB] Lỗi khi cập nhật game lên MongoDB:', dbErr.message);
     }
@@ -74,9 +80,10 @@ function setupGameWatcher() {
       .on('change', updateGamesJson)
       .on('unlink', updateGamesJson)
       .on('addDir', updateGamesJson)
-      .on('unlinkDir', updateGamesJson);
+      .on('unlinkDir', updateGamesJson); // Mặc dù có unlink, logic bên trong vẫn là Upsert
+                                       // Chỉ cập nhật games.json và không chạy lệnh xóa database.
 
-    // Chạy lần đầu sau khi CSDL kết nối (được gọi từ index.js)
+    // Chạy lần đầu sau khi CSDL kết nối
     return updateGamesJson;
 }
 
