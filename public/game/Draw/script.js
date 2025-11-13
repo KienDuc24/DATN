@@ -156,13 +156,29 @@
         $chatMessages.scrollTop = $chatMessages.scrollHeight;
     }
 
-    function disableGuessInput(disabled = true) { /* ... (Giữ nguyên) ... */
-        $guessInput.disabled = disabled;
-        $sendGuess.disabled = disabled;
-        if (disabled) {
-            $guessInput.placeholder = currentDrawer === playerName ? 'Bạn là Họa sĩ, không được đoán.' : 'Chờ vòng mới...';
+    function disableGuessInput(disabled = true) {
+        // Đã đổi tên thành setInputState để rõ ràng hơn
+        
+        // Luôn luôn cho phép input cho người đoán (trừ khi họ đã đoán đúng)
+        const canGuess = currentDrawer !== playerName;
+        
+        $guessInput.disabled = false; // Luôn mở input
+        $sendGuess.disabled = false; // Luôn mở nút gửi
+
+        if (currentDrawer === playerName) {
+             // Họa sĩ chỉ được chat, không được đoán.
+             $guessInput.placeholder = 'Bạn là Họa sĩ. Chỉ có thể chat.';
         } else {
-            $guessInput.placeholder = 'Nhập từ khóa đoán hoặc chat...';
+             // Người đoán
+             $guessInput.placeholder = 'Nhập từ khóa đoán hoặc chat...';
+             // (Logic ẩn input nếu đã đoán đúng sẽ được xử lý trong socket.on(correct-guess))
+        }
+
+        if (disabled) {
+            // Đây là trạng thái chờ vòng mới/chờ Host. Tắt input cho tất cả.
+            $guessInput.disabled = true;
+            $sendGuess.disabled = true;
+            $guessInput.placeholder = 'Chờ vòng mới...';
         }
     }
 
@@ -172,12 +188,11 @@
 
         $guessInput.value = '';
         
-        // SỬA LỖI: Gửi chat thông thường nếu là họa sĩ
         if (currentDrawer === playerName) {
-            // Họa sĩ gửi chat thông thường
+            // HỌA SĨ: Gửi dưới dạng Chat Message thông thường
             socket.emit(`${GAME_ID}-guess`, { roomCode, player: playerName, guess: `(Chat): ${guess}` });
         } else {
-            // Người khác gửi đoán/chat
+            // NGƯỜI ĐOÁN: Gửi để Server kiểm tra (cả đoán và chat)
             socket.emit(`${GAME_ID}-guess`, { roomCode, player: playerName, guess });
         }
     }
@@ -245,6 +260,14 @@
             startBtn.style.display = 'none';
         }
 
+        if (gameNotRunning) {
+            // Nếu game chưa chạy, TẮT input cho TẤT CẢ (disabled=true)
+            disableGuessInput(true); 
+            // ... (Logic hiển thị trạng thái chờ) ...
+        } else {
+            // Game đang chạy, MỞ input (disabled=false)
+            disableGuessInput(false); 
+        }
         // Cập nhật trạng thái hiển thị
         if (gameNotRunning && currentHost !== playerName) {
             $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
@@ -263,6 +286,7 @@
     socket.on(`${GAME_ID}-start-round`, ({ drawer, scores, round, wordHint }) => {
         currentDrawer = drawer;
         clearCanvas();
+        disableGuessInput(false);
         
         $drawingTools.classList.toggle('hidden', currentDrawer !== playerName);
 
