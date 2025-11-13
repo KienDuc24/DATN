@@ -9,10 +9,10 @@
     --accent-yellow: #fddb3a;
     --accent-green: #3CB371;
     --card-bg: #2c3e50;
+    --border-color: #0f3460;
 }
 
 body {
-    /* ... (Giữ nguyên style body, wrapper, overlay từ ToD) */
     margin: 0;
     font-family: 'Poppins', sans-serif;
     color: var(--text-light);
@@ -24,19 +24,67 @@ body {
     background-color: var(--bg-dark);
 }
 
+.background-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('Img/fav.png'); 
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 1rem;
+    box-sizing: border-box;
+    overflow: auto;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+    z-index: 0;
+}
+
 .game-header {
-    /* ... (Giữ nguyên style header, back-btn, room-info từ ToD) */
     position: relative;
     z-index: 2;
     text-align: center;
     padding: 1rem;
     color: #fff;
     width: 100%;
-    max-width: 900px;
+    max-width: 1200px;
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
     gap: 0.5rem;
+}
+
+.back-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+.back-btn i {
+    margin-right: 0.5rem;
 }
 
 .game-title {
@@ -47,11 +95,26 @@ body {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
+.room-info {
+    font-size: 1.1rem;
+    background-color: rgba(var(--card-bg), 0.7);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    display: inline-flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.room-info span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .playground-container {
-    /* ... (Giữ nguyên style playground-container từ ToD) */
     position: relative;
     z-index: 1;
-    width: 90%;
+    width: 95%;
     max-width: 1200px;
     margin-top: 1rem;
     background: rgba(15, 52, 96, 0.3);
@@ -67,7 +130,6 @@ body {
     display: flex;
     gap: 1.5rem;
     width: 100%;
-    min-height: 70vh;
 }
 
 /* --- Khu vực Vẽ --- */
@@ -81,13 +143,35 @@ body {
     background: var(--card-bg);
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    min-height: 600px; /* Chiều cao tối thiểu */
+}
+
+.info-top {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 10px;
 }
 
 .game-status {
     font-size: 1.4rem;
     font-weight: 700;
     color: var(--accent-yellow);
-    margin-bottom: 10px;
+    flex: 1;
+}
+
+#startGameBtn {
+    background-color: var(--accent-green); 
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+#startGameBtn:hover {
+    background-color: #2e8b57;
 }
 
 .word-hint {
@@ -98,9 +182,6 @@ body {
 }
 
 .timer-display {
-    position: absolute;
-    top: 10px;
-    right: 10px;
     font-size: 1.5rem;
     font-weight: bold;
     color: var(--text-accent);
@@ -111,8 +192,11 @@ body {
     height: 100%;
     background-color: white;
     border: 1px solid #ddd;
-    touch-action: none; /* Quan trọng cho di động */
+    touch-action: none; 
     cursor: default;
+    /* Đặt kích thước cố định cho Canvas element */
+    max-width: 800px;
+    max-height: 600px;
 }
 
 /* --- Thanh công cụ vẽ --- */
@@ -128,6 +212,7 @@ body {
     display: flex;
     gap: 10px;
     align-items: center;
+    z-index: 100;
 }
 
 .drawing-tools button,
@@ -143,6 +228,9 @@ body {
 
 .drawing-tools button:hover {
     background: #4a637d;
+}
+.drawing-tools button.active {
+    background: var(--accent-blue);
 }
 
 .drawing-tools input[type="range"] {
@@ -176,7 +264,7 @@ body {
 /* --- Bảng điểm --- */
 .score-grid {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr auto; /* Avatar | Tên | Điểm */
     gap: 5px 10px;
 }
 
@@ -185,8 +273,16 @@ body {
     color: var(--text-light);
     display: flex;
     align-items: center;
+    gap: 5px;
 }
 .score-player.drawer { color: var(--accent-green); }
+
+.score-player img {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    object-fit: cover;
+}
 
 .score-value {
     font-weight: bold;
@@ -195,7 +291,7 @@ body {
 
 /* --- Chat --- */
 .chat-messages {
-    height: 350px; /* Cố định chiều cao chat */
+    height: 350px;
     overflow-y: auto;
     padding: 5px;
     background: var(--bg-medium);
@@ -209,10 +305,10 @@ body {
     font-size: 0.95rem;
 }
 
-.msg-guess { color: var(--accent-blue); } /* Guess thường */
-.msg-correct { color: var(--accent-green); font-weight: bold; } /* Đoán đúng */
-.msg-system { color: var(--accent-yellow); font-style: italic; } /* Hệ thống */
-.msg-drawer { color: var(--text-accent); font-weight: 600; } /* Chat của Họa sĩ */
+.msg-guess { color: var(--text-light); } 
+.msg-correct { color: var(--accent-green); font-weight: bold; } 
+.msg-system { color: var(--accent-yellow); font-style: italic; } 
+.msg-drawer { color: var(--text-accent); font-weight: 600; } 
 
 .chat-input-area {
     display: flex;
@@ -226,6 +322,11 @@ body {
     background: var(--text-light);
     color: var(--bg-dark);
 }
+#guessInput:disabled {
+    background: #4a4a4a;
+    cursor: not-allowed;
+}
+
 #sendGuess {
     background: var(--accent-blue);
     color: white;
@@ -235,6 +336,8 @@ body {
     cursor: pointer;
 }
 #sendGuess:hover { background: #337a70; }
+#sendGuess:disabled { background: #4a4a4a; cursor: not-allowed; }
+
 
 /* Responsive adjustments */
 @media (max-width: 992px) {
@@ -244,15 +347,16 @@ body {
     .drawing-area {
         flex: none;
         width: 100%;
+        min-height: 400px;
     }
     #drawingCanvas {
-        /* Đảm bảo canvas không bị quá to trên di động */
         max-width: 100%;
-        height: auto;
+        height: 400px; /* Chiều cao cố định trên mobile */
     }
     .sidebar {
         flex: none;
         width: 100%;
+        min-width: auto;
     }
     .chat-messages {
         height: 250px;

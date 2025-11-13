@@ -29,20 +29,22 @@
             <main class="game-container">
                 
                 <section class="drawing-area">
-                    <div id="game-status" class="game-status">Đang chờ Host bắt đầu...</div>
+                    <div class="info-top">
+                        <div id="game-status" class="game-status">Đang chờ Host bắt đầu...</div>
+                        <div class="timer-display">
+                            <i class="fas fa-clock"></i> <span id="timer">90</span>s
+                        </div>
+                    </div>
+                    
                     <div id="word-hint" class="word-hint hidden">Từ khóa: <span id="hint-text"></span></div>
                     
-                    <div class="timer-display">
-                        <i class="fas fa-clock"></i> <span id="timer">90</span>s
-                    </div>
-
                     <canvas id="drawingCanvas" width="800" height="600"></canvas>
 
                     <div id="drawingTools" class="drawing-tools hidden">
                         <button id="clearBtn" title="Xóa tất cả"><i class="fas fa-trash"></i></button>
                         <input type="color" id="colorPicker" value="#000000" title="Chọn màu">
                         <input type="range" id="sizeSlider" min="2" max="20" value="5" title="Chọn kích cỡ nét vẽ">
-                        <button id="eraseBtn" title="Tẩy"><i class="fas fa-eraser"></i></button>
+                        <button id="eraseBtn" title="Tẩy" data-color="#FFFFFF"><i class="fas fa-eraser"></i></button>
                     </div>
                 </section>
                 

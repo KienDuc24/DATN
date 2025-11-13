@@ -1,4 +1,4 @@
-// public/game/DrawGuess/script.js
+// public/game/DrawGuess/script.js (ĐÃ CẢI TIẾN)
 
 (() => {
     const GAME_ID = 'DG';
@@ -40,15 +40,25 @@
 
     let currentHost = null;
     let currentDrawer = null;
+    let roomPlayers = []; // Danh sách người chơi trong phòng
     let isDrawing = false;
+    let isEraser = false;
     let lastX = 0;
     let lastY = 0;
     let currentColor = $colorPicker.value;
-    let currentSize = $sizeSlider.value;
+    let currentSize = parseInt($sizeSlider.value);
     
-    // --- 1. LOGIC VẼ (DRAWING LOGIC) ---
+    // Khởi tạo Canvas (đặt kích thước gốc)
+    $canvas.width = 800;
+    $canvas.height = 600;
+    
+    function clearCanvas() {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, $canvas.width, $canvas.height);
+    }
+    clearCanvas();
 
-    // Hàm gửi nét vẽ đến Server
+    // --- 1. LOGIC VẼ (DRAWING LOGIC) ---
     function emitDraw(type, x, y, color = currentColor, size = currentSize) {
         if (currentDrawer !== playerName) return; 
 
@@ -57,7 +67,6 @@
         draw(data); // Vẽ cục bộ ngay lập tức
     }
 
-    // Hàm nhận và vẽ từ Server
     function draw({ type, x, y, color, size }) {
         if (type === 'start') {
             ctx.beginPath();
@@ -74,24 +83,16 @@
         }
     }
     
-    // Hàm làm sạch Canvas
-    function clearCanvas() {
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, $canvas.width, $canvas.height);
-    }
-    clearCanvas(); // Khởi tạo canvas trắng
-
-    // Xử lý sự kiện chuột/chạm
     function getMousePos(e) {
         const rect = $canvas.getBoundingClientRect();
-        let x, y;
+        let clientX, clientY;
         
         if (e.touches && e.touches.length > 0) {
-            x = e.touches[0].clientX;
-            y = e.touches[0].clientY;
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
         } else {
-            x = e.clientX;
-            y = e.clientY;
+            clientX = e.clientX;
+            clientY = e.clientY;
         }
 
         // Tỷ lệ hóa tọa độ về kích thước gốc của Canvas (800x600)
@@ -99,8 +100,8 @@
         const scaleY = $canvas.height / rect.height;
         
         return {
-            x: (x - rect.left) * scaleX,
-            y: (y - rect.top) * scaleY
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
         };
     }
 
@@ -110,14 +111,18 @@
         const pos = getMousePos(e);
         lastX = pos.x;
         lastY = pos.y;
-        emitDraw('start', lastX, lastY);
+        
+        // Điều chỉnh màu nếu đang ở chế độ Tẩy
+        const drawColor = isEraser ? 'white' : currentColor;
+        emitDraw('start', lastX, lastY, drawColor, currentSize);
         e.preventDefault();
     }
 
     function handleDrawMove(e) {
         if (!isDrawing || currentDrawer !== playerName) return;
         const pos = getMousePos(e);
-        emitDraw('move', pos.x, pos.y);
+        const drawColor = isEraser ? 'white' : currentColor;
+        emitDraw('move', pos.x, pos.y, drawColor, currentSize);
         lastX = pos.x;
         lastY = pos.y;
         e.preventDefault();
@@ -128,7 +133,7 @@
         isDrawing = false;
     }
 
-    // Gắn sự kiện
+    // Gắn sự kiện vẽ
     $canvas.addEventListener('mousedown', handleDrawStart);
     $canvas.addEventListener('mousemove', handleDrawMove);
     $canvas.addEventListener('mouseup', handleDrawEnd);
@@ -139,29 +144,48 @@
     $canvas.addEventListener('touchend', handleDrawEnd);
 
     // Xử lý thanh công cụ
-    $colorPicker.addEventListener('input', (e) => currentColor = e.target.value);
-    $sizeSlider.addEventListener('input', (e) => currentSize = e.target.value);
+    $colorPicker.addEventListener('input', (e) => {
+        currentColor = e.target.value;
+        isEraser = false;
+        $eraseBtn.classList.remove('active');
+    });
+    
+    $sizeSlider.addEventListener('input', (e) => currentSize = parseInt(e.target.value));
     
     $clearBtn.addEventListener('click', () => {
-        if (currentDrawer === playerName) {
+        if (currentDrawer === playerName && confirm('Xác nhận xóa toàn bộ?')) {
             socket.emit(`${GAME_ID}-clear`, { roomCode });
             clearCanvas();
         }
     });
 
     $eraseBtn.addEventListener('click', () => {
-        currentColor = 'white'; // Tẩy bằng cách chọn màu nền
+        isEraser = true;
+        $eraseBtn.classList.add('active');
+    });
+    
+    $colorPicker.addEventListener('click', () => {
+        isEraser = false;
+        $eraseBtn.classList.remove('active');
     });
 
-
     // --- 2. LOGIC CHAT & ĐOÁN ---
-
     function renderChatMessage(player, message, type = 'msg-guess') {
         const el = document.createElement('div');
         el.className = `chat-message ${type}`;
         el.innerHTML = `<strong>${player}:</strong> ${message}`;
         $chatMessages.appendChild(el);
         $chatMessages.scrollTop = $chatMessages.scrollHeight;
+    }
+
+    function disableGuessInput(disabled = true) {
+        $guessInput.disabled = disabled;
+        $sendGuess.disabled = disabled;
+        if (disabled) {
+            $guessInput.placeholder = currentDrawer === playerName ? 'Bạn là Họa sĩ, không được đoán.' : 'Chờ vòng mới...';
+        } else {
+            $guessInput.placeholder = 'Nhập từ khóa đoán hoặc chat...';
+        }
     }
 
     function handleSendGuess() {
@@ -171,10 +195,10 @@
         $guessInput.value = '';
         
         if (currentDrawer === playerName) {
-            // Nếu là Họa sĩ, chỉ gửi dưới dạng chat thường
+            // Họa sĩ chỉ gửi dưới dạng chat thường
             socket.emit(`${GAME_ID}-guess`, { roomCode, player: playerName, guess: `(Chat): ${guess}` });
         } else {
-            // Nếu là người đoán, gửi cả chat và từ khóa đoán
+            // Người chơi gửi cả chat và từ khóa đoán
             socket.emit(`${GAME_ID}-guess`, { roomCode, player: playerName, guess });
         }
     }
@@ -185,40 +209,58 @@
     });
 
     // --- 3. LOGIC SOCKET GAME ---
-
     socket.on('connect', () => {
         console.log(`[${GAME_ID}][client] socket connected`);
-        const playerObj = { name: playerName }; // Thêm các thuộc tính khác nếu cần
+        const playerObj = { name: playerName };
         socket.emit(`${GAME_ID}-join`, { roomCode, player: playerObj });
     });
+
+    // Cần hàm giả định này để lấy Avatar (vì Room Model đã lưu players)
+    function pickAvatarFor(name) {
+        const player = roomPlayers.find(p => p.name === name);
+        if (player && player.avatar) return player.avatar;
+        // Dicebear fallback (Giả định URL này hoạt động)
+        return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}`;
+    }
 
     socket.on(`${GAME_ID}-room-update`, ({ state, room }) => {
         console.log(`[${GAME_ID}][client] room-update`, state);
         currentHost = room.host;
+        roomPlayers = room.players; // Lưu danh sách players
+        
         if ($room) $room.textContent = room.code || '—';
-        if ($playersCount) $playersCount.textContent = room.players.length;
+        if ($playersCount) $playersCount.textContent = roomPlayers.length;
         
-        renderScores(state.scores, state.drawer, room.players);
+        // Render điểm số (dùng danh sách player)
+        renderScores(state.scores, state.drawer, roomPlayers);
         
-        // Tạo nút bắt đầu game cho Host
+        // --- XỬ LÝ NÚT BẮT ĐẦU GAME ---
         let startBtn = document.getElementById('startGameBtn');
-        if (currentHost === playerName && !state.drawer) {
+        const gameNotRunning = !state.drawer;
+        
+        if (currentHost === playerName && gameNotRunning) {
              if (!startBtn) {
                 startBtn = document.createElement('button');
                 startBtn.id = 'startGameBtn';
                 startBtn.className = 'btn btn-primary';
                 startBtn.textContent = '🚀 Bắt đầu Vẽ Đoán';
                 startBtn.addEventListener('click', () => socket.emit(`${GAME_ID}-start-game`, { roomCode }));
-                document.querySelector('.game-status').appendChild(startBtn);
+                
+                if ($gameStatus) {
+                    $gameStatus.innerHTML = 'Nhấn'; 
+                    $gameStatus.appendChild(startBtn); 
+                    $gameStatus.insertAdjacentText('beforeend', 'để chơi!');
+                }
              }
-             startBtn.style.display = 'block';
+             startBtn.style.display = 'inline-block';
+             disableGuessInput(true); // Tắt đoán khi chờ
         } else if(startBtn) {
             startBtn.style.display = 'none';
         }
-
-        if (!state.drawer) {
-            $gameStatus.textContent = currentHost === playerName ? 'Nhấn Bắt đầu để chơi!' : `${currentHost} đang chờ đợi...`;
-            $wordHint.classList.add('hidden');
+        
+        if (gameNotRunning && currentHost !== playerName) {
+            $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+            disableGuessInput(true);
         }
     });
 
@@ -226,15 +268,17 @@
         currentDrawer = drawer;
         clearCanvas();
         $drawingTools.classList.toggle('hidden', currentDrawer !== playerName);
-        $gameStatus.textContent = `${drawer} đang vẽ...`;
+        $gameStatus.textContent = `Vòng ${round}: ${drawer} đang vẽ...`;
         
         // Hiển thị gợi ý
         $hintText.textContent = '_ '.repeat(wordHint).trim();
         $wordHint.classList.remove('hidden');
         
         // Cập nhật điểm và trạng thái người vẽ
-        renderScores(scores, drawer);
+        renderScores(scores, drawer, roomPlayers);
         renderChatMessage('Hệ thống', `Vòng ${round} bắt đầu! ${drawer} đang vẽ.`, 'msg-system');
+        
+        disableGuessInput(currentDrawer === playerName);
     });
     
     socket.on(`${GAME_ID}-secret-word`, ({ word }) => {
@@ -243,7 +287,6 @@
     });
 
     socket.on(`${GAME_ID}-drawing`, (data) => {
-        // Vẽ nếu không phải là Họa sĩ (vì Họa sĩ đã vẽ cục bộ)
         if (currentDrawer !== playerName) {
             draw(data);
         }
@@ -264,7 +307,13 @@
 
     socket.on(`${GAME_ID}-correct-guess`, ({ player, scores }) => {
         renderChatMessage('Hệ thống', `${player} đã đoán đúng! 🎉`, 'msg-correct');
-        renderScores(scores, currentDrawer);
+        renderScores(scores, currentDrawer, roomPlayers);
+        
+        // Tắt input cho người đoán đúng
+        if (player === playerName) {
+            disableGuessInput(true);
+            $guessInput.placeholder = 'Bạn đã đoán đúng!';
+        }
     });
 
     socket.on(`${GAME_ID}-end-round`, ({ word, scores, drawer, guessed }) => {
@@ -279,43 +328,55 @@
             renderChatMessage('Hệ thống', `Hết giờ! Không ai đoán được.`, 'msg-system');
         }
         
-        renderScores(scores, null); // Cập nhật điểm cuối cùng
+        renderScores(scores, null, roomPlayers); // Cập nhật điểm cuối cùng
+        disableGuessInput(true);
         
-        // Hiển thị lại nút Start cho Host sau 5s chờ
         setTimeout(() => {
             const startBtn = document.getElementById('startGameBtn');
-            if (startBtn && currentHost === playerName) startBtn.style.display = 'block';
-            $gameStatus.textContent = currentHost === playerName ? 'Nhấn Bắt đầu để chơi!' : `${currentHost} đang chờ đợi...`;
+            if (startBtn && currentHost === playerName) {
+                startBtn.style.display = 'inline-block';
+                $gameStatus.innerHTML = 'Nhấn'; 
+                $gameStatus.appendChild(startBtn); 
+                $gameStatus.insertAdjacentText('beforeend', 'để chơi!');
+            } else {
+                $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+            }
         }, 5000);
     });
     
-    // --- 4. HÀM RENDER ĐIỂM SỐ ---
+    // --- 4. HÀM RENDER ĐIỂM SỐ CÓ AVATAR ---
     function renderScores(scores, drawerName, playerList = []) {
         if (!$scoreGrid) return;
         $scoreGrid.innerHTML = '';
         
-        let allPlayers = Object.keys(scores);
-        // Nếu không có điểm số, lấy từ danh sách players trong room
-        if (!allPlayers.length && playerList.length) {
-             allPlayers = playerList.map(p => p.name);
-             scores = allPlayers.reduce((acc, name) => ({ ...acc, [name]: 0 }), {});
-        }
+        const playerNames = playerList.map(p => p.name);
+        // Khởi tạo điểm số cho những người chưa có
+        const mergedScores = playerNames.reduce((acc, name) => ({ ...acc, [name]: scores[name] || 0 }), { ...scores });
         
-        const sortedPlayers = allPlayers.sort((a, b) => (scores[b] || 0) - (scores[a] || 0));
+        const sortedPlayers = playerNames.sort((a, b) => mergedScores[b] - mergedScores[a]);
 
         sortedPlayers.forEach(name => {
+            const playerInfo = playerList.find(p => p.name === name) || { name: name };
+            const isDrawer = name === drawerName;
+            
+            // Avatar
+            const elAvatar = document.createElement('div');
+            elAvatar.innerHTML = `<img src="${pickAvatarFor(name)}" alt="${name}">`;
+            $scoreGrid.appendChild(elAvatar);
+
+            // Tên
             const elPlayer = document.createElement('div');
             elPlayer.className = 'score-player';
-            if (name === drawerName) elPlayer.classList.add('drawer');
+            if (isDrawer) elPlayer.classList.add('drawer');
             if (name === playerName) elPlayer.classList.add('you');
             
-            const icon = name === drawerName ? '🎨 ' : (name === playerName ? '👤 ' : '');
-            elPlayer.innerHTML = `${icon}${name}`;
+            elPlayer.innerHTML = isDrawer ? `🎨 ${name}` : name;
             $scoreGrid.appendChild(elPlayer);
 
+            // Điểm
             const elScore = document.createElement('div');
             elScore.className = 'score-value';
-            elScore.textContent = scores[name] || 0;
+            elScore.textContent = mergedScores[name] || 0;
             $scoreGrid.appendChild(elScore);
         });
     }
