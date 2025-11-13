@@ -216,110 +216,122 @@ async function fetchGames(q){
 }
 
 function renderUsersTable(users){
-  const tbody = el('adminUsersList');
-  if (!tbody) { console.warn('adminUsersList tbody not found'); return; }
-  tbody.innerHTML = '';
-  if (!Array.isArray(users) || users.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center">Không có người dùng</td></tr>`;
-    return;
-  }
-  users.forEach(u => {
-    const id = u._id || u.id || '';
-    const username = u.username || u.displayName || ''; 
-    let gh = '-';
-    if (Array.isArray(u.gameHistory) && u.gameHistory.length) {
-      gh = `Đã chơi ${u.gameHistory.length} game`;
-    }
-    
-    let statusText = 'Offline';
-    let statusColor = '#ef4444';
-    if (u.status === 'online') {
-        statusText = 'Online';
-        statusColor = '#22c55e';
-    } else if (u.status === 'playing') {
-        statusText = 'Playing';
-        statusColor = '#ff9f43';
-    }
+  const tbody = el('adminUsersList');
+  if (!tbody) { console.warn('adminUsersList tbody not found'); return; }
+  tbody.innerHTML = '';
+  if (!Array.isArray(users) || users.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center">Không có người dùng</td></tr>`;
+    return;
+  }
+  users.forEach(u => {
+    const id = u._id || u.id || '';
+    const username = u.username || u.displayName || ''; 
+    let gh = '-';
+    if (Array.isArray(u.playHistory) && u.playHistory.length) { // <-- ĐÃ SỬA: dùng playHistory
+      gh = `Đã chơi ${u.playHistory.length} game`; // <-- ĐÃ SỬA: dùng playHistory
+    }
+    
+    let statusText = 'Offline';
+    let statusColor = '#ef4444';
+    if (u.status === 'online') {
+        statusText = 'Online';
+        statusColor = '#22c55e';
+    } else if (u.status === 'playing') {
+        statusText = 'Playing';
+        statusColor = '#ff9f43';
+    }
 
-    const tr = document.createElement('tr');
-    tr.id = `user-row-${id}`;
-    tr.innerHTML = `
-      <td><div style="font-weight:600">${username}</div></td>
-      <td>${gh}</td>       <td><span style="color:${statusColor}; font-weight:600;">${statusText}</span></td>       <td style="display:flex;gap:8px;align-items:center">
-        <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-        <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-  tbody.querySelectorAll('.icon-edit').forEach(btn => btn.addEventListener('click', onEditUser));
-  tbody.querySelectorAll('.icon-delete').forEach(btn => btn.addEventListener('click', onDeleteUser));
-}
-
-function renderRoomsTable(rooms){
-  const tbody = el('adminRoomsList');
-  if (!tbody) { console.warn('adminRoomsList tbody not found'); return; }
-  tbody.innerHTML = '';
-  if (!Array.isArray(rooms) || rooms.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Không có phòng chơi</td></tr>`;
-    return;
-  }
-  rooms.forEach(r => {
-    const roomId = r.code || r.id || r._id || '';
-    const gameName = (r.game && (r.game.name || r.game.type)) ? (r.game.name || r.game.type) : (r.game || '');
-    const owner = r.host || '';
-    const participants = Array.isArray(r.players) ? r.players.map(p => p.name).join(', ') : '-';
-    
-    let status = r.status || 'open';
-    if (status === 'open') status = 'Đang chờ';
-    if (status === 'playing') status = 'Đang chơi';
-    if (status === 'closed') status = 'Đã đóng';
-
-    const tr = document.createElement('tr');
-    tr.id = `room-row-${roomId}`;
-    tr.innerHTML = `
-      <td>${status}</td> 
-      <td style="display:flex; gap:6px; justify-content: center;">
-        <button class="icon-btn icon-delete" title="Xóa" data-id="${roomId}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-  tbody.querySelectorAll('.icon-delete').forEach(btn => btn.addEventListener('click', onDeleteRoom));
-}
-
-function renderGamesTable(games){
-  const tbody = el('adminGamesList');
-  if (!tbody) { console.warn('adminGamesList tbody not found'); return; }
-  tbody.innerHTML = '';
-  if (!Array.isArray(games) || games.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center">Không có trò chơi</td></tr>`;
-    return;
-  }
-  games.forEach(g => {
-    const id = g.id || '';
-    const title = (g.name && (g.name.vi || g.name.en)) ? (g.name.vi || g.name.en) : (g.title || g.name || '');
-    const desc = (g.desc && (g.desc.vi || g.desc.en)) ? (g.desc.vi || g.desc.en) : (g.desc || '');
-    const category = (g.category && (g.category.vi || g.category.en)) ? (g.category.vi || g.category.en) : (g.category || '');
-    const players = g.players || '';
-    const featuredChecked = g.featured ? 'checked' : '';
-    const tr = document.createElement('tr');
-    tr.id = `game-row-${id}`;
-    tr.innerHTML = `
-     <td style="text-align:center; vertical-align: middle;"> 
-        <input type="checkbox" class="game-feature-checkbox" data-id="${id}" ${featuredChecked} aria-label="Nổi bật"/> 
-      </td>
-      <td style="display:flex; gap:6px; justify-content: center; vertical-align: middle;"> 
+    const tr = document.createElement('tr');
+    tr.id = `user-row-${id}`;
+    tr.innerHTML = `
+      <td><div style="font-weight:600">${username}</div></td>
+      <td>${gh}</td>
+      <td><span style="color:${statusColor}; font-weight:600;">${statusText}</span></td>
+      <td style="display:flex;gap:8px;align-items:center; justify-content: center;">
         <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
         <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
       </td>
-    `;
-    tbody.appendChild(tr);
-  });
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.icon-edit').forEach(btn => btn.addEventListener('click', onEditUser));
+  tbody.querySelectorAll('.icon-delete').forEach(btn => btn.addEventListener('click', onDeleteUser));
+}
 
-  tbody.querySelectorAll('.game-feature-checkbox').forEach(cb => cb.addEventListener('change', onFeatureGame));
-  tbody.querySelectorAll('.icon-edit').forEach(b=>b.addEventListener('click', onEditGame));
-  tbody.querySelectorAll('.icon-delete').forEach(b=>b.addEventListener('click', onDeleteGame));
+function renderRoomsTable(rooms){
+  const tbody = el('adminRoomsList');
+  if (!tbody) { console.warn('adminRoomsList tbody not found'); return; }
+  tbody.innerHTML = '';
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Không có phòng chơi</td></tr>`;
+    return;
+  }
+  rooms.forEach(r => {
+    const roomId = r.code || r.id || r._id || '';
+    const gameName = (r.game && (r.game.name || r.game.type)) ? (r.game.name || r.game.type) : (r.game || '');
+    const owner = r.host || '';
+    const participants = Array.isArray(r.players) ? r.players.map(p => p.name).join(', ') : '-';
+    
+    let status = r.status || 'open';
+    if (status === 'open') status = 'Đang chờ';
+    if (status === 'playing') status = 'Đang chơi';
+    if (status === 'closed') status = 'Đã đóng';
+
+    const tr = document.createElement('tr');
+    tr.id = `room-row-${roomId}`;
+    tr.innerHTML = `
+      <td><div style="font-weight:600">${gameName}</div></td>
+      <td>${String(roomId)}</td>
+      <td>${owner}</td>
+      <td style="max-width:360px">${participants || '-'}</td>
+      <td>${status}</td>
+      <td style="display:flex;gap:6px; justify-content: center;">
+        <button class="icon-btn icon-delete" title="Xóa" data-id="${roomId}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.icon-delete').forEach(btn => btn.addEventListener('click', onDeleteRoom));
+}
+
+function renderGamesTable(games){
+  const tbody = el('adminGamesList');
+  if (!tbody) { console.warn('adminGamesList tbody not found'); return; }
+  tbody.innerHTML = '';
+  if (!Array.isArray(games) || games.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center">Không có trò chơi</td></tr>`;
+    return;
+  }
+  games.forEach(g => {
+    const id = g.id || '';
+    const title = (g.name && (g.name.vi || g.name.en)) ? (g.name.vi || g.name.en) : (g.title || g.name || '');
+    const desc = (g.desc && (g.desc.vi || g.desc.en)) ? (g.desc.vi || g.desc.en) : (g.desc || '');
+    const category = (g.category && (g.category.vi || g.category.en)) ? (g.category.vi || g.category.en) : (g.category || '');
+    const players = g.players || '';
+    const featuredChecked = g.featured ? 'checked' : '';
+    const tr = document.createElement('tr');
+    tr.id = `game-row-${id}`;
+    tr.innerHTML = `
+      <td>
+        <div style="font-weight:600">${title}</div>
+        <div style="color:var(--muted);font-size:12px">${String(desc).slice(0,120)}</div>
+      </td>
+      <td>${category}</td>
+      <td>${players}</td>
+      <td style="text-align:center; vertical-align: middle;">
+        <input type="checkbox" class="game-feature-checkbox" data-id="${id}" ${featuredChecked} aria-label="Nổi bật"/>
+      </td>
+      <td style="display:flex;gap:6px; justify-content: center; vertical-align: middle;">
+        <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+        <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.game-feature-checkbox').forEach(cb => cb.addEventListener('change', onFeatureGame));
+  tbody.querySelectorAll('.icon-edit').forEach(b=>b.addEventListener('click', onEditGame));
+  tbody.querySelectorAll('.icon-delete').forEach(b=>b.addEventListener('click', onDeleteGame));
 }
 
 // --- Handlers ---
