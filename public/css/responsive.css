@@ -137,7 +137,7 @@
   /* --- Modals (Tablet) --- */
   #roomModal .modal-content {
     width: 100%;
-    max-width: 700px;
+    max-width: 500px;
     padding: 28px;
   }
   #roomModal .modal-actions {
