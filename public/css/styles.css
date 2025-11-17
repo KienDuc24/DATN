@@ -464,7 +464,7 @@ footer {
 }
 #roomModal .modal-actions {
   display: flex;
-  flex-direction: column; /* Mobile stack */
+  flex-direction: row; 
   gap: 10px;
   margin-bottom: 10px;
   width: 100%;

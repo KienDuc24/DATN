@@ -10,7 +10,7 @@
   
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
   
-</head>
+  </head>
 <body>
   <aside class="sidebar" id="adminSidebar">
     <div class="sidebar-logo">
@@ -36,14 +36,13 @@
 
   <main class="main-content">
     
-    <button class="btn btn-danger" id="btnConfirmChanges" style="display: none; position: fixed; bottom: 20px; left: 240px; z-index: 100;">
-        Lưu thay đổi
-    </button>
-    <button class="btn btn-cancel" id="btnCancelChanges" style="display: none; position: fixed; bottom: 20px; left: 380px; z-index: 100;">
-        Hủy
-    </button>
-
-
+    <div class="confirm-bar" id="confirmBar" style="display: none;">
+      <span>Bạn có <span id="pendingChangesCount">0</span> thay đổi đang chờ</span>
+      <div class="confirm-bar-actions">
+        <button class="btn btn-cancel" id="btnCancelChanges">Hủy</button>
+        <button class="btn btn-save" id="btnConfirmChanges">Lưu thay đổi</button>
+      </div>
+    </div>
     <section id="dashboardTab" class="admin-tab-content" style="display:none">
         <div class="section-title-row">
             <div class="section-title">Dashboard</div>

@@ -161,12 +161,8 @@
     max-width: 400px;
     padding: 28px;
   }
-  #roomModal .modal-actions {
-    flex-direction: row; 
-  }
   #roomModal input {
-    width: auto; 
-    margin-bottom: 0;
+    margin-bottom: 15px;
   }
   
   #auth-modal .auth-modal-content {
