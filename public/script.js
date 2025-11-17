@@ -1,6 +1,4 @@
-// public/script.js (MỚI - Đầy đủ)
-// Chứa các hàm render, helper UI, và các sự kiện UI cơ bản.
-// File này nên được tải TRƯỚC main.js
+// public/script.js (ĐÃ SỬA LOGIC NÚT < >)
 
 // --- Biến cục bộ cho script.js (nếu cần) ---
 let MAX_SHOW = getMaxShow();
@@ -45,38 +43,61 @@ function renderSlider(games, sliderId, pageKey) {
   sliderContainer.querySelectorAll('.slider-btn').forEach(btn => btn.remove());
 
   // 4. Dùng setTimeout để đợi trình duyệt render và tính toán
-  // (Chúng ta dùng 100ms để đảm bảo ảnh (nếu có) đã bắt đầu tải và layout ổn định)
   setTimeout(() => {
     // 5. Kiểm tra xem nội dung có thực sự bị tràn không
-    // (scrollWidth là tổng chiều rộng nội dung, clientWidth là chiều rộng nhìn thấy được)
     const hasOverflow = slider.scrollWidth > slider.clientWidth + 5; // +5px cho chắc chắn
     
     if (hasOverflow) {
       // 6. Tạo nút Trái (<)
       const btnLeft = document.createElement('button');
       btnLeft.className = 'slider-btn left';
-      btnLeft.innerHTML = '‹'; // Bạn có thể dùng icon &lt; hoặc SVG
-      btnLeft.onclick = (e) => {
-        e.stopPropagation(); // Ngăn click vào game card
-        // Cuộn sang trái 90% chiều rộng của vùng chứa
-        let scrollAmount = slider.clientWidth * 0.9;
-        slider.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-      };
+      btnLeft.innerHTML = '‹'; 
       
       // 7. Tạo nút Phải (>)
       const btnRight = document.createElement('button');
       btnRight.className = 'slider-btn right';
-      btnRight.innerHTML = '›'; // Bạn có thể dùng icon &gt; hoặc SVG
+      btnRight.innerHTML = '›'; 
+      
+      btnLeft.onclick = (e) => {
+        e.stopPropagation(); 
+        slider.scrollBy({ left: -slider.clientWidth * 0.8, behavior: 'smooth' }); // Cuộn 80%
+      };
+      
       btnRight.onclick = (e) => {
-        e.stopPropagation(); // Ngăn click vào game card
-        // Cuộn sang phải 90% chiều rộng của vùng chứa
-        let scrollAmount = slider.clientWidth * 0.9;
-        slider.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        e.stopPropagation(); 
+        slider.scrollBy({ left: slider.clientWidth * 0.8, behavior: 'smooth' }); // Cuộn 80%
       };
 
-      // 8. Thêm nút vào container cha (để nó nằm đè lên trên)
       sliderContainer.appendChild(btnLeft);
       sliderContainer.appendChild(btnRight);
+
+      // --- 8. HÀM KIỂM TRA VỊ TRÍ CUỘN (LOGIC MỚI) ---
+      const updateButtonVisibility = () => {
+        const scrollLeft = slider.scrollLeft;
+        const scrollWidth = slider.scrollWidth;
+        const clientWidth = slider.clientWidth;
+
+        // Kiểm tra vị trí đầu (ẩn nút < nếu ở đầu)
+        if (scrollLeft < 10) { // 10px sai số
+          btnLeft.style.display = 'none';
+        } else {
+          btnLeft.style.display = 'flex';
+        }
+
+        // Kiểm tra vị trí cuối (ẩn nút > nếu ở cuối)
+        if (scrollWidth - scrollLeft - clientWidth < 10) { // 10px sai số
+          btnRight.style.display = 'none';
+        } else {
+          btnRight.style.display = 'flex';
+        }
+      };
+      // --- KẾT THÚC LOGIC MỚI ---
+
+      // 9. Gắn sự kiện 'scroll' vào thanh cuộn
+      slider.addEventListener('scroll', updateButtonVisibility);
+      
+      // 10. Chạy 1 lần khi tải để set trạng thái ban đầu (ẩn nút <)
+      updateButtonVisibility();
     }
   }, 100); 
 }
@@ -251,19 +272,22 @@ function showUserInfo(user) {
     userInfo.style.display = 'flex';
   }
   
-  // --- Ẩn avatar ---
+  // --- SỬA: ẨN avatar ---
   if (userAvatar) {
     userAvatar.style.display = 'none'; 
   }
-  // --- Thêm text username vào header ---
+
+  // --- SỬA: Thêm text username vào header ---
   let usernameText = document.getElementById('header-username-text');
   if (!usernameText) {
       usernameText = document.createElement('span');
       usernameText.id = 'header-username-text';
+      // Thêm style để user có thể bấm vào dropdown
       usernameText.style.cssText = 'color: #ff9800; font-weight: 700; margin-right: 10px; cursor: pointer;'; 
-      userInfo.prepend(usernameText); // Thêm vào trước dropdown
+      userInfo.prepend(usernameText); // Thêm vào trước dropdown (hoặc avatar đã ẩn)
   }
-  usernameText.textContent = `${welcomeText}, ${user.displayName || user.username || 'User'}`; // Hiển thị thông điệp chào mừng
+  usernameText.textContent = user.displayName || user.username || 'User'; // Ưu tiên displayName
+
 
   // Cập nhật dropdown (nếu vẫn muốn giữ nút Đăng xuất)
   const dropdownAvatar = document.getElementById('dropdownAvatar');
