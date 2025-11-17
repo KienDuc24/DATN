@@ -11,7 +11,7 @@ body{margin:0;min-height:100vh; background: url('../img/fav.png') no-repeat cent
 .sidebar-logo img{width:36px;height:36px}
 .sidebar-logo span{font-weight:700;color:var(--accent);font-family:"Pacifico",sans-serif; font-size: 1.3rem;}
 nav{flex:1;display:flex;flex-direction:column;gap:6px}
-nav a{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;color:var(--muted);text-decoration:none; font-size: 1.3rem;}
+nav a{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;color:var(--muted);text-decoration:none; font-size: 1.2em;}
 nav a.active, nav a:hover{background:var(--glass);color:#fff}
 .sidebar-auth{margin-top:auto}
 .sidebar-auth button{width:100%;padding:10px;border-radius:8px;border:none;background:var(--danger);color:white;cursor:pointer}

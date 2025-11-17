@@ -1,4 +1,4 @@
-// public/admin.js (ĐÃ SỬA: Bỏ Role, Thêm cột Mật khẩu, Sửa lỗi 401, Sửa lỗi ID)
+// public/admin.js (ĐÃ SỬA: Khôi phục Role, Trạng thái, Sửa lỗi 401, Sửa lỗi ID)
 
 const ADMIN_API = 'https://datn-socket.up.railway.app'; 
 let allGamesCache = []; // Cache để lấy thông tin game
@@ -194,7 +194,7 @@ async function fetchGames(q){
   return allGamesCache;
 }
 
-// --- SỬA LỖI: CẬP NHẬT RENDER USER (Bỏ Trạng thái, Thêm Mật khẩu) ---
+// --- SỬA LỖI: CẬP NHẬT RENDER USER (Khôi phục Trạng thái) ---
 function renderUsersTable(users){
   const tbody = el('adminUsersList'); 
   if (!tbody) { console.warn('adminUsersList tbody not found'); return; }
@@ -208,9 +208,6 @@ function renderUsersTable(users){
     const username = u.username || '';
     const displayName = u.displayName || 'N/A';
     
-    // Lấy mật khẩu đã hash (nếu có)
-    const passwordHash = u.password || 'N/A'; // 'password' là trường hash trong models/User.js
-    
     let historyHtml = 'Chưa chơi game nào';
     if (Array.isArray(u.playHistory) && u.playHistory.length) {
       const recentGames = u.playHistory.slice(-3).reverse();
@@ -219,21 +216,27 @@ function renderUsersTable(users){
       ).join('');
     }
     
+    // SỬA: Khôi phục logic Trạng thái
+    let statusText = 'Offline';
+    let statusColor = '#ef4444'; // Màu đỏ cho offline
+    if (u.status === 'online') {
+        statusText = 'Online';
+        statusColor = '#22c55e'; // Màu xanh cho online
+    } else if (u.status === 'playing') {
+        statusText = 'Playing';
+        statusColor = '#ff9f43'; // Màu cam cho playing
+    }
+
     const tr = document.createElement('tr');
     tr.id = `user-row-${id}`;
-    // Sửa: Bỏ Trạng thái, thêm Mật khẩu
+    // SỬA: Bỏ Mật khẩu, thêm Trạng thái
     tr.innerHTML = `
       <td>${username}</td>
       <td>${displayName}</td>
       <td>${u.email || 'N/A'}</td>
       <td style="font-size: 0.85rem; max-width: 250px;">${historyHtml}</td>
       
-      <td class="password-cell">
-        <span class="password-hash">${passwordHash.substring(0, 10)}...</span>
-        <button class="icon-btn icon-eye" title="Xem/Ẩn Hash" data-hash="${passwordHash}">
-          <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 13c-3.04 0-5.5-2.46-5.5-5.5S8.96 6.5 12 6.5s5.5 2.46 5.5 5.5-2.46 5.5-5.5 5.5zm0-9C10.07 8.5 8.5 10.07 8.5 12s1.57 3.5 3.5 3.5 3.5-1.57 3.5-3.5-1.57-3.5-3.5-3.5z"></path></svg>
-        </button>
-      </td>
+      <td><span style="color:${statusColor}; font-weight:600;">${statusText}</span></td>
       
       <td style="display:flex;gap:8px;align-items:center; justify-content: center;">
         <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
@@ -243,20 +246,9 @@ function renderUsersTable(users){
     tbody.appendChild(tr);
   });
   
-  // Gán sự kiện cho các nút mới
+  // Gán sự kiện cho các nút
   tbody.querySelectorAll('.icon-edit').forEach(btn => btn.addEventListener('click', onEditUser));
   tbody.querySelectorAll('.icon-delete').forEach(btn => btn.addEventListener('click', onDeleteUser));
-  
-  // Gán sự kiện cho nút con mắt
-  tbody.querySelectorAll('.icon-eye').forEach(btn => btn.addEventListener('click', (e) => {
-      const hashSpan = e.currentTarget.closest('.password-cell').querySelector('.password-hash');
-      const fullHash = e.currentTarget.dataset.hash;
-      if (hashSpan.textContent.length > 13) { // Check if it's showing full hash
-          hashSpan.textContent = `${fullHash.substring(0, 10)}...`;
-      } else {
-          hashSpan.textContent = fullHash;
-      }
-  }));
 }
 // --- KẾT THÚC SỬA ---
 
@@ -339,7 +331,7 @@ function renderGamesTable(games){
 }
 
 // --- Handlers ---
-// SỬA: Bỏ 'userRole'
+// SỬA: Thêm lại 'userRole'
 function openUserForm(user){ 
   showOverlay(true); el('userFormPopup').style.display = 'block'; 
   el('userFormTitle').innerText = user ? 'Sửa người dùng' : 'Thêm người dùng'; 
@@ -347,7 +339,7 @@ function openUserForm(user){
   el('userUsername').value = user? user.username : ''; 
   el('userDisplayName').value = user? (user.displayName || '') : ''; 
   el('userEmail').value = user? user.email : ''; 
-  // el('userRole').value = user? user.role || 'user' : 'user'; // ĐÃ XÓA
+  el('userRole').value = user? user.role || 'user' : 'user'; // ĐÃ THÊM LẠI
 }
 function closeUserForm(){ 
     el('userFormPopup').style.display='none'; 
@@ -365,7 +357,7 @@ async function onEditUser(e){
     } 
 }
 
-// SỬA: Bỏ 'role'
+// SỬA: Thêm lại 'role'
 async function saveUser(e){ 
   e.preventDefault(); 
   const id = el('userId').value; 
@@ -373,8 +365,8 @@ async function saveUser(e){
   const payload = { 
     username: el('userUsername').value.trim(), 
     displayName: el('userDisplayName').value.trim(), 
-    email: el('userEmail').value.trim()
-    // role: el('userRole').value // ĐÃ XÓA
+    email: el('userEmail').value.trim(),
+    role: el('userRole').value // ĐÃ THÊM LẠI
   }; 
   
   if(!payload.username) return alert('Username không được để trống'); 

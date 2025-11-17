@@ -1,4 +1,4 @@
-// public/script.js (ĐÃ SỬA LOGIC NÚT < >)
+// public/script.js (ĐÃ SỬA: Đồng bộ Category và Search thành Slider)
 
 // --- Biến cục bộ cho script.js (nếu cần) ---
 let MAX_SHOW = getMaxShow();
@@ -23,7 +23,7 @@ function renderGameCard(game) {
 }
 
 /** * Render slider cho 1 nhóm game với nút < > 
- * --- ĐÂY LÀ HÀM ĐÃ ĐƯỢC SỬA ---
+ * (Hàm này đã đúng, giữ nguyên)
  */
 function renderSlider(games, sliderId, pageKey) {
   // 1. Tìm container cha và thanh cuộn
@@ -101,11 +101,10 @@ function renderSlider(games, sliderId, pageKey) {
     }
   }, 100); 
 }
-/* === KẾT THÚC HÀM ĐÃ SỬA === */
 
 
 /** * Hiển thị các slider theo thể loại 
- * (Hàm này đã đúng, dùng .game-grid)
+ * === SỬA: Dùng .games-slider-container thay vì .game-grid ===
  */
 function renderGamesByCategory() {
   const categoryList = document.getElementById('category-list');
@@ -114,20 +113,29 @@ function renderGamesByCategory() {
 
   Object.keys(gamesByCategory).forEach(cat => {
     const catKey = cat.replace(/\s+/g, '-');
+    const sliderId = `catSlider-${catKey}`; // ID mới cho thanh cuộn
+    
     const section = document.createElement('div');
     section.className = 'category-slider-section';
     
+    // --- SỬA LỖI Ở ĐÂY: Dùng cấu trúc slider ---
     section.innerHTML = `
       <div class="section-title-row" id="cat-${catKey}">
         <div class="section-title">${cat}</div>
       </div>
       ${renderSortDropdown(`cat-${catKey}`)}
-      <div class="game-grid" id="catGrid-${catKey}">
-         ${gamesByCategory[cat].map(renderGameCard).join('')}
+      
+      <div class="games-slider-container">
+        <div class="games-slider-scroll" id="${sliderId}">
+          </div>
       </div>
     `;
+    // --- KẾT THÚC SỬA ---
     
     categoryList.appendChild(section);
+    
+    // THÊM MỚI: Gọi renderSlider cho slider của thể loại này
+    renderSlider(gamesByCategory[cat], sliderId, `cat-${catKey}`);
   });
 }
 
@@ -152,6 +160,7 @@ function renderSortDropdown(key = '') {
 }
 
 /** Hiển thị kết quả tìm kiếm */
+/* === SỬA: Dùng .games-slider-container thay vì .game-grid === */
 function renderSearchResults(filtered, keyword) {
     const main = document.querySelector('.main-content');
     let searchResultDiv = document.getElementById('search-result');
@@ -175,8 +184,9 @@ function renderSearchResults(filtered, keyword) {
         return;
     }
 
-    // Hàm làm nổi bật từ khóa
+    // Hàm làm nổi bật từ khóa (Giữ nguyên)
     function highlight(text) {
+        // ... (code highlight)
         text = (text === undefined || text === null) ? '' : String(text);
         if (!text) return '';
         return text.replace(
@@ -185,28 +195,36 @@ function renderSearchResults(filtered, keyword) {
         );
     }
 
-    // Hiển thị kết quả (Dùng .game-grid)
+    // Hiển thị kết quả (SỬA: Dùng .games-slider-container)
+    const sliderId = "searchSlider";
     searchResultDiv.innerHTML = `
         <div class="section-title-row">
         <div class="section-title">Kết quả tìm kiếm cho "<span style="color:#ff9800">${keyword}</span>"</div>
         </div>
-        <div class="game-grid"> ${filtered.map(game => {
-            const name = getGameName(game, currentLang);
-            const desc = getGameDesc(game, currentLang);
-            const category = getGameCategory(game, currentLang);
-            return `
-            <div class="game-card" onclick="handleGameClick('${game.id}', '${name.replace(/'/g, "\\'")}')">
-                ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
-                <img src="game/${game.id}/Img/logo.png" alt="${name}" />
-                <div class="game-title">${highlight(name)}</div>
-                <div class="game-category">${highlight(category)}</div>
-                <div class="game-desc">${highlight(desc)}</div>
-                ${game.players ? `<div class="game-players">👥 ${highlight(game.players)} ${LANGS[currentLang]?.players || 'người chơi'}</div>` : ""}
-            </div>
-            `;
-        }).join('')}
+        
+        <div class="games-slider-container">
+          <div class="games-slider-scroll" id="${sliderId}">
+             ${filtered.map(game => {
+                const name = getGameName(game, currentLang);
+                const desc = getGameDesc(game, currentLang);
+                const category = getGameCategory(game, currentLang);
+                return `
+                <div class="game-card" onclick="handleGameClick('${game.id}', '${name.replace(/'/g, "\\'")}')">
+                    ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
+                    <img src="game/${game.id}/Img/logo.png" alt="${name}" />
+                    <div class="game-title">${highlight(name)}</div>
+                    <div class="game-category">${highlight(category)}</div>
+                    <div class="game-desc">${highlight(desc)}</div>
+                    ${game.players ? `<div class="game-players">👥 ${highlight(game.players)} ${LANGS[currentLang]?.players || 'người chơi'}</div>` : ""}
+                </div>
+                `;
+            }).join('')}
+          </div>
         </div>
     `;
+    
+    // THÊM MỚI: Gọi renderSlider cho slider của kết quả tìm kiếm
+    renderSlider(filtered, sliderId, 'search');
 }
 
 /** Ẩn kết quả tìm kiếm và hiện lại các slider */

@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Panel</title>
   <link rel="icon" type="image/svg+xml" href="img/fav.svg" />
-  <link rel="stylesheet" href="css/admin.css"> 
+  
+  <link rel="stylesheet" href="/css/admin.css"> 
+  
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+  
 </head>
 <body>
   <aside class="sidebar" id="adminSidebar">
@@ -122,7 +125,7 @@
               <th>Tên hiển thị</th>
               <th>Email</th>
               <th>Lịch sử chơi</th>
-              <th>Mật khẩu (Hash)</th>
+              <th>Trạng thái</th>
               <th>Hành động</th>
             </tr>
           </thead>
@@ -162,6 +165,9 @@
       
       <label>Email</label>
       <input id="userEmail" placeholder="Email" />
+      
+      <label>Vai trò (Role)</label>
+      <select id="userRole"><option value="user">user</option><option value="admin">admin</option></select>
       
       <div class="form-actions">
         <button type="button" onclick="closeUserForm()" class="btn btn-cancel">Hủy</button>
