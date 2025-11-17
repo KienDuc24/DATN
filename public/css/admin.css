@@ -9,7 +9,7 @@ body{margin:0;min-height:100vh; background: url('../img/fav.png') no-repeat cent
 .sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;padding:22px;background:linear-gradient(180deg,var(--card), #071018);border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:18px}
 .sidebar-logo{display:flex;align-items:center;gap:10px}
 .sidebar-logo img{width:36px;height:36px}
-.sidebar-logo span{font-weight:700;color:var(--accent);font-family:"Pacifico",sans-serif; font-size: 1.7rem;}
+.sidebar-logo span{font-weight:700;color:var(--accent);font-family:"Pacifico",sans-serif; font-size: 1.3rem;}
 nav{flex:1;display:flex;flex-direction:column;gap:6px}
 nav a{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;color:var(--muted);text-decoration:none}
 nav a.active, nav a:hover{background:var(--glass);color:#fff}
@@ -236,4 +236,280 @@ header{
     font-size: 14px;
     background: var(--light, #fff);
     color: var(--text-dark, #334155);
+}
+/* === THÊM VÀO CUỐI FILE admin.css === */
+
+/* --- Style cho Modal Inputs (như ảnh image_998e21.jpg) --- */
+.auth-popup, .popup-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%,-50%);
+  z-index: 1000;
+  min-width: 320px;
+  max-width: 720px;
+  background: linear-gradient(180deg,var(--card),#071a29);
+  padding: 24px; /* Tăng padding */
+  border-radius: var(--radius);
+  box-shadow: 0 20px 50px rgba(2,6,23,0.8);
+  display: none;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* Khoảng cách giữa các mục */
+}
+.auth-form h2 {
+  margin: 0 0 10px 0;
+  color: var(--accent);
+}
+.auth-form label {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 13px;
+}
+.auth-form input, 
+.auth-form select {
+  width: 100%;
+  padding: 12px; /* Tăng padding */
+  margin: 0; /* Xóa margin cũ */
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08); /* Viền rõ hơn 1 chút */
+  background: var(--glass); /* Dùng --glass (trong suốt nhẹ) */
+  color: inherit;
+  font-size: 14px;
+}
+.auth-form input:focus,
+.auth-form select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.auth-form .form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+/* Căn lề cho các nút Hủy/Lưu */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+.btn-cancel {
+    background: var(--muted, #9aa4b2);
+    color: var(--dark, #0e1720);
+}
+.btn-save {
+    background: var(--success, #22c55e);
+    color: #fff;
+}
+/* Nút đóng (x) */
+.auth-close{
+  position:absolute;
+  right: 18px;
+  top: 16px;
+  cursor:pointer;
+  color:var(--muted);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+/* --- Style cho Cột Mật khẩu (MỚI) --- */
+.password-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  max-width: 250px; /* Giới hạn chiều rộng */
+}
+.password-hash {
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: italic;
+  color: var(--muted);
+}
+.icon-btn.icon-eye {
+  background: var(--panel);
+  color: var(--accent);
+  flex-shrink: 0; /* Không bị co lại */
+}
+.icon-btn.icon-eye:hover {
+  background: var(--accent);
+  color: var(--panel);
+}
+.icon-btn.icon-eye svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+.controls.search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-grow: 1; /* Cho phép nó co giãn */
+    margin-right: 16px; /* Khoảng cách với nút bên phải */
+}
+
+/* 2. Style cho icon kính lúp */
+.search-icon {
+    position: absolute;
+    left: 12px; /* Đặt icon bên trái */
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted); /* Màu xám nhạt (từ root) */
+    font-size: 1.1rem;
+    pointer-events: none; /* Cho phép click xuyên qua icon */
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px; /* Kích thước icon */
+    height: 20px; /* Kích thước icon */
+}
+.search-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* 3. Style cho input để lùi chữ vào */
+.controls.search-wrapper input {
+    padding-left: 42px !important; /* Lùi chữ để không đè lên icon */
+    
+    /* Style chung (từ file admin.css mới) */
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: var(--glass);
+    color: inherit;
+    font-size: 14px;
+    
+    width: 100%; /* Quan trọng: Input chiếm 100% wrapper */
+    
+    /* (Ghi đè style input cũ nếu có) */
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+}
+
+/* 4. Ghi đè style .controls input cũ (nếu nó không nằm trong .search-wrapper) */
+.controls input:not([id="gamesSearch"]):not([id="usersSearch"]):not([id="roomsSearch"]) {
+     padding: 0.6rem 1rem !important;
+}
+
+/* --- Style cho Cột Mật khẩu (MỚI) --- */
+.password-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  max-width: 250px; /* Giới hạn chiều rộng */
+}
+.password-hash {
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: italic;
+  color: var(--muted);
+}
+.icon-btn.icon-eye {
+  background: var(--panel);
+  color: var(--accent);
+  flex-shrink: 0; /* Không bị co lại */
+}
+.icon-btn.icon-eye:hover {
+  background: var(--accent);
+  color: var(--panel);
+}
+.icon-btn.icon-eye svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+/* --- Style cho Modal Inputs (Đã có từ lần trước) --- */
+.auth-popup, .popup-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%,-50%);
+  z-index: 1000;
+  min-width: 320px;
+  max-width: 720px;
+  background: linear-gradient(180deg,var(--card),#071a29);
+  padding: 24px; 
+  border-radius: var(--radius);
+  box-shadow: 0 20px 50px rgba(2,6,23,0.8);
+  display: none;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; 
+}
+.auth-form h2 {
+  margin: 0 0 10px 0;
+  color: var(--accent);
+}
+.auth-form label {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 13px;
+}
+.auth-form input, 
+.auth-form select {
+  width: 100%;
+  padding: 12px; 
+  margin: 0; 
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08); 
+  background: var(--glass); 
+  color: inherit;
+  font-size: 14px;
+}
+.auth-form input:focus,
+.auth-form select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.auth-form .form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+.btn-cancel {
+    background: var(--muted, #9aa4b2);
+    color: var(--dark, #0e1720);
+}
+.btn-save {
+    background: var(--success, #22c55e);
+    color: #fff;
+}
+.auth-close{
+  position:absolute;
+  right: 18px;
+  top: 16px;
+  cursor:pointer;
+  color:var(--muted);
+  font-size: 1.5rem;
+  line-height: 1;
 }

@@ -123,6 +123,12 @@
 
   /* --- Game Card (Tablet) --- */
   .games-slider-scroll .game-card {
+    flex-basis: calc(25% - 9px);
+    flex-shrink: 0;
+    flex-grow: 0;
+    
+    /* Đặt min-width cho màn hình nhỏ */
+    min-width: 180px; 
     flex-basis: 180px; 
     min-width: 180px;
   }

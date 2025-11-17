@@ -1,4 +1,4 @@
-// public/admin.js (ĐÃ SỬA LỖI 401 VÀ LỖI SELECTOR)
+// public/admin.js (ĐÃ SỬA: Bỏ Role, Thêm cột Mật khẩu, Sửa lỗi 401, Sửa lỗi ID)
 
 const ADMIN_API = 'https://datn-socket.up.railway.app'; 
 let allGamesCache = []; // Cache để lấy thông tin game
@@ -39,8 +39,8 @@ function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeou
 // --- LOGIC THANH XÁC NHẬN ---
 function updateConfirmBar() {
     // ID 'confirmBar' và 'btnConfirmChanges' phải khớp với HTML mới của bạn
-    const bar = el('confirmBar') || el('btnConfirmChanges'); // Nút "Lưu thay đổi" màu đỏ
-    const countEl = el('pendingChangesCount');
+    const bar = el('btnConfirmChanges'); // Nút "Lưu thay đổi" màu đỏ
+    const countEl = el('pendingChangesCount'); // (Tùy chọn)
     
     if (!bar) {
         if (pendingChanges.length > 0) console.warn("Không tìm thấy nút #btnConfirmChanges");
@@ -194,7 +194,7 @@ async function fetchGames(q){
   return allGamesCache;
 }
 
-// --- CẬP NHẬT RENDER USER ---
+// --- SỬA LỖI: CẬP NHẬT RENDER USER (Bỏ Trạng thái, Thêm Mật khẩu) ---
 function renderUsersTable(users){
   const tbody = el('adminUsersList'); 
   if (!tbody) { console.warn('adminUsersList tbody not found'); return; }
@@ -208,6 +208,9 @@ function renderUsersTable(users){
     const username = u.username || '';
     const displayName = u.displayName || 'N/A';
     
+    // Lấy mật khẩu đã hash (nếu có)
+    const passwordHash = u.password || 'N/A'; // 'password' là trường hash trong models/User.js
+    
     let historyHtml = 'Chưa chơi game nào';
     if (Array.isArray(u.playHistory) && u.playHistory.length) {
       const recentGames = u.playHistory.slice(-3).reverse();
@@ -216,24 +219,22 @@ function renderUsersTable(users){
       ).join('');
     }
     
-    let statusText = 'Offline';
-    let statusColor = '#ef4444'; // Màu đỏ cho offline
-    if (u.status === 'online') {
-        statusText = 'Online';
-        statusColor = '#22c55e'; // Màu xanh cho online
-    } else if (u.status === 'playing') {
-        statusText = 'Playing';
-        statusColor = '#ff9f43'; // Màu cam cho playing
-    }
-
     const tr = document.createElement('tr');
     tr.id = `user-row-${id}`;
+    // Sửa: Bỏ Trạng thái, thêm Mật khẩu
     tr.innerHTML = `
       <td>${username}</td>
       <td>${displayName}</td>
       <td>${u.email || 'N/A'}</td>
       <td style="font-size: 0.85rem; max-width: 250px;">${historyHtml}</td>
-      <td><span style="color:${statusColor}; font-weight:600;">${statusText}</span></td>
+      
+      <td class="password-cell">
+        <span class="password-hash">${passwordHash.substring(0, 10)}...</span>
+        <button class="icon-btn icon-eye" title="Xem/Ẩn Hash" data-hash="${passwordHash}">
+          <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 13c-3.04 0-5.5-2.46-5.5-5.5S8.96 6.5 12 6.5s5.5 2.46 5.5 5.5-2.46 5.5-5.5 5.5zm0-9C10.07 8.5 8.5 10.07 8.5 12s1.57 3.5 3.5 3.5 3.5-1.57 3.5-3.5-1.57-3.5-3.5-3.5z"></path></svg>
+        </button>
+      </td>
+      
       <td style="display:flex;gap:8px;align-items:center; justify-content: center;">
         <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
         <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
@@ -241,11 +242,26 @@ function renderUsersTable(users){
     `;
     tbody.appendChild(tr);
   });
+  
+  // Gán sự kiện cho các nút mới
   tbody.querySelectorAll('.icon-edit').forEach(btn => btn.addEventListener('click', onEditUser));
   tbody.querySelectorAll('.icon-delete').forEach(btn => btn.addEventListener('click', onDeleteUser));
+  
+  // Gán sự kiện cho nút con mắt
+  tbody.querySelectorAll('.icon-eye').forEach(btn => btn.addEventListener('click', (e) => {
+      const hashSpan = e.currentTarget.closest('.password-cell').querySelector('.password-hash');
+      const fullHash = e.currentTarget.dataset.hash;
+      if (hashSpan.textContent.length > 13) { // Check if it's showing full hash
+          hashSpan.textContent = `${fullHash.substring(0, 10)}...`;
+      } else {
+          hashSpan.textContent = fullHash;
+      }
+  }));
 }
+// --- KẾT THÚC SỬA ---
 
 function renderRoomsTable(rooms){
+// ... (Hàm này giữ nguyên như trước)
   const tbody = el('adminRoomsList'); 
   if (!tbody) { console.warn('adminRoomsList tbody not found'); return; }
   tbody.innerHTML = '';
@@ -282,6 +298,7 @@ function renderRoomsTable(rooms){
 }
 
 function renderGamesTable(games){
+// ... (Hàm này giữ nguyên như trước)
   const tbody = el('adminGamesList'); 
   if (!tbody) { console.warn('adminGamesList tbody not found'); return; }
   tbody.innerHTML = '';
@@ -322,7 +339,7 @@ function renderGamesTable(games){
 }
 
 // --- Handlers ---
-// (Các ID này 'userFormPopup', 'gameFormPopup' phải khớp HTML mới của bạn)
+// SỬA: Bỏ 'userRole'
 function openUserForm(user){ 
   showOverlay(true); el('userFormPopup').style.display = 'block'; 
   el('userFormTitle').innerText = user ? 'Sửa người dùng' : 'Thêm người dùng'; 
@@ -330,7 +347,7 @@ function openUserForm(user){
   el('userUsername').value = user? user.username : ''; 
   el('userDisplayName').value = user? (user.displayName || '') : ''; 
   el('userEmail').value = user? user.email : ''; 
-  el('userRole').value = user? user.role || 'user' : 'user'; 
+  // el('userRole').value = user? user.role || 'user' : 'user'; // ĐÃ XÓA
 }
 function closeUserForm(){ 
     el('userFormPopup').style.display='none'; 
@@ -348,6 +365,7 @@ async function onEditUser(e){
     } 
 }
 
+// SỬA: Bỏ 'role'
 async function saveUser(e){ 
   e.preventDefault(); 
   const id = el('userId').value; 
@@ -355,8 +373,8 @@ async function saveUser(e){
   const payload = { 
     username: el('userUsername').value.trim(), 
     displayName: el('userDisplayName').value.trim(), 
-    email: el('userEmail').value.trim(), 
-    role: el('userRole').value
+    email: el('userEmail').value.trim()
+    // role: el('userRole').value // ĐÃ XÓA
   }; 
   
   if(!payload.username) return alert('Username không được để trống'); 
@@ -375,6 +393,7 @@ async function onDeleteUser(e){
   el(`user-row-${id}`).classList.add('row-to-be-deleted');
 }
 
+// ... (Các hàm open/close/save/delete cho Room và Game giữ nguyên như trước) ...
 function openRoomForm(room){ 
   showOverlay(true); 
   el('roomFormPopup').style.display = 'block'; 
@@ -540,15 +559,14 @@ function logoutAdmin(){
 
 async function loadData(){
   try{
-    // Giả sử HTML mới có các ID này
     const usersQ = el('usersSearch') && el('usersSearch').value.trim();
     const roomsQ = el('roomsSearch') && el('roomsSearch').value.trim();
-    const gamesQ = el('gamesSearch') && el('gamesSearch').value.trim(); // Thêm tìm kiếm game
+    const gamesQ = el('gamesSearch') && el('gamesSearch').value.trim(); 
 
     const [usersRes, roomsRes, gamesRes] = await Promise.all([
         fetchUsers(usersQ),
         fetchRooms(roomsQ),
-        fetchGames(gamesQ) // Thêm tham số
+        fetchGames(gamesQ) 
     ]);
 
     renderUsersTable(usersRes || []);
@@ -560,7 +578,7 @@ async function loadData(){
 }
 
 async function populateGameOptions(){
-  const sel = el('roomGame'); // ID này phải khớp với HTML mới
+  const sel = el('roomGame'); 
   if(!sel) return;
   sel.innerHTML = '<option value="">-- Chọn trò chơi --</option>';
   try{
@@ -579,10 +597,9 @@ async function populateGameOptions(){
 }
 
 function setupNavToggle() {
-    // Giả sử HTML mới có các ID này
-    const toggleBtn = el('navToggleBtn'); // Nút hamburger
-    const sidebar = el('adminSidebar'); // Sidebar
-    const overlay = el('popupOverlay'); // Lớp mờ
+    const toggleBtn = el('navToggleBtn'); 
+    const sidebar = el('adminSidebar'); 
+    const overlay = el('popupOverlay'); 
     
     if (toggleBtn && sidebar && overlay) {
         toggleBtn.addEventListener('click', () => {
@@ -594,16 +611,15 @@ function setupNavToggle() {
             sidebar.classList.remove('active');
             overlay.style.display = 'none';
             // Đóng tất cả các modal (nếu chúng đang mở)
-            const modals = document.querySelectorAll('.popup-modal');
+            const modals = document.querySelectorAll('.popup-modal, .auth-popup'); // Hỗ trợ cả class cũ
             modals.forEach(m => m.style.display = 'none');
         });
     }
 }
 
-// Cần đảm bảo các ID trong các hàm này khớp với HTML mới của bạn
+// SỬA LỖI: Gán sự kiện an toàn (Safe Listeners)
 document.addEventListener('DOMContentLoaded', ()=>{
   
-  // Helper to safely add listeners
   const safeAddListener = (id, event, handler) => {
     const element = el(id);
     if (element) {
@@ -613,7 +629,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
   };
 
-  // Helper for querySelectorAll
   const safeAddListenerAll = (selector, event, handler) => {
     const elements = document.querySelectorAll(selector);
     if (elements.length > 0) {
@@ -629,8 +644,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if (t) {
       e.preventDefault();
       showTab(t);
-      // Tự động đóng nav trên mobile
-      if (window.innerWidth < 768) {
+      if (window.innerWidth < 768) { // Logic cho mobile
           const sidebar = el('adminSidebar');
           if (sidebar) sidebar.classList.remove('active');
           const overlay = el('popupOverlay');
@@ -639,24 +653,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
   });
 
-  // Gán sự kiện cho các ô tìm kiếm (Nếu có)
+  // Gán sự kiện cho các ô tìm kiếm
   safeAddListener('usersSearch', 'keyup', debounce(()=> loadData(), 400));
   safeAddListener('roomsSearch', 'keyup', debounce(()=> loadData(), 400));
-  safeAddListener('gamesSearch', 'keyup', debounce(()=> loadData(), 400)); // Thêm tìm kiếm game
+  safeAddListener('gamesSearch', 'keyup', debounce(()=> loadData(), 400));
   
-  // Gán sự kiện submit cho các form (phải khớp ID)
+  // Gán sự kiện submit cho các form
   safeAddListener('userForm', 'submit', saveUser);
   safeAddListener('roomForm', 'submit', saveRoom);
   safeAddListener('gameForm', 'submit', saveGame);
   
   
-  // Gán sự kiện cho các nút "Thêm mới" (SỬA LỖI CONSOLE)
-  // *** QUAN TRỌNG: HTML của bạn PHẢI CÓ CÁC ID NÀY ***
-  
-  safeAddListener('btnAddGame', 'click', () => openGameForm(null)); // Nút "+ Thêm trò chơi"
-  safeAddListener('btnAddUser', 'click', () => openUserForm(null)); // Nút "+ Thêm người dùng"
+  // Gán sự kiện cho các nút "Thêm mới"
+  safeAddListener('btnAddGame', 'click', () => openGameForm(null)); 
+  safeAddListener('btnAddUser', 'click', () => openUserForm(null)); 
 
-  const addRoomBtn = el('btnAddRoom'); // Nút "+ Thêm phòng" (nếu có)
+  const addRoomBtn = el('btnAddRoom'); 
   if(addRoomBtn) { 
       addRoomBtn.onclick = async () => { 
           if(allGamesCache.length === 0) await fetchGames();
@@ -665,20 +677,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }; 
   }
 
-  // Gán sự kiện cho thanh confirm (phải khớp ID)
-  safeAddListener('btnConfirmChanges', 'click', executePendingChanges); // Nút "Lưu thay đổi"
-  safeAddListener('btnCancelChanges', 'click', cancelPendingChanges); // Nút "Hủy" (nếu có)
+  // Gán sự kiện cho thanh confirm
+  safeAddListener('btnConfirmChanges', 'click', executePendingChanges); 
+  safeAddListener('btnCancelChanges', 'click', cancelPendingChanges); 
   
-  // Gán sự kiện cho nút sync (phải khớp ID)
-  safeAddListener('btnSyncGames', 'click', syncGames); // Nút "Đồng bộ từ games.json"
+  // Gán sự kiện cho nút sync
+  safeAddListener('btnSyncGames', 'click', syncGames); 
   
-  // Gán sự kiện logout (phải khớp ID)
-  safeAddListener('btnLogout', 'click', logoutAdmin); // Nút "Đăng xuất"
+  // Gán sự kiện logout
+  safeAddListener('btnLogout', 'click', logoutAdmin); 
 
-  // Setting up nav (phải khớp ID)
-  setupNavToggle(); // Cần ID: navToggleBtn, adminSidebar, popupOverlay
+  // Setting up nav
+  setupNavToggle(); 
 
-  // Hiển thị tab mặc định (Giả sử là tab 'Trò chơi')
   showTab('gamesTab'); 
   loadData();
 });

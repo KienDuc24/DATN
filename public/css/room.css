@@ -145,6 +145,10 @@ h1 {
   text-align: center;
   transition: transform 0.3s ease, box-shadow 0.3s;
   border: 2px solid #d8ecff;
+  flex-basis: calc(25% - 9px);
+  flex-shrink: 0;
+  flex-grow: 0;
+  min-width: 180px; 
 }
 .game-card:hover {
   transform: translateY(-4px);
