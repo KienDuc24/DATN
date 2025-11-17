@@ -8,16 +8,6 @@
 @media (min-width: 700px) {
   
   /* --- Header & Nav (Tablet) --- */
-  .sidebar-toggle {
-    display: none; /* Ẩn nút hamburger */
-  }
-  .sidebar {
-    transform: translateX(0); /* Hiện sidebar cố định */
-    width: 210px; /* Chiều rộng cố định */
-  }
-  .sidebar-overlay {
-    display: none; /* Không cần overlay nữa */
-  }
   .header-main {
     padding: 14px 32px 10px 18px;
     gap: 0;

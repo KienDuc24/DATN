@@ -160,3 +160,79 @@ header{position:sticky;top:0;left:220px;right:0;/* height:72px; */ display:flex;
   header{left:0}
   .main-content{margin-left:0;padding:16px}
 }
+.main-content {
+    /* Đặt ảnh nền */
+    background-image: url('/img/fav.png'); 
+    background-size: cover;
+    background-position: center center;
+    background-attachment: fixed;
+    position: relative; /* Cần cho lớp phủ */
+}
+/* Thêm lớp phủ mờ để nội dung dễ đọc hơn */
+.main-content::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    /* Đây là màu nền xám mờ từ screenshot của bạn */
+    background-color: rgba(240, 242, 245, 0.9); /* Giao diện sáng */
+    /* Nếu dùng theme tối (ảnh mới): */
+    /* background-color: rgba(30, 30, 40, 0.85); */
+    z-index: 0;
+}
+/* Đẩy nội dung tab lên trên lớp phủ */
+.admin-tab-content, .main-header, .confirm-bar {
+    position: relative;
+    z-index: 1;
+}
+
+/* Style cho các nút Vercel */
+.vercel-links {
+    padding: 2rem;
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    /* Thêm nền cho dễ đọc */
+    background: var(--light, #fff);
+    border-radius: 8px;
+    box-shadow: var(--shadow, 0 4px 6px -1px rgb(0 0 0 / 0.1));
+}
+.vercel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 24px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    background-color: #1a1a1a; /* Màu Vercel */
+    border: 1px solid #444;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.vercel-btn:hover {
+    background-color: #333;
+    border-color: #888;
+    transform: translateY(-2px);
+}
+.vercel-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+/* Style cho thanh tìm kiếm (lấy từ CSS cũ) */
+.controls {
+    display: flex;
+    gap: 10px;
+}
+.controls input {
+    padding: 0.6rem 1rem;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--light, #fff);
+    color: var(--text-dark, #334155);
+}
