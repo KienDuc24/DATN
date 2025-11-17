@@ -191,7 +191,7 @@ socket.on('kicked', (data) => {
         return '❌ Lỗi: Không tìm thấy gameId của phòng này.';
     }
 
-    const endpoint = `${API_BASE_URL}/api/ai/ask`;
+    const endpoint = `${BASE_API_URL}/api/ai/ask`;
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
