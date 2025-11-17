@@ -9,6 +9,11 @@
   <link rel="stylesheet" href="css/nav.css" />
   <link rel="stylesheet" href="css/auth.css" />
   <link rel="stylesheet" href="css/responsive.css" />
+  
+  <!-- THÊM MỚI (1/2): Link CSS của Chatbot và Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="css/chatbot.css" />
+
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
   <script>
     // Thay bằng URL backend Railway
@@ -17,6 +22,7 @@
   </script>
 </head>
 <body>
+  <!-- (Nội dung <aside> và <header> gốc của bạn) -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <img src="img/fav.svg" alt="Logo" />
@@ -25,7 +31,7 @@
     <nav>
       <a href="#all" data-i18n="all"><span class="icon">&#128340;</span> </a>
       <a href="#featured" data-i18n="featured"><span class="icon">&#128293;</span> </a>
-      <a href="#new" data-i18n="new"><span class="icon">&#128640;</span> </a>
+      <a href="#category" data-i18n="Category"><span class="icon">&#128640;</span> </a>
     </nav>
     <div class="sidebar-auth" id="sidebarAuthBtns">
       <button class="auth-btn" data-i18n="login" onclick="openAuthModal('login')"></button>
@@ -41,25 +47,20 @@
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
   <header>
     <div class="header-main">
-      <!-- Nút mở sidebar/nav ngoài cùng bên trái -->
       <button class="sidebar-toggle" onclick="toggleSidebar()">
         <span class="icon">&#9776;</span>
       </button>
-      <!-- Logo và tiêu đề -->
       <img src="img/fav.svg" class="logo-animate" alt="Logo" />
       <h1 class="header-title">Camping Game</h1>
-      <!-- Thanh tìm kiếm căn giữa -->
       <div class="search-bar search-bar-center">
         <input type="text" id="searchInput" placeholder="Tìm kiếm trò chơi..." oninput="searchGames()" />
         <button onclick="searchGames()">
           <span class="icon-search">&#128269;</span>
         </button>
       </div>
-      <!-- Nút tìm kiếm chỉ hiện trên mobile -->
       <button class="search-toggle" id="searchToggleBtn" type="button" onclick="showMobileSearch()">
         <span class="icon-search">&#128269;</span>
       </button>
-      <!-- Nút đăng nhập/đăng ký sát phải -->
       <div class="header-auth-btns" id="headerAuthBtns">
         <button class="auth-btn" id="loginBtn" data-i18n="login" onclick="openAuthModal('login')"></button>
         <button class="auth-btn" id="registerBtn" data-i18n="register" onclick="openAuthModal('register')"></button>
@@ -79,6 +80,8 @@
       </div>
     </div>
   </header>
+  
+  <!-- (Nội dung <main> gốc của bạn) -->
   <main class="main-content">
     <div class="section-title-row" id="all">
       <div class="section-title" data-i18n="all">Gần đây</div>
@@ -112,7 +115,7 @@
     <div id="category-list"></div>
   </main>
 
-  <!-- Modal Đăng nhập/Đăng ký -->
+  <!-- (Các modal gốc của bạn: auth, profile, room) -->
   <div id="auth-modal" class="auth-modal" style="display:none;">
     <div class="auth-modal-content">
       <button class="auth-modal-close" type="button" onclick="document.getElementById('auth-modal').style.display='none'">&times;</button>
@@ -122,11 +125,9 @@
       </div>
       <div class="auth-social">
         <button id="googleLoginBtn" class="social-btn social-google" type="button">Continue with Google</button>
-        <button id="facebookLoginBtn" class="social-btn social-facebook" type="button">Continue with Facebook</button>
         <button id="anonymousLoginBtn" class="social-btn social-guest" type="button">Login as Guest</button>
       </div>
       <div class="auth-or"><span>OR</span></div>
-      <!-- Đăng nhập -->
       <form id="loginForm" class="auth-form">
         <input id="login-username" type="text" placeholder="Username" required />
         <input id="login-password" type="password" placeholder="Password" required />
@@ -134,7 +135,6 @@
         <button type="submit" class="login-btn">Login</button>
         <div id="login-message" class="auth-message"></div>
       </form>
-      <!-- Đăng ký -->
       <form id="registerForm" class="auth-form" style="display:none;">
         <input id="register-username" type="text" placeholder="Username" required />
         <input class="hide" id="register-password" type="password" placeholder="Password" required />
@@ -147,8 +147,6 @@
       </form>
     </div>
   </div>
-
-  <!-- Popup đổi hồ sơ -->
   <div id="profile-modal" class="profile-modal" style="display:none;">
     <div class="profile-modal-content">
       <span class="profile-modal-close" id="closeProfileModal">&times;</span>
@@ -159,8 +157,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Modal tạo/tham gia phòng -->
   <div id="roomModal" class="modal" style="display:none;">
     <div class="modal-content">
       <button class="close-btn" onclick="document.getElementById('roomModal').style.display='none'">&times;</button>
@@ -180,7 +176,7 @@
     </div>
   </div>
 
-  <!-- Nút kéo lên trên cùng -->
+  <!-- (Phần footer và backToTopBtn gốc của bạn) -->
   <button id="backToTopBtn" title="Lên đầu trang" onclick="scrollToTop()">&#8679;</button>
   <div id="loadingSpinner" style="display:none;justify-content:center;align-items:center;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2000;background:rgba(255,255,255,0.7)">
     <div class="spinner"></div>
@@ -202,6 +198,32 @@
       </div>
     </div>
   </footer>
+
+  <!-- THÊM MỚI (2/2): Giao diện HTML của Chatbot -->
+  <div id="ai-tools-icon" class="ai-tools-icon" title="Hỏi AI Trợ lý">
+      <i class="fas fa-robot"></i>
+  </div>
+
+  <div id="ai-chatbot" class="ai-chatbot hidden">
+      <div class="chat-header">
+        <span><i class="fas fa-robot"></i> Trợ lý AI</span>
+        <button id="closechatbot" class="close-btn" title="Đóng">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="chat-body">
+        <div id="chatMessages" class="chat-messages">
+          <!-- Tin nhắn và nút sẽ được JS thêm vào -->
+        </div>
+      </div>
+      <div class="chat-footer">
+        <input id="chatInput" type="text" placeholder="Hỏi tôi về game..." />
+        <button id="sendChat" class="send-btn" title="Gửi">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+  </div>
+
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="script.js" defer></script>
 </body>
