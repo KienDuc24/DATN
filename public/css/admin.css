@@ -15,6 +15,7 @@
     --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
+/* (Reset cơ bản) */
 *, *::before, *::after { box-sizing: border-box; }
 body {
     margin: 0;
@@ -36,7 +37,7 @@ body {
     color: var(--text-light);
     display: flex;
     flex-direction: column;
-    z-index: 1020; /* Nằm trên overlay */
+    z-index: 1000;
     padding: 1rem;
     box-shadow: var(--shadow);
     /* 1. Ẩn theo mặc định */
@@ -44,11 +45,9 @@ body {
     transition: transform 0.3s ease;
 }
 .sidebar.active {
-    /* 2. Hiện khi có class .active (do JS thêm vào) */
+    /* 2. Hiện khi có class .active */
     transform: translateX(0); 
 }
-/* --- KẾT THÚC SỬA --- */
-
 .sidebar-header {
     display: flex;
     align-items: center;
@@ -56,7 +55,7 @@ body {
     padding-bottom: 1rem;
     border-bottom: 1px solid #4b5563;
 }
-.sidebar-header .logo { width: 32px; height: 32px; border-radius: 8px;}
+.sidebar-header .logo { width: 32px; height: 32px; }
 .sidebar-header h2 { margin: 0; font-size: 1.25rem; }
 
 .sidebar-nav {
@@ -66,7 +65,7 @@ body {
     margin-top: 1rem;
     flex-grow: 1;
 }
-nav a {
+.sidebar-nav a {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -76,15 +75,13 @@ nav a {
     color: var(--text-light);
     font-weight: 500;
     transition: background-color 0.2s;
-    cursor: pointer;
 }
-nav a:hover { background-color: #374151; }
-nav a.active { background-color: var(--primary); color: var(--dark); }
-nav a svg {
+.sidebar-nav a:hover { background-color: #374151; }
+.sidebar-nav a.active { background-color: var(--primary); color: var(--dark); }
+.sidebar-nav a svg {
     width: 20px;
     height: 20px;
     fill: currentColor;
-    flex-shrink: 0; /* Không bị co lại */
 }
 .home-link {
     display: flex;
@@ -105,32 +102,31 @@ nav a svg {
     color: var(--light);
 }
 
-/* --- SỬA LỖI NAV: MAIN CONTENT --- */
+/* --- SỬA LỖI NAV: CSS CHO MAIN CONTENT --- */
 .main-content {
     /* 1. Không còn margin-left */
     margin-left: 0; 
     padding: 1.5rem;
     transition: margin-left 0.3s ease;
 }
-/* 2. Trên mobile (dưới 768px), nav sẽ hiện đè lên */
+/* 2. Dịch chuyển main content khi nav mở (chỉ trên desktop) */
+@media (min-width: 769px) {
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    /* Khi sidebar active, đẩy main-content sang phải */
+    .sidebar.active + .overlay + .main-content {
+        margin-left: 250px;
+    }
+}
+/* 3. Trên mobile, không đẩy content */
 @media (max-width: 768px) {
     .main-content {
         padding: 1rem;
     }
+    /* Trên mobile, overlay sẽ che content */
     .sidebar.active + .overlay {
-        display: block; /* Hiện overlay */
-    }
-}
-/* 3. Trên desktop (trên 768px), nav SẼ LUÔN HIỆN */
-@media (min-width: 769px) {
-    .sidebar {
-        transform: translateX(0); /* Luôn hiện */
-    }
-    .main-content {
-        margin-left: 250px; /* Đẩy content sang */
-    }
-    #navToggleBtn {
-        display: none; /* Ẩn nút hamburger */
+        display: block;
     }
 }
 /* --- KẾT THÚC SỬA LỖI NAV --- */
@@ -138,17 +134,13 @@ nav a svg {
 .main-header {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    justify-content: space-between;
     margin-bottom: 1.5rem;
-    padding: 0.5rem;
-    background: var(--light);
-    border-radius: 8px;
-    box-shadow: var(--shadow-sm);
+    gap: 1rem;
 }
 .main-header h1 {
     margin: 0;
     font-size: 1.75rem;
-    flex-grow: 1; /* Cho h1 lấp đầy */
 }
 
 /* Nút Toggle Nav (Hamburger) */
@@ -159,7 +151,6 @@ nav a svg {
     border-radius: 8px;
     box-shadow: var(--shadow-sm);
     cursor: pointer;
-    line-height: 0; 
 }
 #navToggleBtn svg {
     width: 24px;
@@ -167,140 +158,165 @@ nav a svg {
     fill: var(--text-dark);
 }
 
-.btn{
-  background:linear-gradient(90deg,var(--accent),#ff7a2f);
-  border:none;color:#061022;padding:8px 12px;border-radius:8px;cursor:pointer;
-  font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,0.45);
-  transition:transform .08s ease, box-shadow .08s ease;
+/* (Các style .btn, .table-controls, .table-wrapper... giữ nguyên) */
+/* ... */
+.btn {
+    display: inline-block;
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
+    box-shadow: var(--shadow-sm);
 }
-.btn:hover{ transform:translateY(-2px); box-shadow:0 12px 30px rgba(0,0,0,0.55); }
-.btn-cancel { background: var(--muted); color: var(--text-dark); }
-.btn-save { background: var(--success); color: #fff; }
+.btn-primary { background-color: var(--primary); color: var(--light); }
+.btn-primary:hover { background-color: #e68900; }
+.btn-secondary { background-color: var(--light); color: var(--text-dark); border: 1px solid var(--border); }
+.btn-secondary:hover { background-color: #f8fafc; }
+.btn-danger { background-color: var(--danger); color: var(--light); }
+.btn-danger:hover { background-color: #d93737; }
+.btn:active { transform: scale(0.98); }
 
-.icon-btn{
-  width:36px;height:36px;border-radius:8px;border:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
-  transition:transform .08s ease, opacity .08s;
-  background: none; 
+.table-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
 }
-.icon-btn:hover{ transform:translateY(-2px); opacity:0.98; background: var(--glass); }
-.icon-btn svg { width: 20px; height: 20px; fill: var(--text-muted); }
-.icon-edit:hover svg { fill: var(--primary); }
-.icon-delete:hover svg { fill: var(--danger); }
-
-/* (Thanh confirm, tabs, table... giữ nguyên) */
-.confirm-bar {
-  display: flex;
-  width: 100%;
-  padding: 12px 20px;
-  background: var(--accent);
-  color: var(--bg);
-  font-weight: 700;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-  margin-bottom: 1rem;
-  border-radius: 8px;
-}
-.confirm-bar-actions { display: flex; gap: 12px; }
-
-/* (Tabs) */
-.admin-tab-content { display: none; }
-.admin-tab-content.active { display: block; }
-
-.controls{display:flex;gap:8px;align-items:center}
-.controls input{padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--light);color:inherit}
-
-.section-title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.section-title{font-weight:700;color:var(--text-dark)}
-
-.table-wrap {
-    background: var(--light);
+.table-controls input[type="search"] {
+    padding: 0.6rem 1rem;
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 0; 
-    overflow-x: auto; /* Cho phép cuộn ngang bảng */
+    font-size: 14px;
 }
-.admin-table {
+
+.table-wrapper {
+    background-color: var(--light);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 1000px; /* Đặt chiều rộng tối thiểu */
 }
-.admin-table thead th {
-    background: #f8fafc;
-    padding: 14px 16px; 
+th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
     border-bottom: 1px solid var(--border);
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-dark);
 }
-.admin-table tbody td {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top; 
-    white-space: nowrap; /* Ngăn gãy dòng */
+thead { background-color: #f8fafc; }
+th {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
-/* Cho phép các ô này gãy dòng */
-.admin-table td:nth-child(1), /* Tên */
-.admin-table td:nth-child(2), /* Tên hiển thị */
-.admin-table td:nth-child(3), /* Email */
-.admin-table td:nth-child(4) { /* Lịch sử */
-    white-space: normal;
-}
+tr:last-child td { border-bottom: none; }
+tr.row-to-be-deleted { opacity: 0.4; background-color: #fee2e2; }
 
-.admin-table tbody tr:last-child td { border-bottom: none; }
-.admin-table tbody tr:hover td {
-    background: rgba(0, 0, 0, 0.02);
+.icon-btn {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    transition: background-color 0.2s;
 }
-.admin-table tbody tr.row-to-be-deleted td {
-  background: rgba(239, 68, 68, 0.1);
-  opacity: 0.6;
-  text-decoration: line-through;
-  font-style: italic;
+.icon-btn svg { width: 20px; height: 20px; fill: var(--text-muted); }
+.icon-btn:hover { background-color: var(--border); }
+.icon-btn.icon-delete:hover svg { fill: var(--danger); }
+.icon-btn.icon-edit:hover svg { fill: var(--primary); }
+
+input[type="checkbox"].game-feature-checkbox {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--primary);
 }
-.admin-table tbody tr.row-to-be-deleted .icon-btn { display: none; }
 
 /* (Overlay & Modals) */
-.overlay{
-    position:fixed;
-    left:0;
-    top:0;
-    right:0;
-    bottom:0;
-    background:rgba(2,6,23,0.6);
-    z-index:1010; /* Nằm dưới nav */
-    display:none
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 1010;
+    display: none;
 }
 .popup-modal {
-    position:fixed;
-    left:50%;
-    top:50%;
-    transform:translate(-50%, -50%);
-    z-index:1030; /* Nằm trên cùng */
-    min-width:320px;
-    max-width:500px; /* Mặc định 500px */
-    background: var(--light);
-    padding:1.5rem;
-    border-radius:var(--radius);
-    box-shadow:0 20px 50px rgba(2,6,23,0.8);
-    display:none;
-    border:1px solid var(--border);
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--light);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    z-index: 1020;
+    display: none;
+    width: 90vw;
+    max-width: 500px;
 }
 .popup-modal.wide { max-width: 700px; }
-
-.popup-modal form input, 
-.popup-modal form select, 
-.popup-modal form label,
-.popup-modal form textarea {
-    width:100%;
-    padding:10px;
-    margin:8px 0 4px 0;
-    border-radius:8px;
-    border:1px solid var(--border);
-    background:transparent;
-    color:inherit
+.popup-modal h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
 }
-.popup-modal form label { border: none; padding: 0; margin: 4px 0 0 0; }
-.popup-modal form h2{margin:0 0 1rem 0; color: var(--text-dark);}
-.auth-close{position:absolute;right:12px;top:10px;cursor:pointer;color:var(--muted); font-size: 1.5rem;}
-.form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; }
-.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.popup-modal label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    font-size: 13px;
+}
+.popup-modal input[type="text"],
+.popup-modal input[type="email"],
+.popup-modal select,
+.popup-modal textarea {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 1rem;
+}
+.popup-modal textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+/* (Confirm Bar) */
+.confirm-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    background-color: var(--dark);
+    color: var(--light);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    margin-bottom: 1.5rem;
+}
+.confirm-bar strong { color: var(--primary); }
