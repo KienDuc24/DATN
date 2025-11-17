@@ -1,4 +1,7 @@
+/* public/css/auth.css (ĐÃ SỬA) */
+
 /* --- Popup Auth --- */
+/* ... (toàn bộ code .auth-modal, .auth-tabs, .auth-form, .social-btn... giữ nguyên) ... */
 .auth-modal {
   position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw; height: 100vh;
   background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
@@ -33,7 +36,6 @@
 .auth-form input {
   padding: 10px; border-radius: 8px; border: 1px solid #fff3; background: #181c23; color: #fff; font-size: 1rem;
 }
-/* Chỉ áp dụng style nút cam cho nút submit, không áp dụng cho nút hiện mật khẩu */
 .auth-form button:not(.toggle-password-btn):not(.toggle-password-btn-below) {
   background: #ff9800;
   color: #fff;
@@ -48,11 +50,10 @@
   background: #43cea2;
   color: #23272f;
 }
-/* Nút hiện mật khẩu dạng icon nhỏ, nằm trong input */
 .toggle-password-btn {
   position: absolute;
   right: 12px;
-  top: 18px; /* hoặc điều chỉnh top cho phù hợp */
+  top: 18px;
   background: none !important;
   border: none !important;
   color: #888;
@@ -167,10 +168,14 @@
 .user-info {
   position: relative;
   cursor: pointer;
+  /* SỬA: Căn giữa avatar với header mới */
+  display: flex;
+  align-items: center;
 }
 .user-avatar {
-  width: 44px;
-  height: 44px;
+  /* SỬA: Tăng kích thước avatar để khớp với header (48px) */
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   object-fit: cover;
   background: #fff;

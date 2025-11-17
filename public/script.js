@@ -255,10 +255,6 @@ function showUserInfo(user) {
   if (userAvatar) {
     userAvatar.style.display = 'none'; 
   }
-
-  // --- Lấy thông điệp chào mừng theo ngôn ngữ ---
-  const welcomeText = LANGS[currentLang]?.welcome_back || 'Welcome back'; // Mặc định là tiếng Anh nếu không tìm thấy ngôn ngữ
-
   // --- Thêm text username vào header ---
   let usernameText = document.getElementById('header-username-text');
   if (!usernameText) {

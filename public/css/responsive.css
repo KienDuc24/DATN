@@ -1,514 +1,257 @@
-/* public/css/styles.css (ĐÃ SỬA LỖI CĂN GIỮA) */
-/* --- Base & Background --- */
-body, html {
-  font-family: 'Quicksand', Arial, sans-serif;
-  background: #eaf6f6;
-  margin: 0;
-  padding: 0;
-  color: #23272f;
-  min-height: 100vh;
-}
-body {
-  background: url(../img/fav.png) no-repeat center center fixed;
-  background-size: cover;
-}
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: rgba(255,255,255,0.7);
-  z-index: -1;
-  pointer-events: none;
-}
-body::after, body::before {
-  width: 0;
-}
+/* public/css/responsive.css (ĐÃ SỬA: Ẩn nav, căn giữa 65vw) */
 
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-/* --- Main Content (Mobile) --- */
-.main-content {
-  padding: 8px 2vw 24px 2vw; /* Mobile padding */
-  max-width: 100vw;
-  margin: 0; /* No margin on mobile */
-  background: rgba(255,255,255,0.92);
-  border-radius: 0;
-  box-shadow: 0 8px 32px #0002;
-  color: #23272f;
-  min-height: 70vh;
-  position: relative;
-  overflow: visible;
-  animation: fadeInMain 0.8s cubic-bezier(.68,-0.55,.27,1.55);
-}
-@keyframes fadeInMain {
-  from { opacity: 0; transform: translateY(40px);}
-  to { opacity: 1; transform: none;}
-}
-.section-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 18px 0 8px 0; /* Mobile margin */
-  padding-bottom: 4px;
-  border-bottom: 2px solid #ffe0b2;
-  position: relative;
-  flex-direction: column; /* Mobile stack */
-  align-items: flex-start;
-}
-
-@keyframes popIn {
-  from { transform: scale(0.7); opacity: 0;}
-  to { transform: scale(1); opacity: 1;}
-}
-.section-title {
-  font-size: 1.05rem; /* Mobile font size */
-  font-weight: bold;
-  color: #ff9800;
-  letter-spacing: 0.5px;
-  text-shadow: 0 1px 0 #fff, 0 2px 8px #ff980022;
-}
-
-/* --- SỬA LỖI FLEX/GRID --- */
-/* 1. Container cho thanh cuộn ngang (Featured, All) */
-.games-slider-container {
-  position: relative;
-  background: rgba(255,255,255,0.88);
-  border-radius: 14px;
-  box-shadow: 0 2px 12px #43cea222;
-  padding: 18px 0;
-  margin-bottom: 18px;
-  transition: box-shadow 0.2s;
-  overflow-x: hidden; /* Container ẩn overflow */
-}
-
-/* 2. Thanh cuộn ngang (.games-slider-scroll) */
-.games-slider-scroll {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto; /* Chỉ thanh này cuộn */
-  gap: 12px;
-  padding: 0 0 6px 0; 
-  max-width: 100%;
+/* * ========================================
+ * Breakpoint: Tablet
+ * (Từ 700px trở lên)
+ * ========================================
+ */
+@media (min-width: 700px) {
   
-  /* === SỬA LỖI CĂN GIỮA SLIDER === */
-  justify-content: center; /* THAY ĐỔI TỪ flex-start SANG center */
+  /* --- SỬA 1: XÓA CÁC KHỐI ÉP HIỆN NAV --- */
+  /* .sidebar-toggle { display: none; } (ĐÃ XÓA) */
+  /* .sidebar { transform: translateX(0); width: 210px; } (ĐÃ XÓA) */
+  /* .sidebar-overlay { display: none; } (ĐÃ XÓA) */
+
+  /* --- SỬA 2: HEADER (To hơn và full-width) --- */
+  .header-main {
+    /* SỬA: Tăng padding */
+    padding: 18px 24px 14px 24px; 
+    gap: 20px;
+    /* SỬA: Xóa margin-left để header full-width */
+    margin-left: 0; 
+  }
+  .logo-animate {
+    /* SỬA: Tăng kích thước logo */
+    width: 48px;
+    height: 48px;
+    margin-right: 8px;
+  }
+  .header-title {
+    /* SỬA: Tăng kích thước font */
+    font-size: clamp(1.8rem, 3vw, 2.2rem); 
+    margin: 0 24px 0 0;
+  }
   
-  align-items: stretch;
-  scrollbar-width: none;           /* Firefox */
-  -ms-overflow-style: none;        /* IE 10+ */
-  scroll-behavior: smooth;
-}
-.games-slider-scroll::-webkit-scrollbar {
-  display: none;                   /* Chrome, Safari */
-}
-.games-slider-scroll .game-card:first-child {
-  margin-left: 16px; 
-}
-.games-slider-scroll .game-card:last-child {
-  margin-right: 16px; 
-}
-
-/* 3. Lưới Responsive cho Category (.game-grid) */
-.game-grid {
-  /* === SỬA LỖI CĂN GIỮA GRID === */
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center; /* THÊM DÒNG NÀY ĐỂ CĂN GIỮA */
-  gap: 16px;
-  width: 100%;
+  /* --- Search (Tablet) --- */
+  .search-bar.search-bar-center {
+    display: flex; 
+    flex: 1 1 500px;
+    max-width: 600px;
+    min-width: 260px;
+    margin: 0 auto;
+    background: #23272f;
+    border-radius: 24px;
+    /* SỬA: Tăng chiều cao */
+    height: 44px;
+    box-shadow: 0 2px 8px #0002;
+  }
+  .search-bar input {
+    background: transparent;
+    border: none;
+    color: #fff;
+    padding: 0 14px;
+    font-size: 1rem;
+    outline: none;
+    flex: 1;
+    /* SỬA: Tăng chiều cao */
+    height: 42px;
+  }
+  .search-bar button {
+    background: #ff9800;
+    border: none;
+    color: #fff;
+    border-radius: 0 24px 24px 0;
+    padding: 0 16px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    /* SỬA: Tăng chiều cao */
+    height: 44px;
+    display: flex;
+    align-items: center;
+    transition: background 0.2s;
+  }
+  .search-bar button:hover {
+    background: #43cea2;
+    color: #23272f;
+  }
   
-  /* (Xóa grid-template-columns) */
-}
-/* --- HẾT SỬA LỖI FLEX/GRID --- */
+  .search-toggle {
+    display: none; 
+  }
+  
+  /* --- Auth Buttons (Tablet) --- */
+  .header-auth-btns {
+    gap: 12px;
+    margin-left: auto;
+  }
+  .auth-btn {
+    /* SỬA: Tăng kích thước nút */
+    padding: 10px 24px;
+    font-size: 1.05rem;
+    border-radius: 12px;
+  }
+  /* --- KẾT THÚC SỬA HEADER DESKTOP --- */
+
+  
+  /* --- SỬA 3: MAIN CONTENT (RỘNG 65vw VÀ CĂN GIỮA) --- */
+  .main-content {
+    padding: 28px 18px 24px 18px;
+    
+    /* 1. Đặt chiều rộng */
+    width: 65vw;
+    
+    /* 2. Căn giữa (margin-left: auto hoạt động vì nav đã bị ẩn) */
+    margin-left: auto;
+    margin-right: auto;
+    
+    /* 3. Đặt max-width để tránh lỗi trên màn hình quá rộng */
+    max-width: 1400px; 
+    
+    /* (Xóa margin-left: 210px) */
+  }
+  /* --- KẾT THÚC SỬA MAIN CONTENT --- */
 
 
-/* Card game (Mobile) */
-.game-card {
-  flex-shrink: 0; 
-  /* Đặt chiều rộng cố định (hoặc min-width) cho card */
-  width: 180px; /* Dùng 180px để 5-6 card vừa trên màn hình lớn */
+  .section-title-row {
+    flex-direction: row; 
+    align-items: center;
+    margin: 28px 0 12px 0;
+  }
+  .section-title {
+    font-size: 1.18rem;
+  }
 
-  min-height: 180px;
-  margin: 0;
-  background: linear-gradient(135deg, #fffbe6 60%, #ffe0b2 100%);
-  border-radius: 10px;
-  box-shadow: 0 2px 10px #0001;
-  padding: 10px 4px 8px 4px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  box-sizing: border-box;
-  animation: fadeInCard 0.7s;
-}
+  /* --- Game Card (Tablet) --- */
+  .games-slider-scroll .game-card {
+    flex-basis: 180px; 
+    min-width: 180px;
+  }
+  .game-card img {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    margin-bottom: 10px;
+  }
+  .game-title {
+    font-size: 1.02rem;
+  }
+  .game-badge {
+    top: 6px; left: 6px;
+    font-size: 0.85rem;
+    padding: 2px 8px;
+  }
 
-/* (Phần .game-grid .game-card đã bị xóa vì không cần thiết) */
+  /* --- SỬA 4: FOOTER (RỘNG 65vw VÀ CĂN GIỮA) --- */
+  .footer-content {
+    flex-direction: row; 
+    gap: 16px;
+    padding: 18px 32px 8px 32px;
+  }
+  /* --- KẾT THÚC SỬA FOOTER --- */
 
-@keyframes fadeInCard {
-  from { opacity: 0; transform: translateY(30px);}
-  to { opacity: 1; transform: none;}
-}
-.game-card:hover {
-  transform: translateY(-8px) scale(1.04);
-  box-shadow: 0 8px 32px #ff980055, 0 2px 8px #0001;
-  background: linear-gradient(135deg, #fffbe6 40%, #ffd180 100%);
-}
-.game-card img {
-  width: 60px; /* Mobile size */
-  height: 44px; /* Mobile size */
-  border-radius: 7px;
-  margin-bottom: 6px;
-  box-shadow: 0 2px 8px #ff980033;
-  background: #fff;
-  transition: box-shadow 0.2s;
-}
-.game-title {
-  font-size: 0.98rem; /* Mobile font */
-  font-weight: bold;
-  color: #ff9800;
-  margin-bottom: 2px;
-  text-align: center;
-  text-shadow: 0 1px 0 #fff, 0 2px 8px #ff980022;
-}
-.game-category {
-  font-size: 0.89rem; /* Mobile font */
-  color: #009688;
-  margin-bottom: 2px;
-  font-weight: 500;
-}
-.game-desc {
-  font-size: 0.89rem; /* Mobile font */
-  color: #555;
-  margin-bottom: 4px;
-  text-align: center;
-}
-.game-players {
-  font-size: 0.88rem;
-  color: #009688;
-  font-weight: 600;
-  margin-top: 1px;
-}
-.game-badge {
-  position: absolute;
-  top: 5px; left: 5px; /* Mobile position */
-  background: linear-gradient(90deg, #ff9800, #ffd54f);
-  color: #fff;
-  font-size: 0.7rem; /* Mobile font */
-  font-weight: bold;
-  padding: 1px 6px;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px #ff980033;
-  z-index: 2;
-  letter-spacing: 1px;
-  animation: badge-pop 0.7s cubic-bezier(.68,-0.55,.27,1.55);
-}
-@keyframes badge-pop {
-  0% { transform: scale(0.7); opacity: 0;}
-  70% { transform: scale(1.15);}
-  100% { transform: scale(1); opacity: 1;}
+  /* --- Modals (Tablet) --- */
+  #roomModal .modal-content {
+    width: 100%;
+    max-width: 400px;
+    padding: 28px;
+  }
+  #roomModal .modal-actions {
+    flex-direction: row; 
+  }
+  #roomModal input {
+    width: auto; 
+    margin-bottom: 0;
+  }
+  
+  #auth-modal .auth-modal-content {
+    min-width: 320px;
+  }
 }
 
 
-/* --- Button & Input --- */
-button, .btn, .sort-dropdown select, input[type="text"] {
-  border-radius: 10px;
-  border: none;
-  outline: none;
-  font-size: 1rem;
-}
-button, .btn {
-  background: linear-gradient(90deg, #ff9800 60%, #ffc107 100%);
-  color: #fff;
-  font-weight: 700;
-  padding: 10px 22px;
-  box-shadow: 0 2px 8px #ff980033;
-  transition: background 0.18s, box-shadow 0.18s, transform 0.12s;
-}
-button:hover, .btn:hover {
-  background: linear-gradient(90deg, #ffa726 60%, #ffd54f 100%);
-  color: #23272f;
-  transform: translateY(-2px) scale(1.03);
-}
-input[type="text"], .search-bar input {
-  background: #fff;
-  color: #23272f;
-  border: 1px solid #eee;
-  padding: 8px 14px;
-  margin-right: 8px;
-  transition: border 0.2s;
-}
-input[type="text"]:focus {
-  border: 1.5px solid #43cea2;
+/* * ========================================
+ * Breakpoint: Game Layouts
+ * (Dưới 992px)
+ * ========================================
+ */
+@media (max-width: 992px) {
+  /* ... (Phần này giữ nguyên) ... */
+  /* Game ToD */
+  .game-header { padding: 0.5rem; }
+  .back-btn {
+    top: 1rem;
+    left: 1rem;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+  }
+  .back-btn span { display: none; }
+  .game-title { font-size: 2.5rem; }
+
+  .playground-container {
+      width: 95%;
+      padding: 1rem;
+      margin-top: 0.5rem;
+  }
+  .game-container {
+      flex-direction: column;
+      padding: 0;
+      gap: 1.5rem;
+  }
+  .player-camp {
+      flex: none;
+      height: auto;
+      min-height: auto;
+      max-width: 100%;
+  }
+  .player-grid {
+      max-height: none;
+      grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+      gap: 1rem;
+  }
+  .game-controls {
+      flex: none;
+      width: 100%;
+      max-width: 500px;
+      padding: 1rem;
+      box-sizing: border-box;
+  }
 }
 
-/* Giao diện dropdown sắp xếp */
-.sort-dropdown-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-bottom: 8px;
-  gap: 8px;
-}
-.sort-label {
-  color: #ff9800;
-  font-weight: 600;
-  font-size: 1rem;
-  margin-right: 4px;
-  white-space: nowrap;
-}
-.sort-dropdown {
-  position: relative;
-  display: inline-block;
-}
-.sort-dropdown select {
-  background: #fffbe6;
-  color: #ff9800;
-  border: 1.5px solid #ffd54f;
-  border-radius: 8px;
-  padding: 6px 28px 6px 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  outline: none;
-  box-shadow: 0 2px 8px #ff980022;
-  transition: border 0.18s, box-shadow 0.18s;
-  appearance: none;
-  cursor: pointer;
-}
-.sort-dropdown::after {
-  content: "▼";
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #ff9800;
-  font-size: 0.85em;
-  pointer-events: none;
-}
-
-/* --- Footer (Mobile) --- */
-footer {
-  background: rgba(255,255,255,0.96);
-  color: #23272f;
-  border-radius: 0; /* No radius on mobile */
-  box-shadow: 0 -2px 16px #0001;
-  margin-top: 36px;
-}
-.footer-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column; /* Mobile stack */
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px; /* Mobile gap */
-  padding: 10px 2vw 6px 2vw; /* Mobile padding */
-}
-.footer-logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #ff9800;
-}
-.footer-logo img {
-  width: 32px;
-  height: 32px;
-}
-.footer-links {
-  display: flex;
-  gap: 18px;
-}
-.footer-links a {
-  color: #009688;
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.15s;
-}
-.footer-links a:hover {
-  color: #ff9800;
-}
-.footer-copyright {
-  font-size: 0.98rem;
-  color: #888;
-  margin-top: 8px;
-}
-
-/* --- Back to Top --- */
-#backToTopBtn {
-  position: fixed;
-  right: 20px; /* Mobile position */
-  bottom: 80px; /* Nâng lên trên nút chatbot */
-  z-index: 1200;
-  background: #ff9800;
-  color: #fff;
-  border: none;
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  font-size: 1.5rem;
-  font-weight: bold;
-  box-shadow: 0 2px 8px #ff980055;
-  cursor: pointer;
-  display: none;
-  transition: background 0.2s, color 0.2s, transform 0.2s;
-}
-#backToTopBtn.show {
-  display: block;
-}
-#backToTopBtn:hover {
-  background: #43cea2;
-  color: #23272f;
-  transform: scale(1.08);
-}
-
-/* --- Nút chuyển slider trái/phải (Giữ nguyên) --- */
-.slider-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
-  height: 36px;
-  width: 36px; /* Vuông đẹp hơn */
-  padding: 0;
-  background: #ff9800cc; 
-  color: #fff;
-  border: none;
-  border-radius: 50%; /* Tròn */
-  font-size: 1.5rem;
-  font-weight: bold;
-  box-shadow: 0 2px 8px #ff980055;
-  cursor: pointer;
-  transition: opacity 0.2s, background 0.2s, transform 0.2s;
-  opacity: 0; /* Ẩn mặc định, hiện khi hover container */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.slider-btn.left {
-  left: 8px;
-}
-.slider-btn.right {
-  right: 8px;
-}
-.slider-btn:hover {
-  background: #43cea2;
-  color: #23272f;
-  transform: scale(1.08) translateY(-50%);
-}
-.games-slider-container:hover .slider-btn {
-  opacity: 1;
-}
-
-/* Modal tạo phòng (Mobile) */
-#roomModal.modal {
-  display: none;
-  position: fixed;
-  z-index: 2000;
-  left: 0; top: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0,0,0,0.7);
-  justify-content: center;
-  align-items: center;
-}
-#roomModal .modal-content {
-  background: #fff;
-  border-radius: 18px;
-  padding: 18px 6vw 18px 6vw; /* Mobile padding */
-  min-width: 0;
-  width: 90vw; /* Mobile width */
-  max-width: 400px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  animation: popIn 0.4s cubic-bezier(.68,-0.55,.27,1.55);
-}
-@keyframes popIn {
-  from { opacity: 0; transform: translateY(20px) scale(0.95);}
-  to { opacity: 1; transform: translateY(0) scale(1);}
-}
-
-#roomModal .close-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: #ff9800;
-  cursor: pointer;
-  z-index: 2;
-}
-#roomModal .modal-title {
-  font-size: 1.22rem;
-  font-weight: bold;
-  color: #ff9800;
-  margin-bottom: 18px;
-  letter-spacing: 0.5px;
-  text-align: center;
-}
-#roomModal .modal-actions {
-  display: flex;
-  flex-direction: column; /* Mobile stack */
-  gap: 10px;
-  margin-bottom: 10px;
-  width: 100%;
-}
-#roomModal button,
-#roomModal .modal-actions button {
-  margin: 0;
-  padding: 10px 28px;
-  border-radius: 10px;
-  border: none;
-  background: linear-gradient(90deg, #ff9800 60%, #ffc107 100%);
-  color: #fff;
-  font-size: 1.05rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 2px 8px #ff980033;
-  transition: background 0.18s, transform 0.12s, box-shadow 0.18s;
-  outline: none;
-  position: relative;
-  overflow: hidden;
-}
-#roomModal button:active,
-#roomModal .modal-actions button:active {
-  background: linear-gradient(90deg, #ffa726 60%, #ffd54f 100%);
-  color: #23272f;
-  transform: scale(0.97);
-  box-shadow: 0 1px 4px #ff980022;
-}
-
-#roomModal #roomCodeBox,
-#roomModal #joinRoomBox {
-  margin-top: 18px;
-  width: 100%;
-  text-align: center;
-  animation: fadeInMain 0.5s;
-}
-#roomModal input {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1.5px solid #ffd54f;
-  margin-bottom: 8px; /* Stack trên mobile */
-  font-size: 1rem;
-  outline: none;
-  transition: border 0.18s;
-  width: 100%; /* Full width */
-}
-#roomModal input:focus {
-  border: 1.5px solid #ff9800;
-}
-
-#roomModal #generatedRoomCode {
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: #43cea2;
-  margin: 0 8px;
-  letter-spacing: 2px;
+/* * ========================================
+ * Breakpoint: Mobile (Tinh chỉnh Game)
+ * (Dưới 600px)
+ * ========================================
+ */
+@media (max-width: 600px) {
+  /* ... (Phần này giữ nguyên) ... */
+  /* Game Draw */
+  .game-main { gap: 10px; }
+  .canvas-section, .game-info-box, .chat-section { padding: 10px; }
+  #scoreGrid { max-height: 25vh; }
+  
+  /* Game ToD */
+  .player-grid {
+      grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+      gap: 0.8rem;
+  }
+  .player .pic {
+      width: 50px;
+      height: 50px;
+  }
+  .player .name { font-size: 0.7em; max-width: 80px; }
+  .campfire { width: 100px; height: 100px; bottom: -30px; }
+  .game-controls .action-buttons {
+      flex-direction: column;
+      gap: 0.8rem;
+  }
+  .game-controls .btn {
+      width: 100%;
+      max-width: 250px;
+      margin: 0 auto;
+  }
+  
+  /* Room CSS */
+  .container h2 { font-size: 1.5rem; }
+  ul#playerList li { font-size: 0.95rem; }
+  .container button { width: 100%; }
 }

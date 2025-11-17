@@ -1,4 +1,4 @@
-/* public/css/nav.css */
+/* public/css/nav.css (ĐÃ SỬA) */
 /* --- Sidebar (Mobile: Ẩn) --- */
 .sidebar {
   position: fixed;
@@ -22,14 +22,22 @@
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 15px;
   padding: 0 10px 10px 10px;
   font-size: 1rem;
   font-weight: 700;
   color: #ff9800;
 }
+.sidebar-logo span {
+  font-family: 'Pacifico', cursive;
+  font-size: 1.7rem;
+}
+
 .sidebar-logo img {
-  width: 28px; height: 28px; border-radius: 8px;
+  /* SỬA: Tăng kích thước logo trong nav */
+  width: 36px; 
+  height: 36px; 
+  border-radius: 8px;
   background: #fff;
 }
 .sidebar nav {
@@ -100,14 +108,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 8px 2vw 8px 2vw;
+  /* SỬA: Tăng padding để header to hơn */
+  padding: 12px 2vw;
   background: #262930;
 }
 .sidebar-toggle {
   background: none;
   border: none;
   color: #ff9800;
-  font-size: 1.5rem; /* Cỡ mobile */
+  /* SỬA: Tăng kích thước icon */
+  font-size: 1.8rem; 
   cursor: pointer;
   margin-right: 4px;
   padding: 0 2px;
@@ -117,8 +127,9 @@
 .sidebar-toggle:hover { color: #43cea2; }
 
 .logo-animate {
-  width: 28px; /* Cỡ mobile */
-  height: 28px;
+  /* SỬA: Tăng kích thước logo */
+  width: 36px;
+  height: 36px;
   margin-right: 5px;
   border-radius: 10px;
   background: #fff;
@@ -126,8 +137,8 @@
 .header-title {
   font-family: 'Pacifico', cursive;
   color: #ff9800;
-  /* Dùng clamp() cho font linh hoạt */
-  font-size: clamp(1rem, 4vw, 1.3rem);
+  /* SỬA: Tăng kích thước font */
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
   margin: 0 8px 0 0;
   letter-spacing: 1px;
   font-weight: 700;
@@ -143,8 +154,9 @@
   background: #ff9800;
   border: none;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  /* SỬA: Tăng kích thước nút search */
+  width: 40px;
+  height: 40px;
   align-items: center;
   justify-content: center;
   color: #fff;
@@ -158,19 +170,21 @@
   background: #43cea2;
   color: #23272f;
 }
-/* Logic khi bấm nút search mobile */
+
+/* --- SỬA LOGIC CĂN GIỮA SEARCH MOBILE --- */
 .header-main.mobile-searching .logo-animate,
-.header-main.mobile-searching .header-title {
+.header-main.mobile-searching .header-title,
+.header-main.mobile-searching .sidebar-toggle { /* THÊM: Ẩn cả nút hamburger */
   display: none !important;
 }
 .header-main.mobile-searching .search-bar.search-bar-center {
   display: flex !important;
-  flex: 1 1 100vw;
-  max-width: 100vw;
-  margin: 0 0 0 8px;
+  flex: 1 1 90vw; /* SỬA: Chiếm 90% */
+  max-width: 90vw; /* SỬA: Tối đa 90% */
+  margin: 0 auto; /* SỬA: Căn giữa */
   background: #23272f;
   border-radius: 18px;
-  height: 38px;
+  height: 40px; /* SỬA: Tăng chiều cao */
   z-index: 100;
 }
 .header-main.mobile-searching .search-toggle,
@@ -180,11 +194,11 @@
 .header-main.mobile-searching .search-bar input {
   font-size: 1rem;
   padding: 0 10px;
-  height: 36px;
+  height: 38px; /* SỬA: Tăng chiều cao */
 }
 .header-main.mobile-searching .search-bar button {
   font-size: 1rem;
-  height: 36px;
+  height: 40px; /* SỬA: Tăng chiều cao */
   padding: 0 10px;
   border-radius: 0 16px 16px 0;
 }
@@ -201,8 +215,9 @@
   color: #fff;
   border: none;
   border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 0.95rem;
+  /* SỬA: Tăng kích thước nút */
+  padding: 8px 14px;
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;

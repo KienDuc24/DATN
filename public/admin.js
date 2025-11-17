@@ -31,7 +31,7 @@ try {
 
 function el(id){return document.getElementById(id);}
 function showOverlay(show){ 
-    const overlay = el('popupOverlay'); // Giả sử overlay có id này
+    const overlay = el('popupOverlay'); // ID này phải có trong HTML
     if (overlay) overlay.style.display = show ? 'block' : 'none'; 
 }
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
@@ -43,7 +43,7 @@ function updateConfirmBar() {
     const countEl = el('pendingChangesCount');
     
     if (!bar) {
-        if (pendingChanges.length > 0) console.warn("Có thay đổi đang chờ nhưng không tìm thấy #confirmBar hoặc #btnConfirmChanges");
+        if (pendingChanges.length > 0) console.warn("Không tìm thấy nút #btnConfirmChanges");
         return;
     }
     
@@ -195,13 +195,11 @@ async function fetchGames(q){
 }
 
 // --- CẬP NHẬT RENDER USER ---
-// (Giả sử các ID của tbody trong HTML mới của bạn vẫn là 'adminUsersList', 'adminRoomsList', 'adminGamesList')
 function renderUsersTable(users){
-  const tbody = el('adminUsersList'); // ID này phải khớp với HTML mới
+  const tbody = el('adminUsersList'); 
   if (!tbody) { console.warn('adminUsersList tbody not found'); return; }
   tbody.innerHTML = '';
   if (!Array.isArray(users) || users.length === 0) {
-    // Cập nhật colspan cho (ảnh image_631cec.png)
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Không có người dùng</td></tr>`;
     return;
   }
@@ -230,7 +228,6 @@ function renderUsersTable(users){
 
     const tr = document.createElement('tr');
     tr.id = `user-row-${id}`;
-    // Cập nhật số cột cho giao diện mới (ảnh 631cec.png)
     tr.innerHTML = `
       <td>${username}</td>
       <td>${displayName}</td>
@@ -249,7 +246,7 @@ function renderUsersTable(users){
 }
 
 function renderRoomsTable(rooms){
-  const tbody = el('adminRoomsList'); // ID này phải khớp với HTML mới
+  const tbody = el('adminRoomsList'); 
   if (!tbody) { console.warn('adminRoomsList tbody not found'); return; }
   tbody.innerHTML = '';
   if (!Array.isArray(rooms) || rooms.length === 0) {
@@ -285,7 +282,7 @@ function renderRoomsTable(rooms){
 }
 
 function renderGamesTable(games){
-  const tbody = el('adminGamesList'); // ID này phải khớp với HTML mới
+  const tbody = el('adminGamesList'); 
   if (!tbody) { console.warn('adminGamesList tbody not found'); return; }
   tbody.innerHTML = '';
   if (!Array.isArray(games) || games.length === 0) {
@@ -325,7 +322,7 @@ function renderGamesTable(games){
 }
 
 // --- Handlers ---
-// (Giả sử các ID của popup trong HTML mới vẫn là 'userFormPopup', 'roomFormPopup', 'gameFormPopup')
+// (Các ID này 'userFormPopup', 'gameFormPopup' phải khớp HTML mới của bạn)
 function openUserForm(user){ 
   showOverlay(true); el('userFormPopup').style.display = 'block'; 
   el('userFormTitle').innerText = user ? 'Sửa người dùng' : 'Thêm người dùng'; 

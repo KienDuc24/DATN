@@ -5,9 +5,117 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Panel</title>
   <link rel="icon" type="image/svg+xml" href="img/fav.svg" />
+  
   <link rel="stylesheet" href="/css/admin.css"> 
+  
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
-  </head>
+  
+  <style>
+    body {
+        background: url('../img/fav.png') no-repeat center center fixed;
+        background-size: cover;
+    }
+    .main-content {
+        position: relative;
+    }
+    /* Lớp phủ mờ cho nội dung chính */
+    .main-content::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        /* Đây là màu nền tối mờ (từ ảnh của bạn) */
+        background-color: rgba(14, 23, 32, 0.85); /* Màu --panel với 85% opacity */
+        backdrop-filter: blur(4px);
+        z-index: 0;
+    }
+    /* Đẩy nội dung tab lên trên lớp phủ */
+    .admin-tab-content, .header-main, .confirm-bar {
+        position: relative;
+        z-index: 1;
+    }
+    /* (Các style modal từ file admin.css cũ - Rất quan trọng) */
+    .overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 1010;
+        display: none;
+    }
+    .popup-modal {
+        position: fixed;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: var(--card, #081726); /* Dùng màu --card của bạn */
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: var(--radius, 10px);
+        box-shadow: 0 20px 50px rgba(2,6,23,0.8);
+        padding: 1.5rem;
+        z-index: 1020;
+        display: none;
+        width: 90vw;
+        max-width: 500px;
+        color: #e6eef8; /* Thêm màu chữ cho popup */
+    }
+    .popup-modal.wide { max-width: 700px; }
+    .popup-modal h3, .popup-modal h2 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        font-size: 1.25rem;
+        color: var(--accent, #ff9f43); /* Thêm màu chữ */
+    }
+    .popup-modal label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+        font-size: 13px;
+        color: var(--muted, #9aa4b2); /* Thêm màu chữ */
+    }
+    .popup-modal input[type="text"],
+    .popup-modal input[type="email"],
+    .popup-modal select,
+    .popup-modal textarea {
+        width: 100%;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid rgba(255,255,255,0.04);
+        border-radius: 8px;
+        font-size: 14px;
+        margin-bottom: 1rem;
+        background: var(--bg, #071224); /* Nền input */
+        color: inherit; /* Màu chữ input */
+    }
+    .form-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+    .auth-close {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        font-size: 1.5rem;
+        color: var(--muted, #9aa4b2);
+        cursor: pointer;
+        line-height: 1;
+    }
+    .auth-close:hover {
+        color: #fff;
+    }
+    .btn-cancel {
+        background: var(--muted, #9aa4b2);
+        color: var(--dark, #0e1720);
+    }
+    .btn-save {
+        background: var(--success, #22c55e);
+        color: #fff;
+    }
+  </style>
+</head>
 <body>
   <aside class="sidebar" id="adminSidebar">
     <div class="sidebar-logo">
@@ -15,6 +123,9 @@
       <span>Admin Panel</span>
     </div>
     <nav>
+      <button class="icon-btn" id="navToggleBtn" aria-label="Toggle Navigation" style="display:none; color: white; background: none; border: none; font-size: 1.5rem; cursor: pointer;">
+          &#9776;
+      </button>
       <a href="/" target="_blank"><span class="icon">🏠</span> <span>Trang chủ</span></a>
       <a href="#" class="tab-btn active" data-tab="gamesTab"><span class="icon">🎮</span> <span>Trò chơi</span></a>
       <a href="#" class="tab-btn" data-tab="roomsTab"><span class="icon">🚪</span> <span>Phòng chơi</span></a>
@@ -29,6 +140,7 @@
   <div class="overlay" id="popupOverlay"></div>
 
   <main class="main-content">
+    
     <div class="confirm-bar" id="confirmBar" style="display: none;">
       <span>Bạn có <span id="pendingChangesCount">0</span> thay đổi đang chờ</span>
       <div class="confirm-bar-actions">
@@ -36,12 +148,17 @@
         <button class="btn btn-save" id="btnConfirmChanges">Lưu thay đổi</button>
       </div>
     </div>
+    
+    <button class="btn btn-danger" id="btnConfirmChanges" style="display: none; position: fixed; bottom: 20px; left: 240px; z-index: 100;">
+        Lưu thay đổi
+    </button>
+
 
     <section id="dashboardTab" class="admin-tab-content" style="display:none">
         <div class="section-title-row">
             <div class="section-title">Dashboard</div>
         </div>
-        </section>
+    </section>
 
     <section id="gamesTab" class="admin-tab-content">
       <div class="section-title-row">
@@ -51,7 +168,7 @@
         </div>
         <div>
           <button class="btn" style="margin-right:8px;background:linear-gradient(90deg,#ffd36b,#ff9f43);color:#061022" id="btnSyncGames">Đồng bộ từ games.json</button>
-          <button class="btn" onclick="openGameForm(null)">+ Thêm trò chơi</button>
+          <button class="btn" id="btnAddGame">+ Thêm trò chơi</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -94,7 +211,7 @@
         <div class="controls">
           <input id="usersSearch" placeholder="Tìm username hoặc email..." />
         </div>
-        <button class="btn" onclick="openUserForm(null)">+ Thêm người dùng</button>
+        <button class="btn" id="btnAddUser">+ Thêm người dùng</button>
       </div>
       <div class="table-wrap">
         <table class="admin-table">
@@ -128,7 +245,96 @@
             </a>
        </div>
     </section>
-    </main>
+  </main>
+  
+  
+  <div id="userFormPopup" class="popup-modal"> 
+    <form id="userForm">
+      <h2 id="userFormTitle">Chỉnh sửa người dùng</h2>
+      <input type="hidden" id="userId" />
+      <label>Username</label>
+      <input id="userUsername" placeholder="Username" required />
+      
+      <label>Tên hiển thị</label>
+      <input id="userDisplayName" placeholder="Tên hiển thị" />
+      
+      <label>Email</label>
+      <input id="userEmail" placeholder="Email" />
+      <label>Vai trò (Role)</label>
+      <select id="userRole"><option value="user">user</option><option value="admin">admin</option></select>
+      <div class="form-actions">
+        <button type="button" onclick="closeUserForm()" class="btn btn-cancel">Hủy</button>
+        <button type="submit" class="btn btn-save">Lưu</button>
+      </div>
+      <span class="auth-close" onclick="closeUserForm()">×</span>
+    </form>
+  </div>
+
+  <div id="roomFormPopup" class="popup-modal">
+    <form id="roomForm">
+      <h2 id="roomFormTitle">Chỉnh sửa phòng</h2>
+      <input type="hidden" id="roomId" />
+      <input id="roomName" placeholder="Tên phòng" required />
+      <select id="roomGame" required>
+        <option value="">-- Chọn trò chơi --</option>
+      </select>
+      <input id="roomOwner" placeholder="Người tạo" required />
+      <select id="roomStatus"><option>Đang mở</option><option>Đang chơi</option><option>Đã đóng</option></select>
+      <div class="form-actions">
+        <button type="button" onclick="closeRoomForm()" class="btn btn-cancel">Hủy</button>
+        <button type="submit" class="btn btn-save">Lưu</button>
+      </div>
+      <span class="auth-close" onclick="closeRoomForm()">×</span>
+    </form>
+  </div>
+
+  <div id="gameFormPopup" class="popup-modal wide">
+    <form id="gameForm">
+      <h2 id="gameFormTitle">Thêm trò chơi</h2>
+      <input type="hidden" id="gameIdOrig" />
+      <div class="form-grid-2">
+        <div>
+            <label>Tên (VI)</label>
+            <input id="gameNameVI" placeholder="Tên tiếng Việt" />
+        </div>
+        <div>
+            <label>Tên (EN)</label>
+            <input id="gameNameEN" placeholder="Name (English)" />
+        </div>
+      </div>
+       <div class="form-grid-2">
+           <div>
+                <label>Mô tả (VI)</label>
+                <input id="gameDescVI" placeholder="Mô tả tiếng Việt" />
+           </div>
+           <div>
+                <label>Mô tả (EN)</label>
+                <input id="gameDescEN" placeholder="Description (English)" />
+           </div>
+       </div>
+       <div class="form-grid-2">
+           <div>
+                <label>Category (VI)</label>
+                <input id="gameCatVI" placeholder="Thể loại (VI)" />
+           </div>
+            <div>
+                <label>Category (EN)</label>
+                <input id="gameCatEN" placeholder="Category (EN)" />
+            </div>
+       </div>
+      <label>Players (e.g. 3+)</label>
+      <input id="gamePlayers" placeholder="3+" />
+      
+      <label>ID (unique)</label>
+      <input id="gameId" placeholder="Draw" required />
+      
+      <div class="form-actions">
+        <button type="button" onclick="closeGameForm()" class="btn btn-cancel">Hủy</button>
+        <button type="submit" class="btn btn-save">Lưu</button>
+      </div>
+      <span class="auth-close" onclick="closeGameForm()">×</span>
+    </form>
+  </div>
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="admin.js"></script>
