@@ -85,15 +85,18 @@ async function executePendingChanges() {
                 url = (type === 'game') ? API_ENDPOINTS.GAMES : API_ENDPOINTS.USERS;
             }
             
+            // --- *** ĐÂY LÀ PHẦN ĐÃ SỬA LỖI 401 *** ---
             res = await fetch(url, {
                 method: method,
-                headers: { 'Content-Type': 'application/json', 'credentials': 'include' },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // 'credentials' phải nằm ngoài 'headers'
                 body: JSON.stringify(payload)
             });
+            // --- *** KẾT THÚC SỬA LỖI *** ---
             
             if (!res || !res.ok) {
-                const errText = await res.text();
-                throw new Error(errText || `Lỗi ${method} ${url}`);
+                const errText = await res.json(); // Đọc lỗi từ JSON (thường server trả về JSON)
+                throw new Error(errText.message || `Lỗi ${method} ${url}`);
             }
             
         } catch (err) {
@@ -651,4 +654,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   showTab('gamesTab');
   loadData();
-})();
+});
