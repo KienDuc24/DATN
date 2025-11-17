@@ -1,147 +1,165 @@
-// js/room.js
+// js/room.js (Logic gốc + Logic Bot cập nhật)
 
-const BASE_API_URL = 'https://datn-socket.up.railway.app'; // URL của socket server
+// --- IIFE 1: Logic phòng chờ (Gốc) ---
+(function() {
+  const BASE_API_URL = 'https://datn-socket.up.railway.app'; 
+  window.__chatbot_API_BASE__ = BASE_API_URL; 
 
-const socket = io(BASE_API_URL, { 
-  path: '/socket.io',
-  transports: ['websocket', 'polling'] 
-});
+  const socket = io(BASE_API_URL, { 
+    path: '/socket.io',
+    transports: ['websocket', 'polling'] 
+  });
+  
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomCode = urlParams.get('code');
+  const gameId = urlParams.get('gameId'); // Quan trọng cho Bot
+  const gameName = urlParams.get('game');
+  let username = urlParams.get('user'); // Dùng let
 
-const urlParams = new URLSearchParams(window.location.search);
-const roomCode = urlParams.get('code');
-const gameId = urlParams.get('gameId');
-const gameName = urlParams.get('game');
-const username = urlParams.get('user');
+  if (!roomCode || !gameId || !gameName) {
+    alert('Thiếu thông tin phòng (code, gameId, gameName). Vui lòng kiểm tra lại!');
+    window.location.href = "index.html"; 
+    return;
+  }
+  
+  // Xử lý username (giống logic của bạn)
+  if (!username) {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    username = user.username || user.displayName || user.name;
+  }
+  if (!username) {
+    username = sessionStorage.getItem("playerName");
+  }
+  if (!username) {
+    username = "Guest_" + Math.random().toString(36).substring(2, 8);
+    // Sửa lỗi: Gán vào 'username' chứ không phải 'playerName'
+    if (username) sessionStorage.setItem("playerName", username); 
+  }
+  // Gán lại playerName (tên biến cũ của bạn)
+  const playerName = username;
 
-if (!roomCode || !gameId || !gameName || !username) {
-  alert('Thiếu thông tin phòng. Vui lòng kiểm tra lại!');
-  window.location.href = "index.html"; 
-} else {
-  console.log('Thông tin phòng:', { roomCode, gameId, gameName, username });
-}
+  console.log("👤 Tên người dùng hiện tại:", playerName);
 
-let playerName = username; 
-if (!playerName) {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  playerName = user.username || user.displayName || user.name;
-}
-if (!playerName) {
-  playerName = sessionStorage.getItem("playerName");
-}
-if (!playerName) {
-  playerName = prompt("Tên của bạn là?");
-  if (playerName) sessionStorage.setItem("playerName", playerName);
-}
-if (!playerName) playerName = "Guest";
+  // Hiển thị thông tin phòng
+  if (document.getElementById("roomCode")) document.getElementById("roomCode").innerText = roomCode;
+  if (document.getElementById("roomCodeDisplay")) document.getElementById("roomCodeDisplay").innerText = roomCode;
+  if (document.getElementById("gameName")) document.getElementById("gameName").innerText = gameName; 
 
-console.log("👤 Tên người dùng hiện tại:", playerName);
+  // THÊM MỚI: Lấy icon game (từ logic mới)
+  const $gameIcon = document.getElementById("gameIcon");
+  if ($gameIcon) {
+    $gameIcon.src = `game/${gameId}/Img/logo.png`;
+    $gameIcon.onerror = () => { $gameIcon.src = 'img/fav.svg'; }; // Fallback
+  }
 
-// Hiển thị thông tin phòng
-if (document.getElementById("roomCode")) document.getElementById("roomCode").innerText = roomCode;
-if (document.getElementById("roomCodeDisplay")) document.getElementById("roomCodeDisplay").innerText = roomCode;
-if (document.getElementById("gameName")) document.getElementById("gameName").innerText = gameName; 
-if (document.getElementById("room-username")) document.getElementById("room-username").innerText = playerName;
+  socket.emit("joinRoom", { code: roomCode, gameId: gameId, user: playerName });
 
-socket.emit("joinRoom", { code: roomCode, gameId: gameId, user: playerName });
+  socket.on("room-error", ({ message }) => {
+    alert(message || "Không thể vào phòng này!");
+    window.location.href = "index.html";
+  });
 
-socket.on("room-error", ({ message }) => {
-  alert(message || "Không thể vào phòng này!");
-  window.location.href = "index.html";
-});
+  let currentHost = null;
 
-let currentHost = null;
+  socket.on("update-players", ({ list = [], host }) => {
+    currentHost = host;
+    const isHost = (playerName === host); 
+    console.log("👥 Danh sách người chơi hiện tại:", list);
 
-socket.on("update-players", ({ list = [], host }) => {
-  currentHost = host;
-  const isHost = (playerName === host); // Kiểm tra xem bạn có phải chủ phòng không
-  console.log("👥 Danh sách người chơi hiện tại:", list);
-
-  const listEl = document.getElementById("playerList");
-  if (listEl) {
-    if (list.length === 0) {
-      listEl.innerHTML = `<li>Chưa có người chơi nào.</li>`;
-    } else {
-      const sortedList = list.sort((a, b) => (a === host ? -1 : b === host ? 1 : 0));
-      
-      // --- CẬP NHẬT GIAO DIỆN ---
-      // Thêm nút "Kick" nếu bạn là chủ phòng
-      listEl.innerHTML = sortedList.map(name => {
-        // Nút Kick chỉ hiển thị nếu BẠN là host VÀ người chơi này KHÔNG PHẢI là bạn
-        const kickButton = (isHost && name !== host) 
-          ? `<button class="kick-btn" onclick="kickPlayer('${name}')">Kick</button>`
-          : "";
+    const listEl = document.getElementById("playerList");
+    if (listEl) {
+      if (list.length === 0) {
+        listEl.innerHTML = `<li id="loadingPlayers">Chưa có người chơi nào.</li>`;
+      } else {
+        // Sắp xếp host lên đầu
+        const sortedList = list.sort((a, b) => {
+            // Sửa: Xử lý cả 'a' và 'a.name'
+            const nameA = (typeof a === 'object' && a.name) ? a.name : a; 
+            const nameB = (typeof b === 'object' && b.name) ? b.name : b;
+            return (nameA === host ? -1 : nameB === host ? 1 : 0);
+        });
+        
+        listEl.innerHTML = sortedList.map(player => {
+          const p_name = (typeof player === 'object' && player.name) ? player.name : player; // Xử lý cả object và string
+          const isPlayerHost = (p_name === host);
           
-        return `<li>
-                  ${name} ${name === host ? "(👑 Chủ phòng)" : ""}
-                  ${kickButton}
-                </li>`;
-      }).join("");
-      // ----------------------------
+          const kickButton = (isHost && !isPlayerHost) 
+            ? `<button class="kick-btn" onclick="window.kickPlayer('${p_name}')" title="Kick ${p_name}">
+                 <i class="fas fa-times"></i> Kick
+               </button>`
+            : "";
+
+          const hostTag = isPlayerHost 
+            ? `<span>(👑 Chủ phòng)</span>` 
+            : "";
+
+          return `<li>
+                    <span>${p_name} ${hostTag}</span>
+                    ${kickButton}
+                  </li>`;
+        }).join("");
+      }
+    }
+
+    const startBtn = document.querySelector(".start-btn");
+    if (startBtn) startBtn.style.display = isHost ? "inline-block" : "none";
+  });
+
+  window.leaveRoom = function() {
+    socket.emit("leaveRoom", { code: roomCode, player: playerName });
+    window.location.href = "index.html";
+  };
+
+  window.addEventListener("beforeunload", () => {
+    socket.emit("leaveRoom", { code: roomCode, player: playerName });
+  });
+
+  window.copyCode = function() {
+    navigator.clipboard.writeText(roomCode).then(() => {
+        alert("📋 Mã phòng đã được sao chép!");
+    }).catch(err => {
+        alert('Lỗi khi sao chép. Vui lòng thử lại.');
+    });
+  };
+
+  window.startGame = function() {
+    console.log('Chủ phòng yêu cầu bắt đầu game...');
+    socket.emit('startGame', { code: roomCode });
+  }
+
+  // THÊM: Logic kick
+  window.kickPlayer = function(playerToKick) {
+    if (confirm(`Bạn có chắc muốn kick người chơi "${playerToKick}" không?`)) {
+      console.log(`Yêu cầu kick: ${playerToKick}`);
+      socket.emit('kickPlayer', { code: roomCode, playerToKick: playerToKick });
     }
   }
 
-  const startBtn = document.querySelector(".start-btn");
-  if (startBtn) startBtn.style.display = isHost ? "inline-block" : "none";
-});
-
-window.leaveRoom = function leaveRoom() {
-  socket.emit("leaveRoom", { code: roomCode, player: playerName });
-  window.location.href = "index.html";
-};
-
-window.addEventListener("beforeunload", () => {
-  socket.emit("leaveRoom", { code: roomCode, player: playerName });
-});
-
-window.copyCode = function copyCode() {
-  navigator.clipboard.writeText(roomCode);
-  alert("📋 Mã phòng đã được sao chép!");
-};
-
-window.startGame = function startGame() {
-  console.log('Chủ phòng yêu cầu bắt đầu game...');
-  socket.emit('startGame', { code: roomCode });
-}
-
-// --- THÊM MỚI (1/2): HÀM GỬI SỰ KIỆN KICK ---
-window.kickPlayer = function kickPlayer(playerToKick) {
-  if (confirm(`Bạn có chắc muốn kick người chơi "${playerToKick}" không?`)) {
-    console.log(`Yêu cầu kick: ${playerToKick}`);
-    socket.emit('kickPlayer', { code: roomCode, playerToKick: playerToKick });
-  }
-}
-// ----------------------------------------
-
-// --- THÊM MỚI (2/2): LẮNG NGHE SỰ KIỆN KHI BẠN BỊ KICK ---
-socket.on('kicked', () => {
-  alert('Bạn đã bị chủ phòng kick ra khỏi phòng!');
-  window.location.href = 'index.html';
-});
-// ------------------------------------------------
-
-socket.on('game-started', (data) => {
-  console.log(`Server đã bắt đầu game. Chuyển hướng tới: game/${data.gameId}/index.html`);
-  const params = new URLSearchParams({
-    code: roomCode,
-    gameId: gameId,
-    game: gameName,
-    user: playerName
-  }).toString();
-  window.location.href = `game/${data.gameId}/index.html?${params}`;
-});
-
-socket.on('kicked', (data) => {
-    alert(data.message || 'Bạn đã bị Admin kick khỏi phòng.');
+  socket.on('kicked', () => {
+    alert('Bạn đã bị chủ phòng kick ra khỏi phòng!');
     window.location.href = 'index.html';
-});
+  });
+
+  socket.on('game-started', (data) => {
+    console.log(`Server đã bắt đầu game. Chuyển hướng tới: game/${data.gameId}/index.html`);
+    const params = new URLSearchParams({
+      code: roomCode,
+      gameId: gameId,
+      game: gameName,
+      user: playerName
+    }).toString();
+    window.location.href = `game/${data.gameId}/index.html?${params}`;
+  });
+
+})(); 
+// --- Hết IIFE 1 ---
 
 
-// --- THÊM MỚI: LOGIC CHATBOT AI (Đã di chuyển từ ToD) ---
+// --- IIFE 2: Logic Chatbot AI (ĐÃ CẬP NHẬT) ---
 (function() {
   const API_BASE_URL =
     window.__chatbot_API_BASE__ ||
-    document.body.dataset.apiBase ||
-    '/api';
+    '/api'; // Fallback
 
   const aiToolsIcon = document.getElementById('ai-tools-icon');
   const aichatbot = document.getElementById('ai-chatbot');
@@ -155,15 +173,46 @@ socket.on('kicked', (data) => {
       return;
   }
 
-  // Lấy gameId từ URL (đã được định nghĩa ở scope ngoài)
   const gameId = new URLSearchParams(window.location.search).get('gameId');
 
-  // Hiển thị hoặc ẩn chatbot
+  // SỬA: Hàm thêm nút lựa chọn
+  function addSuggestionButtons() {
+    // Kiểm tra xem nút đã tồn tại chưa
+    if (document.getElementById('chat-suggestions')) return;
+
+    const suggestionsEl = document.createElement('div');
+    suggestionsEl.id = 'chat-suggestions';
+    suggestionsEl.className = 'chat-suggestions';
+    suggestionsEl.innerHTML = `
+        <button class="suggestion-btn" data-question="Mô tả game này">Mô tả game <i class="fas fa-info-circle"></i></button>
+        <button class="suggestion-btn" data-question="Cách chơi game này thế nào?">Giải thích luật chơi <i class="fas fa-book"></i></button>
+    `;
+    chatMessages.appendChild(suggestionsEl);
+
+    // Thêm sự kiện click cho các nút
+    suggestionsEl.querySelectorAll('.suggestion-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const question = btn.getAttribute('data-question');
+            // Gửi câu hỏi từ nút như một tin nhắn
+            handleSendChat(question); 
+        });
+    });
+  }
+
+  // SỬA: Hàm xóa nút lựa chọn
+  function removeSuggestionButtons() {
+    const suggestionsEl = document.getElementById('chat-suggestions');
+    if (suggestionsEl) {
+        suggestionsEl.remove();
+    }
+  }
+
   aiToolsIcon.addEventListener('click', () => {
     aichatbot.classList.toggle('hidden');
-    // Khởi tạo tin nhắn đầu tiên nếu trống
-    if (!chatMessages.children.length) {
-        addMessageToChat('🤖 Chào bạn. Tôi là AI Hướng dẫn. Hãy hỏi tôi về luật chơi của game này!', 'ai');
+    // SỬA: Khi mở, thêm tin nhắn chào và các nút (nếu chat trống)
+    if (!aichatbot.classList.contains('hidden') && !chatMessages.querySelector('.chat-message')) {
+        addMessageToChat('🤖 Chào bạn. Tôi có thể giúp gì? Hãy chọn một chủ đề hoặc tự đặt câu hỏi nhé!', 'ai');
+        addSuggestionButtons(); // Thêm nút
     }
   });
 
@@ -173,33 +222,36 @@ socket.on('kicked', (data) => {
   
   function addMessageToChat(text, sender) {
     if (!chatMessages) return;
+    
+    // SỬA: Khi người dùng gửi tin, xóa các nút gợi ý
+    if (sender === 'user') {
+        removeSuggestionButtons();
+    }
+
     const messageEl = document.createElement('div');
-    messageEl.className = `chat-message ${sender}`; // 'ai' or 'user'
+    messageEl.className = `chat-message ${sender}`; 
     messageEl.textContent = text;
     chatMessages.appendChild(messageEl);
-    chatMessages.scrollTop = chatMessages.scrollHeight; // Cuộn xuống dưới
+    chatMessages.scrollTop = chatMessages.scrollHeight; 
     return messageEl;
   }
 
-  // Gửi câu hỏi đến API Backend (ĐÃ SỬA)
   async function getInstructionsFromAI(question) {
     const normalizedQuestion = String(question || '').trim();
     if (!normalizedQuestion) return '❌ Vui lòng nhập câu hỏi hợp lệ.';
     
-    // SỬA: Phải gửi cả gameId để AI biết đọc luật nào
     if (!gameId) {
         return '❌ Lỗi: Không tìm thấy gameId của phòng này.';
     }
 
-    const endpoint = `${BASE_API_URL}/api/ai/ask`;
+    const endpoint = `${API_BASE_URL}/api/ai/ask`; 
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // SỬA: Gửi cả question và gameId
         body: JSON.stringify({ 
             question: normalizedQuestion,
-            gameId: gameId // Gửi ID game (ví dụ: "ToD" hoặc "Draw")
+            gameId: gameId 
         })
       });
 
@@ -220,37 +272,36 @@ socket.on('kicked', (data) => {
     }
   }
 
-  // Xử lý gửi câu hỏi
-  async function handleSendChat() {
-    const question = chatInput.value.trim();
+  // SỬA: Cho phép truyền câu hỏi được định nghĩa trước
+  async function handleSendChat(predefinedQuestion = null) {
+    const question = predefinedQuestion || chatInput.value.trim();
     if (!question) return;
     
     chatInput.disabled = true;
     sendChat.disabled = true;
 
+    // SỬA: Xóa nút gợi ý ngay khi bắt đầu gửi
+    removeSuggestionButtons();
+    
     addMessageToChat(question, 'user');
-    chatInput.value = ''; // Xóa input ngay
+    chatInput.value = ''; 
 
-    // Thêm loader
     const loaderMessage = addMessageToChat('🤖 Đang suy nghĩ...', 'ai loader');
 
-    // Gửi câu hỏi đến AI
     const aiResponse = await getInstructionsFromAI(question);
 
-    // Xóa loader và hiển thị câu trả lời từ AI
-    loaderMessage.remove(); // Xóa tin nhắn "Đang suy nghĩ..."
-    addMessageToChat(aiResponse, 'ai'); // Thêm câu trả lời thật
+    loaderMessage.remove(); 
+    addMessageToChat(aiResponse, 'ai'); 
 
-    // Kích hoạt lại input/button
     chatInput.disabled = false;
     sendChat.disabled = false;
     chatInput.focus();
   }
   
-  sendChat.addEventListener('click', handleSendChat);
+  sendChat.addEventListener('click', () => handleSendChat(null)); 
   chatInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
-      handleSendChat();
+      handleSendChat(null);
     }
   });
 
