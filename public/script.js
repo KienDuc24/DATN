@@ -251,22 +251,23 @@ function showUserInfo(user) {
     userInfo.style.display = 'flex';
   }
   
-  // --- SỬA: ẨN avatar ---
+  // --- Ẩn avatar ---
   if (userAvatar) {
     userAvatar.style.display = 'none'; 
   }
 
-  // --- SỬA: Thêm text username vào header ---
+  // --- Lấy thông điệp chào mừng theo ngôn ngữ ---
+  const welcomeText = LANGS[currentLang]?.welcome_back || 'Welcome back'; // Mặc định là tiếng Anh nếu không tìm thấy ngôn ngữ
+
+  // --- Thêm text username vào header ---
   let usernameText = document.getElementById('header-username-text');
   if (!usernameText) {
       usernameText = document.createElement('span');
       usernameText.id = 'header-username-text';
-      // Thêm style để user có thể bấm vào dropdown
       usernameText.style.cssText = 'color: #ff9800; font-weight: 700; margin-right: 10px; cursor: pointer;'; 
-      userInfo.prepend(usernameText); // Thêm vào trước dropdown (hoặc avatar đã ẩn)
+      userInfo.prepend(usernameText); // Thêm vào trước dropdown
   }
-  usernameText.textContent = user.displayName || user.username || 'User'; // Ưu tiên displayName
-
+  usernameText.textContent = `${welcomeText}, ${user.displayName || user.username || 'User'}`; // Hiển thị thông điệp chào mừng
 
   // Cập nhật dropdown (nếu vẫn muốn giữ nút Đăng xuất)
   const dropdownAvatar = document.getElementById('dropdownAvatar');
