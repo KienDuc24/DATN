@@ -324,7 +324,8 @@ function renderGamesTable(games){
     `;
     tbody.appendChild(tr);
   });
-
+  
+  // SỬA: Gán sự kiện onFeatureGame
   tbody.querySelectorAll('.game-feature-checkbox').forEach(cb => cb.addEventListener('change', onFeatureGame));
   tbody.querySelectorAll('.icon-edit').forEach(b=>b.addEventListener('click', onEditGame));
   tbody.querySelectorAll('.icon-delete').forEach(b=>b.addEventListener('click', onDeleteGame));
@@ -495,21 +496,28 @@ async function onDeleteGame(e){
   addChange({ type: 'game', action: 'delete', id: id });
   el(`game-row-${id}`).classList.add('row-to-be-deleted');
 }
+
+// SỬA: Hàm onFeatureGame (khi tick checkbox)
 async function onFeatureGame(e) {
   const cbEl = e.currentTarget;
   const id = cbEl.dataset.id;
   const checked = cbEl.checked;
   
+  // 1. Lấy payload gốc từ cache
   const originalGame = allGamesCache.find(g => g.id === id);
   if (!originalGame) {
     console.error('Lỗi: Không tìm thấy game trong cache với ID:', id);
     return alert('Không tìm thấy game. Kiểm tra console để debug.');
   }
   
+  // 2. Tạo payload mới chỉ bằng cách cập nhật trường 'featured'
   const payload = { ...originalGame, featured: !!checked };
   
+  // 3. Thêm vào hàng chờ thay đổi
   addChange({ type: 'game', action: 'update', id: id, payload: payload });
 }
+// --- KẾT THÚC SỬA ---
+
 
 async function syncGames() {
     if (!confirm('Bạn có chắc muốn ĐỒNG BỘ (Cập nhật/Thêm mới) toàn bộ trò chơi từ tệp games.json lên Database không?\n\nHành động này sẽ được thực thi ngay lập tức.')) {
@@ -551,9 +559,9 @@ function logoutAdmin(){
 
 async function loadData(){
   try{
-    const usersQ = el('usersSearch') && el('usersSearch').value.trim();
-    const roomsQ = el('roomsSearch') && el('roomsSearch').value.trim();
-    const gamesQ = el('gamesSearch') && el('gamesSearch').value.trim(); 
+    const usersQ = el('usersSearch') ? el('usersSearch').value.trim() : '';
+    const roomsQ = el('roomsSearch') ? el('roomsSearch').value.trim() : '';
+    const gamesQ = el('gamesSearch') ? el('gamesSearch').value.trim() : '';
 
     const [usersRes, roomsRes, gamesRes] = await Promise.all([
         fetchUsers(usersQ),
