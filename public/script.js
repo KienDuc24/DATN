@@ -24,29 +24,56 @@ function renderGameCard(game) {
   `;
 }
 
-/** Render slider cho 1 nhóm game với nút < > */
+/** * Render slider cho 1 nhóm game với nút < > 
+ * --- ĐÂY LÀ HÀM ĐÃ ĐƯỢC TỐI ƯU ---
+ */
 function renderSlider(games, sliderId, pageKey) {
-  // Đổi tên class để khớp với CSS mới
-  const sliderContainer = document.getElementById(sliderId)?.parentElement; 
+  const sliderContainer = document.getElementById(sliderId)?.parentElement;
   if (!sliderContainer) return;
-  
-  // Đảm bảo class đúng là .games-slider-scroll
-  const slider = sliderContainer.querySelector('.games-slider-scroll'); 
+
+  const slider = sliderContainer.querySelector('.games-slider-scroll');
   if (!slider) {
-      console.warn('Không tìm thấy .games-slider-scroll cho sliderId:', sliderId);
-      return;
+    console.warn('Không tìm thấy .games-slider-scroll cho sliderId:', sliderId);
+    return;
   }
 
-  // Xóa nút cũ nếu có
-  sliderContainer.querySelectorAll('.slider-btn').forEach(btn => btn.remove());
-
-  let page = sliderPage[pageKey] || 0;
-  // (Logic phân trang cho slider có thể giữ nguyên nếu muốn)
-  // ... (Tạm thời render tất cả)
+  // Render nội dung game
   slider.innerHTML = games.map(renderGameCard).join('');
 
-  // (Tạm thời ẩn logic nút next/prev vì CSS mới đã có cuộn ngang)
+  // Xóa các nút cũ đi (nếu có)
+  sliderContainer.querySelectorAll('.slider-btn').forEach(btn => btn.remove());
+
+  // Sử dụng setTimeout để đợi DOM render xong và tính toán kích thước
+  setTimeout(() => {
+    // Kiểm tra xem nội dung có thực sự bị tràn không
+    const hasOverflow = slider.scrollWidth > slider.clientWidth + 5; // Thêm 5px dự phòng
+    
+    // Chỉ thêm nút nếu nội dung thực sự vượt quá khung nhìn
+    if (hasOverflow) {
+      const btnLeft = document.createElement('button');
+      btnLeft.className = 'slider-btn left';
+      btnLeft.innerHTML = '‹'; // Bạn có thể dùng icon ‹ hoặc &lt;
+      btnLeft.onclick = (e) => {
+        e.stopPropagation(); // Ngăn click vào game card
+        // Cuộn 1/2 chiều rộng slider
+        slider.scrollBy({ left: -slider.clientWidth / 2, behavior: 'smooth' });
+      };
+      
+      const btnRight = document.createElement('button');
+      btnRight.className = 'slider-btn right';
+      btnRight.innerHTML = '›'; // Bạn có thể dùng icon › hoặc &gt;
+      btnRight.onclick = (e) => {
+        e.stopPropagation(); // Ngăn click vào game card
+        slider.scrollBy({ left: slider.clientWidth / 2, behavior: 'smooth' });
+      };
+
+      sliderContainer.appendChild(btnLeft);
+      sliderContainer.appendChild(btnRight);
+    }
+  }, 100); // Đợi 100ms để trình duyệt tính toán xong scrollWidth
 }
+// --- KẾT THÚC HÀM ĐÃ SỬA ---
+
 
 /** * Hiển thị các slider theo thể loại 
  * SỬA LỖI: Dùng .game-grid thay vì .games-slider
