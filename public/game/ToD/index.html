@@ -43,29 +43,7 @@
                         <div class="action-buttons" id="actionBtns"></div>
                     </div>
 
-                    <!-- Icon AI Tools -->
-                    <div id="ai-tools-icon" class="ai-tools-icon" title="Hỏi luật chơi">
-                        <i class="fas fa-robot"></i>
-                    </div>
-
-                    <!-- chatbot AI -->
-                    <div id="ai-chatbot" class="ai-chatbot hidden">
-                        <div class="chat-header">
-                          <span>AI Hướng dẫn</span>
-                          <button id="closechatbot" class="close-btn" title="Đóng">
-                            <i class="fas fa-times"></i>
-                          </button>
-                        </div>
-                        <div class="chat-body">
-                          <div id="chatMessages" class="chat-messages"></div>
-                        </div>
-                        <div class="chat-footer">
-                          <input id="chatInput" type="text" placeholder="Nhập câu hỏi..." />
-                          <button id="sendChat" class="send-btn">
-                            <i class="fas fa-paper-plane"></i>
-                          </button>
-                        </div>
-                      </div>
+                    <!-- XÓA BỎ: Toàn bộ phần chatbot AI đã được di chuyển -->
     
                     <div id="questionCard" class="question-card hidden">
                         <div class="question-header">
@@ -84,21 +62,8 @@
         </div>
         </div>
 
-    <div id="ai-tools">
-      <h2>AI Tools</h2>
-      <div id="ai-question-section">
-        <h3>Tạo câu hỏi</h3>
-        <textarea id="ai-question" placeholder="Nhập gợi ý để AI tạo câu hỏi..."></textarea>
-        <button onclick="generateAIQuestion()">Tạo câu hỏi</button>
-        <p id="generated-question"></p>
-      </div>
-
-      <div id="instructions-section">
-        <h3>Hướng dẫn cách chơi</h3>
-        <button onclick="showInstructions('Truth or Dare')">Xem hướng dẫn</button>
-        <p id="instructions" style="display: none;"></p>
-      </div>
-    </div>
+    <!-- XÓA BỎ: Phần AI Tools ở dưới -->
+    
     <script src="script.js"></script>
 </body>
 </html>

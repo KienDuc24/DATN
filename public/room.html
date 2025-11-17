@@ -3,27 +3,77 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Phòng Game</title>
+  <title>Phòng chờ - Camping Game</title>
+  <!-- SỬA: Thêm Font Awesome cho icon -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="css/room.css" />
-  <link rel="icon" type="image/x-icon" href="fav.svg">
+  <link rel="icon" type="image/x-icon" href="img/fav.svg">
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
+
+  <!-- SỬA: Thêm wrapper cho nền -->
+  <div class="background-wrapper">
+    <div class="overlay"></div>
+  </div>
+
   <div class="container">
-    <h2>Phòng <span id="roomCode"></span></h2>
-    <p>🎮 Trò chơi: <span id="gameName"></span></p>
-    <div class="code-box">
-      Mã phòng: <span id="roomCodeDisplay"></span>
-      <button class="copy-btn" onclick="copyCode()">📋 Sao chép</button>
+    <div class="game-info">
+      <img id="gameIcon" src="img/fav.svg" alt="Game Icon" class="game-icon">
+      <h2>Phòng <span id="roomCode">...</span></h2>
+      <p>🎮 Trò chơi: <span id="gameName">...</span></p>
     </div>
-    <ul id="playerList">
-      <li id="loadingPlayers">Đang tải...</li>
-    </ul>
+
+    <div class="code-box">
+      <span>Mã phòng:</span>
+      <strong id="roomCodeDisplay">...</strong>
+      <button class="copy-btn" onclick="copyCode()" title="Sao chép mã">
+        <i class="fas fa-copy"></i>
+      </button>
+    </div>
+
+    <!-- SỬA: Dùng Grid cho danh sách người chơi -->
+    <h3><i class="fas fa-users"></i> Người chơi</h3>
+    <div id="playerGrid">
+      <div id="loadingPlayers">Đang tải người chơi...</div>
+      <!-- Các thẻ người chơi sẽ được JS chèn vào đây -->
+    </div>
+
     <div class="buttons">
-      <button class="start-btn" onclick="startGame()">🚀 Bắt đầu</button>
-      <button class="leave-btn" onclick="leaveRoom()">❌ Thoát phòng</button>
+      <button class="start-btn" onclick="startGame()" style="display: none;">
+        <i class="fas fa-rocket"></i> Bắt đầu
+      </button>
+      <button class="leave-btn" onclick="leaveRoom()">
+        <i class="fas fa-sign-out-alt"></i> Thoát phòng
+      </button>
     </div>
   </div>
+
+  <!-- THÊM MỚI: Giao diện AI Chatbot (đã di chuyển từ ToD) -->
+  <div id="ai-tools-icon" class="ai-tools-icon" title="Hỏi luật chơi">
+      <i class="fas fa-robot"></i>
+  </div>
+
+  <div id="ai-chatbot" class="ai-chatbot hidden">
+      <div class="chat-header">
+        <span><i class="fas fa-robot"></i> AI Hướng dẫn</span>
+        <button id="closechatbot" class="close-btn" title="Đóng">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="chat-body">
+        <div id="chatMessages" class="chat-messages">
+          <!-- Tin nhắn chào mừng sẽ được JS thêm vào -->
+        </div>
+      </div>
+      <div class="chat-footer">
+        <input id="chatInput" type="text" placeholder="Hỏi luật chơi..." />
+        <button id="sendChat" class="send-btn" title="Gửi">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+  </div>
+  <!-- Kết thúc giao diện AI Chatbot -->
 
   <script src="./room.js"></script>
 </body>
