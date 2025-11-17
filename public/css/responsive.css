@@ -1,278 +1,240 @@
-/* --- Responsive Header & Auth --- */
-@media (max-width: 700px) {
-  .header-main {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    padding: 8px 2vw 8px 2vw;
-  }
+/* public/css/responsive.css (Mobile-First) */
+
+/* * ========================================
+ * Breakpoint: Tablet
+ * (Từ 700px trở lên)
+ * ========================================
+ */
+@media (min-width: 700px) {
+  
+  /* --- Header & Nav (Tablet) --- */
   .sidebar-toggle {
-    font-size: 1.5rem;
-    margin-right: 4px;
-    padding: 0 2px;
+    display: none; /* Ẩn nút hamburger */
+  }
+  .sidebar {
+    transform: translateX(0); /* Hiện sidebar cố định */
+    width: 210px; /* Chiều rộng cố định */
+  }
+  .sidebar-overlay {
+    display: none; /* Không cần overlay nữa */
+  }
+  .header-main {
+    padding: 14px 32px 10px 18px;
+    gap: 0;
+    /* Căn chỉnh cho sidebar */
+    margin-left: 210px; 
   }
   .logo-animate {
-    width: 28px;
-    height: 28px;
-    margin-right: 5px;
+    width: 42px;
+    height: 42px;
+    margin-right: 8px;
   }
   .header-title {
-    font-size: 1rem;
-    margin: 0 8px 0 0;
+    font-size: clamp(1.5rem, 3vw, 2rem); /* Font lớn hơn */
+    margin: 0 24px 0 0;
   }
+  
+  /* --- Search (Tablet) --- */
   .search-bar.search-bar-center {
-    flex: 1 1 0;
-    min-width: 0;
-    max-width: 100vw;
-    margin: 0 8px;
-    height: 32px;
+    display: flex; /* Hiện thanh tìm kiếm chính */
+    flex: 1 1 500px;
+    max-width: 600px;
+    min-width: 260px;
+    margin: 0 auto;
+    background: #23272f;
+    border-radius: 24px;
+    height: 40px;
+    box-shadow: 0 2px 8px #0002;
   }
   .search-bar input {
-    font-size: 0.95rem;
-    padding: 0 6px;
-    height: 30px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    padding: 0 14px;
+    font-size: 1rem;
+    outline: none;
+    flex: 1;
+    height: 38px;
   }
   .search-bar button {
-    font-size: 1rem;
-    height: 32px;
-    padding: 0 8px;
-    border-radius: 0 16px 16px 0;
+    background: #ff9800;
+    border: none;
+    color: #fff;
+    border-radius: 0 24px 24px 0;
+    padding: 0 16px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    transition: background 0.2s;
   }
+  .search-bar button:hover {
+    background: #43cea2;
+    color: #23272f;
+  }
+  
+  .search-toggle {
+    display: none; /* Ẩn nút icon search */
+  }
+  
+  /* --- Auth Buttons (Tablet) --- */
   .header-auth-btns {
-    gap: 4px;
-    margin-left: 0;
-    justify-content: flex-end;
+    gap: 12px;
+    margin-left: auto;
   }
   .auth-btn {
-    padding: 6px 10px;
-    font-size: 0.95rem;
-    border-radius: 6px;
-  }
-  .header-main.mobile-searching .logo-animate,
-  .header-main.mobile-searching .header-title {
-    display: none !important;
-  }
-}
-@media (max-width: 700px) {
-  .sidebar {
-    width: 80vw;
-    min-width: 180px;
-    max-width: 96vw;
-    padding-top: 10px;
-  }
-  .sidebar-logo {
+    padding: 8px 22px;
     font-size: 1rem;
-    gap: 6px;
-    padding: 0 10px 10px 10px;
+    border-radius: 12px;
   }
-  .sidebar-logo img {
-    width: 28px; height: 28px;
-  }
-  .sidebar nav a {
-    font-size: 14px;
-    padding: 10px 16px;
-  }
-  .sidebar-auth button {
-    font-size: 14px;
-    padding: 7px 0;
-    border-radius: 5px;
-  }
-}
-
-/* --- Responsive Main Content & Game Card --- */
-@media (max-width: 700px) {
+  
+  /* --- Main Content (Tablet) --- */
   .main-content {
-    padding: 8px 2vw 24px 2vw;
-    max-width: 100vw;
+    margin-left: 210px; /* Dịch nội dung sang phải */
+    padding: 28px 18px 24px 18px;
+    max-width: none;
   }
   .section-title-row {
-    margin: 18px 0 8px 0;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
+    flex-direction: row; /* Trở lại layout hàng ngang */
+    align-items: center;
+    margin: 28px 0 12px 0;
   }
   .section-title {
-    font-size: 1.05rem;
+    font-size: 1.18rem;
   }
-  .games-slider-container {
-    max-width: 100vw;
-    margin: 0 0 18px 0;
-  }
-  .games-slider {
-    gap: 10px;
-    min-height: 140px;
-  }
-  .game-card {
-    width: 130px;
-    min-width: 130px;
-    max-width: 130px;
-    padding: 10px 4px 8px 4px;
-    border-radius: 10px;
+
+  /* --- Game Card (Tablet) --- */
+  .games-slider-scroll .game-card {
+    flex-basis: 180px; /* Rộng hơn 1 chút */
+    min-width: 180px;
   }
   .game-card img {
-    width: 60px;
-    height: 44px;
-    border-radius: 7px;
-    margin-bottom: 6px;
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    margin-bottom: 10px;
   }
   .game-title {
-    font-size: 0.98rem;
-    margin-bottom: 2px;
-  }
-  .game-category, .game-desc, .game-players, .game-author, .game-updated {
-    font-size: 0.89rem;
+    font-size: 1.02rem;
   }
   .game-badge {
-    font-size: 0.7rem;
-    border-radius: 6px;
-    padding: 1px 6px;
-    top: 5px; left: 5px;
+    top: 6px; left: 6px;
+    font-size: 0.85rem;
+    padding: 2px 8px;
   }
-  .show-more-btn, .show-more-btn.next-btn, .show-more-btn.prev-btn {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    min-height: 36px;
-    font-size: 1.3rem;
-    border-radius: 50%;
-  }
-}
-@media (max-width: 700px) {
-  .game-card {
-    min-height: 180px;
-    padding: 10px 4px 8px 4px;
-  }
-}
 
-/* --- Responsive Auth Modal --- */
-@media (max-width: 500px) {
-  .auth-modal-content {
-    min-width: 90vw;
-    padding: 18px 6vw 12px 6vw;
-    border-radius: 10px;
-  }
-  .auth-form {
-    min-width: 0;
-    padding: 12px 0 10px 0;
-    border-radius: 10px;
-  }
-}
-
-/* Responsive: Hiện nút tìm kiếm, ẩn thanh tìm kiếm khi nhỏ */
-@media (max-width: 700px) {
-  .search-bar.search-bar-center {
-    display: none;
-  }
-  .search-toggle {
-    display: flex;
-  }
-  .header-auth-btns {
-    transition: opacity 0.2s;
-  }
-  .header-main.mobile-searching .search-bar.search-bar-center {
-    display: flex !important;
-    flex: 1 1 100vw;
-    max-width: 100vw;
-    margin: 0 0 0 8px;
-    background: #23272f;
-    border-radius: 18px;
-    height: 38px;
-    z-index: 100;
-  }
-  .header-main.mobile-searching .search-toggle,
-  .header-main.mobile-searching .header-auth-btns {
-    display: none !important;
-  }
-  .header-main.mobile-searching .search-bar input {
-    font-size: 1rem;
-    padding: 0 10px;
-    height: 36px;
-  }
-  .header-main.mobile-searching .search-bar button {
-    font-size: 1rem;
-    height: 36px;
-    padding: 0 10px;
-    border-radius: 0 16px 16px 0;
-  }
-}
-
-@media (max-width: 600px) {
-  h1 { font-size: 1.8rem; }
-  .navbar-title { font-size: 1.3rem; }
-  .game-grid { gap: 12px; }
-  .game-card { padding: 14px 12px; }
-}
-
-@media (max-width: 600px) {
-  h2 { font-size: 1.5rem; }
-  ul#playerList li { font-size: 0.95rem; }
-  button { width: 100%; }
-}
-
-/* --- Responsive --- */
-@media (max-width: 1200px) {
-  .games-slider {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-@media (max-width: 900px) {
-  .main-content {
-    max-width: 98vw;
-    padding: 10px 2vw 10px 2vw;
-    border-radius: 0;
-  }
-  .games-slider {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-  }
-  .game-card {
-    padding: 10px 4px 10px 4px;
-    border-radius: 10px;
-  }
-  .game-card img {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    margin-bottom: 4px;
-  }
-}
-@media (max-width: 600px) {
-  .main-content {
-    padding: 8px 2vw;
-    border-radius: 0;
-    min-height: unset;
-  }
+  /* --- Footer (Tablet) --- */
   .footer-content {
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px 2vw 6px 2vw;
+    flex-direction: row; /* Trở lại layout hàng ngang */
+    gap: 16px;
+    padding: 18px 32px 8px 32px;
   }
-  .header-title {
-    font-size: 1.1rem;
+  footer {
+    margin-left: 210px; /* Dịch footer sang phải */
+  }
+
+  /* --- Modals (Tablet) --- */
+  #roomModal .modal-content {
+    width: 100%;
+    max-width: 700px;
+    padding: 28px;
+  }
+  #roomModal .modal-actions {
+    flex-direction: row; /* Nút "Tạo/Tham gia" nằm ngang */
+  }
+  #roomModal input {
+    width: auto; /* Input không full width nữa */
+    margin-bottom: 0;
+  }
+  
+  #auth-modal .auth-modal-content {
+    min-width: 320px;
   }
 }
-@media (max-width: 600px) {
-  .card-actions {
-    gap: 8px;
-    margin-top: 10px;
+
+
+/* * ========================================
+ * Breakpoint: Game Layouts
+ * (Dưới 992px)
+ * ========================================
+ */
+@media (max-width: 992px) {
+  /* Game ToD */
+  .game-header { padding: 0.5rem; }
+  .back-btn {
+    top: 1rem;
+    left: 1rem;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
   }
-  .card-actions button {
-    font-size: 0.98rem;
-    padding: 8px 10px;
-    min-width: 90px;
+  .back-btn span { display: none; }
+  .game-title { font-size: 2.5rem; }
+
+  .playground-container {
+      width: 95%;
+      padding: 1rem;
+      margin-top: 0.5rem;
+  }
+  .game-container {
+      flex-direction: column;
+      padding: 0;
+      gap: 1.5rem;
+  }
+  .player-camp {
+      flex: none;
+      height: auto;
+      min-height: auto;
+      max-width: 100%;
+  }
+  .player-grid {
+      max-height: none;
+      grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+      gap: 1rem;
+  }
+  .game-controls {
+      flex: none;
+      width: 100%;
+      max-width: 500px;
+      padding: 1rem;
+      box-sizing: border-box;
   }
 }
+
+/* * ========================================
+ * Breakpoint: Mobile (Tinh chỉnh Game)
+ * (Dưới 600px)
+ * ========================================
+ */
 @media (max-width: 600px) {
-  h1 { font-size: 1.1rem; }
-  #status { font-size: 0.98rem; padding: 6px 8px; }
-  ul#playerList li { font-size: 0.92rem; padding: 5px 8px; }
-  button, .choice-btn { font-size: 1rem; padding: 10px 12px; }
-  #controls { gap: 6px; }
-  #table-area { width: 98vw; height: 180px; }
-  #campfire { width: 48px; height: 48px; }
-  .player-avatar { width: 32px; height: 32px; font-size: 1.1rem; }
-  .question-floating { font-size: 1.02rem; padding: 10px 8px; }
-  .question-floating.shrink { font-size: 1.1rem; min-width: 38px; max-width: 38px; height: 38px; }
-  #question-bar { top: 60px; }
+  /* Game Draw */
+  .game-main { gap: 10px; }
+  .canvas-section, .game-info-box, .chat-section { padding: 10px; }
+  #scoreGrid { max-height: 25vh; }
+  
+  /* Game ToD */
+  .player-grid {
+      grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+      gap: 0.8rem;
+  }
+  .player .pic {
+      width: 50px;
+      height: 50px;
+  }
+  .player .name { font-size: 0.7em; max-width: 80px; }
+  .campfire { width: 100px; height: 100px; bottom: -30px; }
+  .game-controls .action-buttons {
+      flex-direction: column;
+      gap: 0.8rem;
+  }
+  .game-controls .btn {
+      width: 100%;
+      max-width: 250px;
+      margin: 0 auto;
+  }
+  
+  /* Room CSS */
+  .container h2 { font-size: 1.5rem; }
+  ul#playerList li { font-size: 0.95rem; }
+  .container button { width: 100%; }
 }

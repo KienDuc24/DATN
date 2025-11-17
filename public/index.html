@@ -10,19 +10,16 @@
   <link rel="stylesheet" href="css/auth.css" />
   <link rel="stylesheet" href="css/responsive.css" />
   
-  <!-- THÊM MỚI (1/2): Link CSS của Chatbot và Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="css/chatbot.css" />
 
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
   <script>
-    // Thay bằng URL backend Railway
     window.BASE_API = 'https://datn-socket.up.railway.app';
     window.SOCKET_URL = 'https://datn-socket.up.railway.app';
   </script>
 </head>
 <body>
-  <!-- (Nội dung <aside> và <header> gốc của bạn) -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <img src="img/fav.svg" alt="Logo" />
@@ -73,6 +70,7 @@
             <div class="user-dropdown-username" id="dropdownUsername"></div>
             <div class="user-dropdown-email" id="dropdownEmail"></div>
           </div>
+          
           <button type="button" id="profileBtn">👤 Hồ sơ</button>
           <button type="button" id="settingsBtn">⚙️ Cài đặt tài khoản</button>
           <button type="button" id="logoutBtn">🚪 Đăng xuất</button>
@@ -81,41 +79,53 @@
     </div>
   </header>
   
-  <!-- (Nội dung <main> gốc của bạn) -->
   <main class="main-content">
     <div class="section-title-row" id="all">
       <div class="section-title" data-i18n="all">Gần đây</div>
     </div>
     <div class="sort-dropdown-row">
-      <label class="sort-label" data-i18n="sort_by"></label>
+      <label class="sort-label" data-i18n="sort_by">Sắp xếp theo</label>
       <div class="sort-dropdown">
         <select class="sort-select" onchange="sortGames('all', this)">
-          <option value="newest" data-i18n="sort_newest"></option>
-          <option value="oldest" data-i18n="sort_oldest"></option>
-          <option value="players_asc" data-i18n="sort_players_asc"></option>
-          <option value="players_desc" data-i18n="sort_players_desc"></option>
-          <option value="az" data-i18n="sort_az"></option>
-          <option value="za" data-i18n="sort_za"></option>
+          <option value="newest" data-i18n="sort_newest">Mới nhất</option>
+          <option value="oldest" data-i18n="sort_oldest">Cũ nhất</option>
+          <option value="players_asc" data-i18n="sort_players_asc">Số người tăng</option>
+          <option value="players_desc" data-i18n="sort_players_desc">Số người giảm</option>
+          <option value="az" data-i18n="sort_az">A-Z</option>
+          <option value="za" data-i18n="sort_za">Z-A</option>
         </select>
       </div>
     </div>
     <div class="games-slider-container" id="all-container">
       <div class="games-slider" id="allSlider"></div>
     </div>
-    </div>
+    
     <div class="section-title-row" id="featured">
       <div class="section-title" data-i18n="featured">Trò chơi nổi bật</div>
+    </div>
+    <div class="sort-dropdown-row">
+      <label class="sort-label" data-i18n="sort_by">Sắp xếp theo</label>
+      <div class="sort-dropdown">
+        <select class="sort-select" onchange="sortGames('featured', this)">
+          <option value="newest" data-i18n="sort_newest">Mới nhất</option>
+          <option value="oldest" data-i18n="sort_oldest">Cũ nhất</option>
+          <option value="players_asc" data-i18n="sort_players_asc">Số người tăng</option>
+          <option value="players_desc" data-i18n="sort_players_desc">Số người giảm</option>
+          <option value="az" data-i18n="sort_az">A-Z</option>
+          <option value="za" data-i18n="sort_za">Z-A</option>
+        </select>
+      </div>
     </div>
     <div class="games-slider-container">
       <div class="games-slider" id="featuredSlider"></div>
     </div>
+    
     <div class="section-title-row" id="category">
       <div class="section-title" data-i18n="by_category">Game theo thể loại</div>
     </div>
     <div id="category-list"></div>
   </main>
 
-  <!-- (Các modal gốc của bạn: auth, profile, room) -->
   <div id="auth-modal" class="auth-modal" style="display:none;">
     <div class="auth-modal-content">
       <button class="auth-modal-close" type="button" onclick="document.getElementById('auth-modal').style.display='none'">&times;</button>
@@ -131,7 +141,9 @@
       <form id="loginForm" class="auth-form">
         <input id="login-username" type="text" placeholder="Username" required />
         <input id="login-password" type="password" placeholder="Password" required />
-        <button id="togglePassword" type="button" class="toggle-password-btn-below">👁 Hiện mật khẩu</button>
+        <button id="togglePassword" type="button" class="toggle-password-btn-below">
+          <span class="eye-icon">👁</span> Hiện mật khẩu
+        </button>
         <button type="submit" class="login-btn">Login</button>
         <div id="login-message" class="auth-message"></div>
       </form>
@@ -147,14 +159,27 @@
       </form>
     </div>
   </div>
+  
   <div id="profile-modal" class="profile-modal" style="display:none;">
-    <div class="profile-modal-content">
+    <div class="profile-modal-content" style="text-align: left; max-width: 400px;">
       <span class="profile-modal-close" id="closeProfileModal">&times;</span>
-      <h2>Thay đổi hồ sơ</h2>
-      <div class="profile-modal-actions">
-        <button type="button" id="modalChangeAvatarBtn">🖼️ Đổi avatar</button>
-        <button type="button" id="modalChangeNameBtn">✏️ Đổi tên tài khoản</button>
-      </div>
+      <h2 style="text-align: center;">Cài đặt tài khoản</h2>
+      
+      <form id="settings-form" class="auth-form" style="padding: 0; min-width: 300px;">
+        <label for="settings-displayName">Tên hiển thị:</label>
+        <input id="settings-displayName" type="text" placeholder="Tên hiển thị của bạn" required />
+        
+        <label for="settings-email">Email (dùng để xác thực):</label>
+        <input id="settings-email" type="email" placeholder="Nhập email của bạn" />
+        <small style="color: #bbb; font-size: 0.8rem; margin-top: -5px; display: block;">
+          Lưu ý: Chức năng gửi mail xác thực đang được phát triển.
+        </small>
+        
+        <div class="profile-modal-actions" style="margin-top: 20px;">
+          <button type="submit" id="saveSettingsBtn" class="btn">Lưu thay đổi</button>
+        </div>
+      </form>
+      
     </div>
   </div>
   <div id="roomModal" class="modal" style="display:none;">
@@ -176,7 +201,6 @@
     </div>
   </div>
 
-  <!-- (Phần footer và backToTopBtn gốc của bạn) -->
   <button id="backToTopBtn" title="Lên đầu trang" onclick="scrollToTop()">&#8679;</button>
   <div id="loadingSpinner" style="display:none;justify-content:center;align-items:center;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2000;background:rgba(255,255,255,0.7)">
     <div class="spinner"></div>
@@ -188,7 +212,7 @@
         <span>Camping Game</span>
       </div>
       <div class="footer-links">
-        <a href="mailto:support@campinggame.com">Liên hệ</a>
+        <a href="mailto:camppinggame.datn.2025@gmail.com">Liên hệ</a>
         <a href="#">Chính sách</a>
         <a href="#">Facebook</a>
         <a href="#">Discord</a>
@@ -199,11 +223,9 @@
     </div>
   </footer>
 
-  <!-- THÊM MỚI (2/2): Giao diện HTML của Chatbot -->
   <div id="ai-tools-icon" class="ai-tools-icon" title="Hỏi AI Trợ lý">
       <i class="fas fa-robot"></i>
   </div>
-
   <div id="ai-chatbot" class="ai-chatbot hidden">
       <div class="chat-header">
         <span><i class="fas fa-robot"></i> Trợ lý AI</span>
@@ -213,8 +235,7 @@
       </div>
       <div class="chat-body">
         <div id="chatMessages" class="chat-messages">
-          <!-- Tin nhắn và nút sẽ được JS thêm vào -->
-        </div>
+          </div>
       </div>
       <div class="chat-footer">
         <input id="chatInput" type="text" placeholder="Hỏi tôi về game..." />
@@ -226,5 +247,7 @@
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="script.js" defer></script>
+  <script src="main.js" defer></script>
+  <script src="chatbot.js" defer></script>
 </body>
 </html>

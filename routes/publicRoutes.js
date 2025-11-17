@@ -1,20 +1,17 @@
-// routes/publicRoutes.js
+// routes/publicRoutes.js (ĐÃ SỬA)
 const express = require('express');
 const router = express.Router();
-const Game = require('../models/Game');
 const { answerRuleQuestion } = require('../controllers/chatbotControler');
+const userController = require('../controllers/userController'); 
+const gameController = require('../controllers/gameController'); // <-- 1. Import
 
 // API công khai để lấy tất cả game
-router.get('/games', async (req, res) => {
-  try {
-    const games = await Game.find({});
-    res.json(games);
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
-});
+router.get('/games', gameController.getAllPublicGames); // <-- 2. Gọi controller
 
-// SỬA LẠI DÒNG NÀY:
-router.post('/ai/ask', answerRuleQuestion); // Bỏ '/api' và dùng '/ai/ask'
+// Route cho Chatbot AI
+router.post('/ai/ask', answerRuleQuestion); 
+
+// Route để cập nhật hồ sơ
+router.put('/user', userController.updateUser);
 
 module.exports = router;

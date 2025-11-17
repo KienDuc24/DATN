@@ -5,12 +5,9 @@ const { Schema } = mongoose;
 // Schema con cho lịch sử chơi
 const playHistorySchema = new Schema({
   gameId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Game' // Tham chiếu đến model 'Game'
+    type: String 
   },
-  // Bạn có thể thêm các trường khác như:
-  // result: String, // 'win', 'loss'
-  // score: Number,
+  gameName: String,
   playedAt: {
     type: Date,
     default: Date.now
@@ -25,19 +22,43 @@ const userSchema = new Schema({
     unique: true,
     trim: true
   },
+  
+  // --- KHÔI PHỤC TRƯỜNG NÀY ---
   displayName: {
     type: String,
     required: true
   },
-  // Thêm các trường khác của bạn ở đây (ví dụ: password, avatar...)
+  // ---------------------------
 
+  email: {
+    type: String,
+    unique: true,
+    sparse: true 
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true 
+  },
+  
+  // --- VẪN XÓA avatar ---
+
+  password: { 
+    type: String
+  },
+  status: { 
+    type: String,
+    enum: ['online', 'offline', 'playing'],
+    default: 'offline'
+  },
+  socketId: String, 
+  
   playHistory: {
     type: [playHistorySchema],
     default: []
   }
 }, {
-  timestamps: true // Tự động thêm createdAt và updatedAt
+  timestamps: true 
 });
 
-// Dòng quan trọng: Export model 'User', KHÔNG PHẢI 'Room'
 module.exports = mongoose.model('User', userSchema);

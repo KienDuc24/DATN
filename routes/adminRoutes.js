@@ -1,26 +1,23 @@
-// routes/adminRoutes.js
+// routes/adminRoutes.js (ĐÃ SỬA)
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
-const Room = require('../models/Room');
-const Game = require('../models/Game'); // Import Game model
+const adminController = require('../controllers/adminController'); // <-- Import controller
 
-// Bọc router trong một hàm để nhận 'io'
 module.exports = function(io) {
+
   // --- API NGƯỜI DÙNG (USERS) ---
-  // (Phần này giữ nguyên)
   router.get('/users', async (req, res) => {
     try {
-      const users = await User.find().select('-password');
+      const users = await adminController.getAllUsers();
       res.json({ users });
     } catch (e) {
       res.status(500).json({ message: e.message });
     }
   });
 
-  router.put('/user/:id', async (req, res) => {
+  router.put('/users/:id', async (req, res) => { // Sửa: Thêm /users/
     try {
-      const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true }).select('-password');
+      const updatedUser = await adminController.updateUser(req.params.id, req.body);
       io.emit('admin-users-changed'); 
       res.json(updatedUser);
     } catch (e) {
@@ -28,9 +25,9 @@ module.exports = function(io) {
     }
   });
 
-  router.delete('/user/:id', async (req, res) => {
+  router.delete('/users/:id', async (req, res) => { // Sửa: Thêm /users/
     try {
-      await User.findByIdAndDelete(req.params.id);
+      await adminController.deleteUser(req.params.id);
       io.emit('admin-users-changed'); 
       res.json({ ok: true });
     } catch (e) {
@@ -39,24 +36,23 @@ module.exports = function(io) {
   });
 
   // --- API PHÒNG CHƠI (ROOMS) ---
-  // (Phần này giữ nguyên)
   router.get('/rooms', async (req, res) => {
     try {
-      const rooms = await Room.find();
+      const rooms = await adminController.getAllRooms();
       res.json({ rooms });
     } catch (e) {
       res.status(500).json({ message: e.message });
     }
   });
 
-  router.delete('/room/:id', async (req, res) => {
+  router.delete('/rooms/:id', async (req, res) => { // Sửa: Thêm /rooms/
     try {
       const roomCode = req.params.id;
-      
+
       console.log(`[Admin] Admin kicking all players from room ${roomCode}`);
       io.to(roomCode).emit('kicked', { message: 'Phòng đã bị Admin đóng.' });
-      
-      await Room.findOneAndDelete({ code: roomCode });
+
+      await adminController.deleteRoom(roomCode);
       io.emit('admin-rooms-changed'); 
       res.json({ ok: true });
     } catch (e) {
@@ -65,10 +61,9 @@ module.exports = function(io) {
   });
 
   // --- API TRÒ CHƠI (GAMES) ---
-  // (Phần này giữ nguyên)
   router.get('/games', async (req, res) => {
     try {
-        const games = await Game.find({});
+        const games = await adminController.getAllGames();
         res.json({ games });
     } catch (e) {
         res.status(500).json({ message: e.message });
@@ -77,8 +72,7 @@ module.exports = function(io) {
 
   router.post('/games', async (req, res) => {
     try {
-      const newGame = new Game(req.body);
-      await newGame.save();
+      const newGame = await adminController.createGame(req.body);
       io.emit('admin-games-changed'); 
       res.status(201).json(newGame);
     } catch (e) {
@@ -88,15 +82,10 @@ module.exports = function(io) {
 
   router.put('/games/:id', async (req, res) => {
     try {
-      const gameId = req.params.id; 
-      const updates = req.body; 
-      
-      const updatedGame = await Game.findOneAndUpdate({ id: gameId }, updates, { new: true });
-
+      const updatedGame = await adminController.updateGame(req.params.id, req.body);
       if (!updatedGame) {
         return res.status(404).json({ message: 'Game not found with that ID string' });
       }
-
       io.emit('admin-games-changed');
       res.json(updatedGame);
     } catch (e) {
@@ -106,13 +95,10 @@ module.exports = function(io) {
 
   router.delete('/games/:id', async (req, res) => {
     try {
-      const gameId = req.params.id; 
-      const deletedGame = await Game.findOneAndDelete({ id: gameId });
-
+      const deletedGame = await adminController.deleteGame(req.params.id);
       if (!deletedGame) {
-           return res.status(404).json({ message: 'Game not found with that ID string' });
+         return res.status(404).json({ message: 'Game not found with that ID string' });
       }
-
       io.emit('admin-games-changed');
       res.json({ ok: true });
     } catch (e) {
@@ -120,55 +106,15 @@ module.exports = function(io) {
     }
   });
 
-  // --- SỬA ĐỔI LOGIC SYNC: Thay thế "Xóa/Tạo" bằng "Cập nhật/Tạo" ---
   router.post('/games/sync', async (req, res) => {
-        const gamesData = req.body; // Dữ liệu này được gửi từ admin.js
-
-        if (!Array.isArray(gamesData)) {
-            return res.status(400).json({ message: 'Dữ liệu gửi lên không phải là một mảng (array).' });
-        }
-
-        let updatedCount = 0;
-        let createdCount = 0;
-
         try {
-            // Lặp qua từng game trong tệp games.json
-            for (const game of gamesData) {
-                if (!game.id) {
-                    console.warn('[AdminSync] Bỏ qua game không có ID:', game.name);
-                    continue; // Bỏ qua nếu game không có ID
-                }
+            const result = await adminController.syncGames(req.body);
 
-                // Logic "Upsert":
-                // Tìm một game bằng 'id' string.
-                const existingGame = await Game.findOne({ id: game.id });
-
-                if (existingGame) {
-                    // 1. Đã tồn tại -> Cập nhật (update)
-                    // (Chúng ta dùng updateOne để cập nhật nội dung mà không thay đổi _id của Mongoose)
-                    await Game.updateOne(
-                        { id: game.id }, // Điều kiện tìm
-                        game,            // Dữ liệu mới
-                        { runValidators: true } // Chạy kiểm tra schema
-                    );
-                    updatedCount++;
-                } else {
-                    // 2. Chưa tồn tại -> Tạo mới (insert)
-                    await Game.create(game);
-                    createdCount++;
-                }
-            }
-            
-            console.log(`[Admin Sync] Đồng bộ hoàn tất. Đã cập nhật ${updatedCount} và tạo mới ${createdCount} game.`);
-            
-            // Gửi thông báo socket tới TẤT CẢ admin đang kết nối
-            io.emit('admin-games-changed'); //
-
-            // Trả về kết quả
+            console.log(`[Admin Sync] Đồng bộ hoàn tất. Đã cập nhật ${result.updated} và tạo mới ${result.created} game.`);
+            io.emit('admin-games-changed'); 
             res.json({ 
                 message: `Đồng bộ (Upsert) hoàn tất!`, 
-                updated: updatedCount, 
-                created: createdCount 
+                ...result
             });
 
         } catch (error) {
@@ -176,7 +122,6 @@ module.exports = function(io) {
             res.status(500).json({ message: 'Lỗi máy chủ khi đồng bộ game.', error: error.message });
         }
     });
-  // --- KẾT THÚC ROUTE ĐÃ SỬA ---
 
   return router; // Trả về router
 };

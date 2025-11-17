@@ -2,8 +2,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const Room = require('../../../models/Room'); 
-const User = require('../../../models/User'); // Cần import User
+const Room = require('../models/Room'); 
+const User = require('../models/User'); // Cần import User
 
 // --- Cấu hình Game ---
 const GAME_ID = 'DG';

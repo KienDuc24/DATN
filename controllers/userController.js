@@ -1,9 +1,9 @@
-const path = require('path');
-const fs = require('fs');
-const Room = require('../models/Room');
+// controllers/userController.js (ĐÃ SỬA)
 const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
-// Trả về user nhưng không kèm password/hash
+// --- Helper (Giữ nguyên) ---
 function sanitizeUser(user) {
   if (!user) return null;
   const u = user.toObject ? user.toObject() : Object.assign({}, user);
@@ -11,6 +11,59 @@ function sanitizeUser(user) {
   delete u.passwordHash;
   return u;
 }
+
+// === 1. LOGIC AUTH (Chuyển từ authRoutes.js) ===
+
+exports.registerUser = async (req, res) => {
+  try {
+    const { username, password, displayName } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Thiếu username hoặc password' });
+    }
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Username đã tồn tại' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ 
+        username, 
+        displayName: displayName || username,
+        password: hashedPassword 
+    });
+    await user.save();
+    res.status(201).json({ message: 'User registered successfully', user: sanitizeUser(user) });
+  } catch (err) {
+    console.error('[userController] /register error:', err.message);
+    res.status(500).json({ message: 'Lỗi server khi đăng ký' });
+  }
+};
+
+exports.loginUser = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Thiếu username hoặc password' });
+    }
+    const user = await User.findOne({ username }); 
+    if (!user) {
+      return res.status(401).json({ message: 'Sai username hoặc mật khẩu' });
+    }
+    if (!user.password) {
+         return res.status(401).json({ message: 'Tài khoản này được tạo bằng Google, không thể đăng nhập bằng mật khẩu.' });
+    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Sai username hoặc mật khẩu' });
+    }
+    const token = jwt.sign({ id: user._id, username: user.username }, process.env.SESSION_SECRET || 'datn_secret_key', { expiresIn: '1d' });
+    res.json({ token, user: sanitizeUser(user) });
+  } catch (err) {
+    console.error('[userController] /login error:', err.message);
+    res.status(500).json({ message: 'Lỗi server khi đăng nhập' });
+  }
+};
+
+// === 2. LOGIC USER (Giữ nguyên) ===
 
 exports.getUserByUsername = async (req, res) => {
   const username = req.params.username || req.query.username;
@@ -23,16 +76,13 @@ exports.getUserByUsername = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const body = req.body || {};
-    // require identifier: prefer username or _id
     const identifier = body.username || body._id || (req.user && req.user.username);
     if (!identifier) return res.status(400).json({ ok: false, message: 'username or _id required' });
 
     const query = body._id ? { _id: body._id } : { username: identifier };
-    // Fields allowed to update
     const allowed = {};
     if (typeof body.displayName === 'string') allowed.displayName = body.displayName;
     if (typeof body.email === 'string') allowed.email = body.email;
-    if (typeof body.avatar === 'string') allowed.avatar = body.avatar;
     if (Object.keys(allowed).length === 0) {
       return res.status(400).json({ ok: false, message: 'no updatable fields' });
     }
@@ -44,67 +94,5 @@ exports.updateUser = async (req, res) => {
   } catch (err) {
     console.error('updateUser error', err);
     return res.status(500).json({ ok: false, message: 'Internal error' });
-  }
-};
-
-// new: handle avatar upload (multer middleware will store file)
-exports.uploadAvatar = async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ ok: false, message: 'No file uploaded' });
-
-    // file stored by multer in uploads folder
-    const file = req.file;
-    // build accessible url
-    const host = req.get('host');
-    const proto = req.protocol;
-    const url = `${proto}://${host}/uploads/${path.basename(file.path)}`;
-
-    // if client provided username or _id, update user record
-    const username = req.body.username || (req.user && req.user.username);
-    if (username) {
-      const updated = await User.findOneAndUpdate(
-        { $or: [{ username }, { _id: username }] },
-        { $set: { avatar: url } },
-        { new: true }
-      ).select('-password -passwordHash');
-      if (updated) {
-        return res.json({ ok: true, url, user: sanitizeUser(updated) });
-      }
-    }
-
-    return res.json({ ok: true, url });
-  } catch (err) {
-    console.error('uploadAvatar error', err);
-    return res.status(500).json({ ok: false, message: 'Upload failed' });
-  }
-};
-
-// Tạo phòng (thay đổi: thêm validation)
-exports.createRoom = async (req, res) => {
-  try {
-    const { name, gameType, maxPlayers } = req.body;
-    if (!name || !gameType) return res.status(400).json({ error: 'Name and gameType required' });
-    
-    const room = new Room({ name, gameType, maxPlayers, players: [req.user.id] });
-    await room.save();
-    res.status(201).json(room);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to create room' });
-  }
-};
-
-// Tham gia phòng (thay đổi: kiểm tra số lượng người chơi)
-exports.joinRoom = async (req, res) => {
-  try {
-    const room = await Room.findById(req.params.id);
-    if (!room || room.players.length >= room.maxPlayers) return res.status(400).json({ error: 'Room full or not found' });
-    
-    if (!room.players.includes(req.user.id)) {
-      room.players.push(req.user.id);
-      await room.save();
-    }
-    res.json(room);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to join room' });
   }
 };

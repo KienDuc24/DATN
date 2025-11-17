@@ -5,8 +5,8 @@ const path = require('path');
 const axios = require('axios');
 // (Sửa đường dẫn .env và models/ cho đúng với vị trí file của bạn)
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') }); 
-const Room = require('../../../models/Room');
-const User = require('../../../models/User');
+const Room = require('../models/Room');
+const User = require('../models/User');
 
 // --- THÊM MỚI: Map để theo dõi người chơi TRONG GAME ---
 const gameSocketMap = new Map();
