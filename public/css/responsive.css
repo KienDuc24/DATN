@@ -1,4 +1,4 @@
-/* public/css/responsive.css (Mobile-First) */
+/* public/css/responsive.css (SỬA LỖI LAYOUT VÀ CĂN GIỮA) */
 
 /* * ========================================
  * Breakpoint: Tablet
@@ -7,11 +7,24 @@
  */
 @media (min-width: 700px) {
   
-  /* --- Header & Nav (Tablet) --- */
+  /* --- SỬA LỖI 1: KHÔI PHỤC LẠI LOGIC HIỆN SIDEBAR --- */
+  .sidebar-toggle {
+    display: none; /* Ẩn nút hamburger */
+  }
+  .sidebar {
+    transform: translateX(0); /* Hiện sidebar cố định */
+    width: 210px; /* Chiều rộng cố định */
+  }
+  .sidebar-overlay {
+    display: none; /* Không cần overlay nữa */
+  }
+
+  /* --- SỬA LỖI 2: KHÔI PHỤC MARGIN-LEFT CHO HEADER --- */
   .header-main {
     padding: 14px 32px 10px 18px;
     gap: 0;
     /* Căn chỉnh cho sidebar */
+    margin-left: 210px; 
   }
   .logo-animate {
     width: 42px;
@@ -78,12 +91,23 @@
     border-radius: 12px;
   }
   
-  /* --- Main Content (Tablet) --- */
+  /* --- SỬA LỖI 3: MAIN CONTENT (CĂN GIỮA) --- */
   .main-content {
-    margin-left: 210px; /* Dịch nội dung sang phải */
+    /* 1. Đẩy sang phải để không bị sidebar che */
+    margin-left: 210px; 
+    
+    /* 2. Đặt chiều rộng tối đa cho nội dung */
+    max-width: 1200px;
+    
+    /* 3. Căn giữa trong không gian còn lại */
+    margin-right: auto;
+    /* (margin-left đã là 210px, margin-right là auto sẽ tự động căn giữa) */
+    
     padding: 28px 18px 24px 18px;
-    max-width: none;
   }
+  /* --- KẾT THÚC SỬA LỖI 3 --- */
+
+
   .section-title-row {
     flex-direction: row; /* Trở lại layout hàng ngang */
     align-items: center;
@@ -113,7 +137,7 @@
     padding: 2px 8px;
   }
 
-  /* --- Footer (Tablet) --- */
+  /* --- SỬA LỖI 4: KHÔI PHỤC MARGIN-LEFT CHO FOOTER --- */
   .footer-content {
     flex-direction: row; /* Trở lại layout hàng ngang */
     gap: 16px;
@@ -121,7 +145,12 @@
   }
   footer {
     margin-left: 210px; /* Dịch footer sang phải */
+    
+    /* Thêm căn giữa cho footer (giống main-content) */
+    max-width: 1200px;
+    margin-right: auto;
   }
+  /* --- KẾT THÚC SỬA LỖI 4 --- */
 
   /* --- Modals (Tablet) --- */
   #roomModal .modal-content {
