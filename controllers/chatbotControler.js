@@ -47,7 +47,7 @@ async function answerRuleQuestion(req, res) {
     try {
         // Sửa 1: Cập nhật model mới và dùng 'systemInstruction' (theo tài liệu)
         const model = genAI.getGenerativeModel({ 
-            model: 'gemini-2.5-flash-preview-09-2025',
+            model: 'gemini-2.5-flash',
             // Gửi prompt hệ thống (luật chơi) riêng biệt
             systemInstruction: {
               parts: [{ text: systemPrompt }],
