@@ -263,11 +263,6 @@ document.getElementById('googleLoginBtn').onclick = function() {
   window.location.href = `${API_BASE_URL}/auth/google`;
 };
 
-/** Xử lý đăng nhập Facebook (Placeholder) */
-document.getElementById('facebookLoginBtn').onclick = function() {
-  alert('Tính năng đăng nhập Facebook sẽ được bổ sung sau!');
-};
-
 /** Xử lý đăng nhập ẩn danh */
 document.getElementById('anonymousLoginBtn').onclick = function() {
   const username = 'guest_' + Math.random().toString(36).substring(2, 10);
