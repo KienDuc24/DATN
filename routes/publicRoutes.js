@@ -1,7 +1,7 @@
 // routes/publicRoutes.js (ĐÃ SỬA)
 const express = require('express');
 const router = express.Router();
-const { answerRuleQuestion } = require('../controllers/chatbotControler');
+const { answerRuleQuestion } = require('../controllers/chatbotController');
 const userController = require('../controllers/userController'); 
 const gameController = require('../controllers/gameController'); // <-- 1. Import
 

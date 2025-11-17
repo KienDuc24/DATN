@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Import controller chatbot
-const { answerRuleQuestion } = require('../controllers/chatbotControler');
+const { answerRuleQuestion } = require('../controllers/chatbotController');
 
 // Endpoint hướng dẫn cách chơi
 router.get('/ai/get-instructions', async (req, res) => {

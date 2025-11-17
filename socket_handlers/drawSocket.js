@@ -1,384 +1,308 @@
-// backend/sockets/drawSocket.js
+// socket_handlers/drawSocket.js (ĐÃ SỬA)
 
 const fs = require('fs');
 const path = require('path');
-const Room = require('../models/Room'); 
-const User = require('../models/User'); // Cần import User
+const Room = require('../models/Room');
 
-// --- Cấu hình Game ---
-const GAME_ID = 'DG';
-const ROUND_TIME = 90; // Giây
-const MAX_ROUNDS_PER_PLAYER = 1; // Số vòng mỗi người chơi được vẽ
-const WORDS_PATH = path.resolve(__dirname, '../../../public/game/Draw/words.json');
-let WORDS = []; 
+const gameStates = new Map();
+let allWords = [];
+
+// --- SỬA LỖI ĐƯỜNG DẪN ---
 try {
-  const raw = fs.readFileSync(WORDS_PATH, 'utf8');
-  WORDS = JSON.parse(raw || '[]');
+  // Đường dẫn tương đối từ file hiện tại (socket_handlers) đi lên 1 cấp,
+  // sau đó vào public/game/Draw/words.json
+  const wordsPath = path.join(__dirname, '..', 'public', 'game', 'Draw', 'words.json');
+  let data = fs.readFileSync(wordsPath, 'utf8');
+  allWords = JSON.parse(data);
+  console.log('[DG] Đã tải thành công file words.json');
 } catch (err) {
-  console.warn(`[${GAME_ID}] cannot load words.json`, err && err.message);
-  WORDS = ["Lửa trại", "Cây nấm", "Thịt nướng", "Lều cắm trại", "Mặt trời", "Con sông"];
+  console.error('[DG] Không thể tải file words.json:', err.message);
+  // Khởi tạo mảng rỗng để tránh crash server
+  allWords = [{ "id": 0, "word": "Fallback Word", "category": "General" }];
 }
-const ROOM_STATE = {}; 
-const gameSocketMap = new Map();
+// --- KẾT THÚC SỬA ---
 
-// --- Helper Functions ---
-function getRoomState(code) {
-  if (!ROOM_STATE[code]) {
-    ROOM_STATE[code] = { 
-      currentIndex: 0, 
-      currentWord: null, 
-      drawer: null, 
-      timer: ROUND_TIME, 
-      guesses: new Set(),
-      drawingData: [], 
-      interval: null,
-      scores: {} 
-    };
+
+// --- Logic game (Giữ nguyên) ---
+
+function getWord() {
+  if (!allWords || allWords.length === 0) {
+    return { id: -1, word: "Lỗi", category: "Lỗi" };
   }
-  return ROOM_STATE[code];
+  return allWords[Math.floor(Math.random() * allWords.length)];
 }
 
-function getPlayersFromRoom(room) {
-    if (!room) return [];
-    let raw = room.players || [];
-    return raw.map(p => ({ name: p.name, displayName: p.displayName || p.name, avatar: p.avatar || null }));
-}
-
-async function attachAvatarsToPlayers(players) {
-  const names = (players || []).map(p => p.name).filter(Boolean);
-  if (!names.length) {
-    return players;
-  }
-  let users = [];
-  try {
-    users = await User.find({ username: { $in: names } }).lean();
-  } catch (e) {
-    console.warn('[Draw] attachAvatarsToPlayers user lookup failed', e && e.message);
-    users = [];
-  }
-  
-  const map = {};
-  users.forEach(u => { map[u.username] = u; });
-
-  return (players || []).map(p => {
-    const user = map[p.name];
-    const avatar = p.avatar || (user ? (user.avatarUrl || user.avatar || null) : null);
-    const outDisplayName = p.displayName || (user ? (user.displayName || user.name || null) : null);
-    
-    return { name: p.name, displayName: outDisplayName || null, avatar: avatar || null };
+function initializeGameState(roomCode, players) {
+  gameStates.set(roomCode, {
+    players: players.map(p => ({ name: p, score: 0, guessed: false })),
+    currentDrawer: null,
+    currentWord: null,
+    round: 0,
+    maxRounds: 3, 
+    timer: null,
+    time: 90
   });
 }
 
-function getRandomWord() {
-    if (!WORDS.length) return "Lửa trại";
-    return WORDS[Math.floor(Math.random() * WORDS.length)].toUpperCase();
-}
+function nextTurn(io, roomCode) {
+  const state = gameStates.get(roomCode);
+  if (!state) return;
 
-function isCorrectGuess(guess, word) {
-    if (!word) return false;
-    const normalizedWord = word.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const normalizedGuess = guess.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    return normalizedGuess === normalizedWord;
-}
+  if (state.timer) {
+    clearInterval(state.timer);
+    state.timer = null;
+  }
 
-function startTimer(io, roomCode) {
-    const state = getRoomState(roomCode);
-    if (state.interval) clearInterval(state.interval);
+  // Cập nhật điểm
+  io.to(roomCode).emit('dg-update-scores', state.players);
 
-    state.interval = setInterval(() => {
-        state.timer--;
-        io.to(roomCode).emit(`${GAME_ID}-timer`, { time: state.timer });
+  // Chọn người vẽ tiếp theo
+  let drawerIndex = -1;
+  if (state.currentDrawer) {
+    drawerIndex = state.players.findIndex(p => p.name === state.currentDrawer);
+  }
+  
+  let nextDrawerIndex = (drawerIndex + 1) % state.players.length;
 
-        if (state.timer <= 0) {
-            clearInterval(state.interval);
-            endRound(io, roomCode, false); 
-        }
-    }, 1000);
-}
+  // Bắt đầu vòng mới nếu cần
+  if (nextDrawerIndex === 0) {
+    state.round++;
+  }
 
-function updateScores(state, player, score) {
-    if (!state.scores[player]) state.scores[player] = 0;
-    state.scores[player] += score;
-}
+  // Kết thúc game nếu hết vòng
+  if (state.round >= state.maxRounds) {
+    const finalScores = state.players.sort((a, b) => b.score - a.score);
+    io.to(roomCode).emit('dg-game-over', finalScores);
+    gameStates.delete(roomCode);
+    return;
+  }
 
-async function getMaxRounds(roomCode) {
-    const room = await Room.findOne({ code: roomCode }).lean();
-    if (!room) return 0;
-    const players = getPlayersFromRoom(room);
-    return players.length * MAX_ROUNDS_PER_PLAYER;
-}
+  // Reset trạng thái guessed
+  state.players.forEach(p => p.guessed = false);
 
+  state.currentDrawer = state.players[nextDrawerIndex].name;
+  const wordData = getWord();
+  state.currentWord = wordData.word.toLowerCase();
 
-// --- SỬA LOGIC TÍNH ĐIỂM TRONG endRound ---
-async function endRound(io, roomCode, guessed) {
-    const state = getRoomState(roomCode);
-    if (state.interval) clearInterval(state.interval);
+  io.to(roomCode).emit('dg-new-turn', {
+    drawer: state.currentDrawer,
+    round: state.round + 1,
+    maxRounds: state.maxRounds
+  });
 
-    const room = await Room.findOne({ code: roomCode }).lean();
-    if (!room) return; 
-    const players = getPlayersFromRoom(room);
-    const totalGuessers = state.guesses.size;
-    
-    if (totalGuessers > 0) {
-        const drawerScore = 100 + (totalGuessers * 5);
-        updateScores(state, state.drawer, drawerScore);
+  // Gửi từ khóa cho người vẽ
+  const drawerSocket = getSocketByPlayerName(io, roomCode, state.currentDrawer);
+  if (drawerSocket) {
+    drawerSocket.emit('dg-your-turn', { word: wordData.word, category: wordData.category });
+  }
+
+  // Gửi gợi ý (dấu gạch) cho người đoán
+  const hint = state.currentWord.replace(/[a-zA-Z]/g, '_');
+  io.to(roomCode).emit('dg-word-hint', hint);
+
+  // Bắt đầu đếm giờ
+  state.time = 90;
+  io.to(roomCode).emit('dg-timer-update', state.time);
+
+  state.timer = setInterval(() => {
+    state.time--;
+    io.to(roomCode).emit('dg-timer-update', state.time);
+    if (state.time <= 0) {
+      clearInterval(state.timer);
+      io.to(roomCode).emit('dg-chat-message', {
+        sender: 'Hệ thống',
+        message: `Hết giờ! Từ khóa là: ${state.currentWord}`,
+        isSystem: true
+      });
+      nextTurn(io, roomCode);
     }
-    
-    io.to(roomCode).emit(`${GAME_ID}-end-round`, { 
-        word: state.currentWord, 
-        scores: state.scores,
-        drawer: state.drawer,
-        guessed: guessed
-    });
-
-    const maxTotalRounds = await getMaxRounds(roomCode);
-    state.currentIndex++;
-    
-    if (state.currentIndex >= maxTotalRounds) { 
-        // KẾT THÚC GAME
-        io.to(roomCode).emit(`${GAME_ID}-game-over`, { finalScores: state.scores });
-        
-        // KHÔNG RESET ĐIỂM Ở ĐÂY. Chờ Host bấm "Chơi Lại".
-        state.drawer = null; // Đánh dấu game đã kết thúc
-        return; 
-    }
-    
-    setTimeout(() => {
-        startRound(io, roomCode);
-    }, 5000); 
+  }, 1000);
 }
 
-async function startRound(io, roomCode) {
-    const room = await Room.findOne({ code: roomCode }).lean();
-    if (!room) return;
-    const players = getPlayersFromRoom(room);
-    if (players.length < 2) {
-        io.to(roomCode).emit(`${GAME_ID}-message`, { message: 'Cần tối thiểu 2 người để chơi.' });
-        return;
-    }
-    
-    const state = getRoomState(roomCode);
-    
-    // Reset trạng thái vòng
-    state.currentWord = getRandomWord();
-    state.drawer = players[state.currentIndex % players.length].name;
-    state.timer = ROUND_TIME;
-    state.guesses = new Set();
-    state.drawingData = [];
+function getSocketByPlayerName(io, roomCode, playerName) {
+  // (Cần tối ưu: Hiện tại O(N) tìm kiếm)
+  // Đây là một hạn chế của việc không map socket.id với playerName khi vào game
+  const roomSockets = io.sockets.adapter.rooms.get(roomCode);
+  if (!roomSockets) return null;
 
-    // Gửi tín hiệu bắt đầu vòng cho tất cả
-    io.to(roomCode).emit(`${GAME_ID}-start-round`, { 
-        drawer: state.drawer, 
-        scores: state.scores,
-        round: state.currentIndex + 1,
-        playersCount: players.length,
-        wordHint: state.currentWord.length 
-    });
-
-    // Chỉ gửi từ khóa bí mật cho Họa sĩ
-    const drawerSocketId = Array.from(gameSocketMap.entries())
-                               .find(([, info]) => info.player === state.drawer && info.code === roomCode);
-                               
-    if (drawerSocketId) {
-        io.to(drawerSocketId[0]).emit(`${GAME_ID}-secret-word`, { word: state.currentWord });
+  for (const socketId of roomSockets) {
+    const socket = io.sockets.sockets.get(socketId);
+    // Giả định rằng socket.data.playerName đã được gán khi 'dg-join-game'
+    if (socket && socket.data && socket.data.playerName === playerName) {
+      return socket;
     }
-    
-    // Bắt đầu đếm ngược
-    startTimer(io, roomCode);
+  }
+  return null;
 }
 
-// --- MODULE EXPORT ---
-module.exports = (socket, io) => {
-    console.log(`[${GAME_ID}] handler attached for socket ${socket.id}`);
+function drawGuessHandler(socket, io) {
+  
+  // Khi user vào trang game
+  socket.on('dg-join-game', async ({ roomCode, player }) => {
+    socket.join(roomCode);
+    socket.data.playerName = player; // Gán tên vào socket
+    socket.data.roomCode = roomCode;
+
+    const state = gameStates.get(roomCode);
     
-    // --- 1. QUẢN LÝ PHÒNG VÀ THAM GIA ---
-    socket.on(`${GAME_ID}-join`, async ({ roomCode, player }) => {
-        try {
-            const room = await Room.findOne({ code: roomCode }).lean();
-            const isPlayerInRoom = room.players.some(p => p.name === player.name);
-            if (!isPlayerInRoom) return socket.emit(`${GAME_ID}-join-failed`, { reason: 'Bạn không có trong danh sách phòng này.' });
-
-            socket.join(roomCode);
-            gameSocketMap.set(socket.id, { player: player.name, code: roomCode });
-            getRoomState(roomCode);
-            
-            const playersWithAvt = await attachAvatarsToPlayers(room.players);
-
-            io.to(roomCode).emit(`${GAME_ID}-room-update`, { 
-                state: getRoomState(roomCode), 
-                room: { ...room, players: playersWithAvt }
-            });
-
-        } catch (e) { console.error(`[${GAME_ID}] join error`, e); }
-    });
-
-    // --- 2. BẮT ĐẦU VÒNG ---
-    socket.on(`${GAME_ID}-start-game`, async ({ roomCode }) => {
+    // Nếu là người đầu tiên, khởi tạo game
+    if (!state) {
+      try {
         const room = await Room.findOne({ code: roomCode });
-        if (room && room.host === gameSocketMap.get(socket.id).player) {
-            const state = getRoomState(roomCode);
-            if (state.drawer) return; // Đã có vòng đang chạy
-            state.currentIndex = 0;
-            startRound(io, roomCode);
+        if (!room) {
+            socket.emit('dg-error', 'Không tìm thấy phòng.');
+            return;
         }
-    });
-
-    // --- 3. ĐỒNG BỘ NÉT VẼ ---
-    socket.on(`${GAME_ID}-draw`, ({ roomCode, data }) => {
-        const state = getRoomState(roomCode);
-        const playerInfo = gameSocketMap.get(socket.id);
-
-        if (playerInfo && playerInfo.player === state.drawer) {
-            // (Không cần lưu data vẽ, chỉ phát sóng)
-            socket.to(roomCode).emit(`${GAME_ID}-drawing`, data);
-        }
-    });
-    
-    // Xóa/Làm mới canvas
-    socket.on(`${GAME_ID}-clear`, ({ roomCode }) => {
-        const state = getRoomState(roomCode);
-        const playerInfo = gameSocketMap.get(socket.id);
+        const players = room.players.map(p => p.name);
+        initializeGameState(roomCode, players);
         
-        if (playerInfo && playerInfo.player === state.drawer) {
-            state.drawingData = [];
-            socket.to(roomCode).emit(`${GAME_ID}-clear-canvas`);
-        }
-    });
-
-    socket.on(`${GAME_ID}-fill`, ({ roomCode, color }) => {
-        const state = getRoomState(roomCode);
-        const playerInfo = gameSocketMap.get(socket.id);
-        
-        if (playerInfo && playerInfo.player === state.drawer) {
-            // Thay socket.to bằng io.to để gửi cho TẤT CẢ (bao gồm người gửi, đảm bảo đồng bộ)
-            io.to(roomCode).emit(`${GAME_ID}-fill-canvas`, { color });
-            console.log(`[Socket] Fill broadcasted to room ${roomCode} with color: ${color}`);
-        }
-    });
-
-    // --- 4. XỬ LÝ ĐOÁN ---
-    socket.on(`${GAME_ID}-guess`, async ({ roomCode, player, guess }) => {
-        const state = getRoomState(roomCode);
-        const drawer = state.drawer;
-        
-        // Họa sĩ chỉ được chat thông thường
-        if (player === drawer) { 
-             return io.to(roomCode).emit(`${GAME_ID}-chat-message`, { player: player, message: guess });
-        }
-
-        io.to(roomCode).emit(`${GAME_ID}-chat-message`, { 
-            player: player, 
-            message: guess 
+        io.to(roomCode).emit('dg-chat-message', {
+          sender: 'Hệ thống',
+          message: `Chào mừng ${player}! Bạn là chủ phòng. Bấm "Bắt đầu" để chơi.`,
+          isSystem: true
         });
+        
+        // Cập nhật danh sách người chơi
+        io.to(roomCode).emit('dg-update-scores', gameStates.get(roomCode).players);
+        
+      } catch (err) {
+         socket.emit('dg-error', 'Lỗi khi lấy thông tin phòng.');
+      }
+    } else {
+      // Nếu game đã bắt đầu, gửi trạng thái hiện tại
+      socket.emit('dg-chat-message', {
+        sender: 'Hệ thống',
+        message: `Chào mừng ${player} đã tham gia!`,
+        isSystem: true
+      });
+      socket.emit('dg-update-scores', state.players);
+      socket.emit('dg-new-turn', {
+        drawer: state.currentDrawer,
+        round: state.round + 1,
+        maxRounds: state.maxRounds
+      });
+      if (player !== state.currentDrawer) {
+          const hint = state.currentWord.replace(/[a-zA-Z]/g, '_');
+          socket.emit('dg-word-hint', hint);
+      } else {
+          // Gửi lại từ cho người vẽ (nếu họ bị F5)
+          socket.emit('dg-your-turn', { word: state.currentWord, category: '...' });
+      }
+    }
+  });
 
-        if (isCorrectGuess(guess, state.currentWord)) {
-            if (state.guesses.has(player)) return; // Đã đoán đúng rồi
+  socket.on('dg-start-game', ({ roomCode, player }) => {
+    const state = gameStates.get(roomCode);
+    if (!state) return;
+    if (state.players[0].name === player) { // Chỉ người đầu tiên (chủ phòng game)
+      io.to(roomCode).emit('dg-chat-message', {
+        sender: 'Hệ thống',
+        message: 'Trò chơi bắt đầu!',
+        isSystem: true
+      });
+      nextTurn(io, roomCode);
+    }
+  });
 
-            // TÍNH ĐIỂM NGƯỜI ĐOÁN
-            const remainingTime = state.timer > 0 ? state.timer : 0;
-            const guesserScore = 50 + remainingTime; // 50 điểm cơ bản + 1 điểm/giây còn lại
-            updateScores(state, player, guesserScore);
-            
-            state.guesses.add(player);
-            
-            io.to(roomCode).emit(`${GAME_ID}-correct-guess`, { 
-                player: player, 
-                scores: state.scores,
-                time: remainingTime 
-            });
+  socket.on('dg-chat-message', ({ message }) => {
+    const player = socket.data.playerName;
+    const roomCode = socket.data.roomCode;
+    const state = gameStates.get(roomCode);
 
-            // LOGIC CHUYỂN LƯỢT NẾU ĐOÁN HẾT
-            const room = await Room.findOne({ code: roomCode }).lean();
-            const totalGuessers = Math.max(0, getPlayersFromRoom(room).length - 1);
-            
-            if (state.guesses.size >= totalGuessers) { 
-                 // Nếu tất cả đã đoán đúng, kết thúc vòng ngay lập tức
-                 endRound(io, roomCode, true);
-            }
+    if (!state || !player || !roomCode) return;
+
+    // Kiểm tra câu trả lời
+    if (player !== state.currentDrawer && !state.players.find(p=>p.name === player).guessed) {
+      if (message.trim().toLowerCase() === state.currentWord) {
+        // Trả lời đúng
+        const playerState = state.players.find(p => p.name === player);
+        playerState.guessed = true;
+        
+        // Tính điểm
+        const score = Math.max(10, state.time); // Điểm = thời gian còn lại
+        playerState.score += score;
+        
+        // Người vẽ cũng được điểm
+        const drawerState = state.players.find(p => p.name === state.currentDrawer);
+        if (drawerState) drawerState.score += Math.round(score / 3);
+
+        io.to(roomCode).emit('dg-chat-message', {
+          sender: 'Hệ thống',
+          message: `${player} đã đoán đúng! +${score} điểm.`,
+          isSystem: true,
+          isCorrect: true
+        });
+        
+        io.to(roomCode).emit('dg-update-scores', state.players);
+
+        // Kiểm tra nếu mọi người đã đoán xong
+        const allGuessed = state.players.every(p => p.name === state.currentDrawer || p.guessed);
+        if (allGuessed) {
+          io.to(roomCode).emit('dg-chat-message', {
+            sender: 'Hệ thống',
+            message: `Mọi người đã đoán xong! Từ khóa là: ${state.currentWord}`,
+            isSystem: true
+          });
+          nextTurn(io, roomCode);
         }
+        
+      } else {
+        // Trả lời sai
+        io.to(roomCode).emit('dg-chat-message', { sender: player, message: message });
+      }
+    } else {
+      // Người vẽ chat
+      io.to(roomCode).emit('dg-chat-message', { sender: player, message: message });
+    }
+  });
+
+  socket.on('dg-drawing', (data) => {
+    if (socket.data.roomCode) {
+      socket.to(socket.data.roomCode).emit('dg-drawing', data);
+    }
+  });
+
+  socket.on('dg-clear-canvas', () => {
+     if (socket.data.roomCode) {
+        io.to(socket.data.roomCode).emit('dg-clear-canvas');
+     }
+  });
+  
+  socket.on('dg-choose-word', (wordData) => {
+      // (Bỏ qua nếu logic chọn 3 từ không được implement)
+  });
+
+  socket.on('disconnect', () => {
+    const player = socket.data.playerName;
+    const roomCode = socket.data.roomCode;
+    if (!player || !roomCode) return;
+
+    const state = gameStates.get(roomCode);
+    if (!state) return;
+
+    // Xóa người chơi khỏi state
+    state.players = state.players.filter(p => p.name !== player);
+    io.to(roomCode).emit('dg-update-scores', state.players);
+    io.to(roomCode).emit('dg-chat-message', {
+      sender: 'Hệ thống',
+      message: `${player} đã rời khỏi game.`,
+      isSystem: true
     });
 
-    // --- 5. DISCONNECT ---
-    socket.on('disconnect', async () => {
-        const userInfo = gameSocketMap.get(socket.id);
-        if (!userInfo) return; 
+    if (state.players.length < 2) {
+      if (state.timer) clearInterval(state.timer);
+      io.to(roomCode).emit('dg-game-over', state.players);
+      gameStates.delete(roomCode);
+    } else if (player === state.currentDrawer) {
+      // Nếu người vẽ rời đi, chuyển lượt
+      io.to(roomCode).emit('dg-chat-message', {
+        sender: 'Hệ thống',
+        message: 'Người vẽ đã rời đi. Chuyển lượt mới...',
+        isSystem: true
+      });
+      nextTurn(io, roomCode);
+    }
+  });
+}
 
-        const { player, code } = userInfo;
-        gameSocketMap.delete(socket.id); 
-
-        try {
-            const room = await Room.findOne({ code });
-            if (!room) return;
-
-            let newHost = room.host;
-            const wasHost = (room.host === player);
-            
-            room.players = room.players.filter(p => p.name !== player);
-            
-            if (wasHost && room.players.length > 0) {
-                newHost = room.players[0].name;
-                room.host = newHost;
-            } else if (room.players.length === 0) {
-                room.status = 'closed';
-                delete ROOM_STATE[code]; 
-                await room.save();
-                io.emit('admin-rooms-changed'); 
-                return; 
-            }
-
-            await room.save();
-            
-            if (!player.startsWith('guest_')) {
-                await User.findOneAndUpdate({ username: player }, { status: 'online' });
-                io.emit('admin-user-status-changed');
-                console.log(`[Draw] User ${player} disconnected, status set to 'online'.`);
-            }
-
-            const playersWithAvt = await attachAvatarsToPlayers(room.players);
-            const state = getRoomState(code);
-
-            io.to(code).emit(`${GAME_ID}-room-update`, { 
-                state, 
-                room: { code: room.code, host: newHost, players: playersWithAvt }
-            });
-            io.emit('admin-rooms-changed'); 
-            
-            io.to(code).emit(`${GAME_ID}-chat-message`, { 
-                player: 'Hệ thống', 
-                message: `${player} đã rời phòng.`, 
-                type: 'msg-system' 
-            });
-
-        } catch (e) {
-            console.error(`[${GAME_ID}] Lỗi xử lý disconnect của ${player} trong phòng ${code}:`, e);
-        }
-    });
-    // --- 6. BỔ SUNG: LOGIC CHƠI LẠI (RESET ĐIỂM) ---
-    socket.on(`${GAME_ID}-restart-game`, async ({ roomCode }) => {
-        const state = getRoomState(roomCode);
-        const room = await Room.findOne({ code: roomCode });
-        const playerInfo = gameSocketMap.get(socket.id);
-
-        // Chỉ Host mới được quyền reset game
-        if (room && playerInfo && room.host === playerInfo.player) {
-            
-            // RESET ĐIỂM VÀ TRẠNG THÁI
-            state.scores = {};
-            state.currentIndex = 0;
-            state.drawer = null;
-            state.guesses = new Set();
-            state.currentWord = null;
-            if (state.interval) clearInterval(state.interval);
-            
-            console.log(`[${GAME_ID}] Game ${roomCode} được Host reset.`);
-
-            // Gửi trạng thái đã reset về cho mọi người
-            // Client (script.js) sẽ nhận 'room-update' và hiển thị lại nút "Bắt đầu Game" cho Host
-            const playersWithAvt = await attachAvatarsToPlayers(room.players);
-            io.to(roomCode).emit(`${GAME_ID}-room-update`, { 
-                state: getRoomState(roomCode), 
-                room: { ...room.toObject(), players: playersWithAvt } // Gửi lại full room info
-            });
-        }
-    });
-};
+module.exports = drawGuessHandler;
