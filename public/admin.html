@@ -5,89 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Panel</title>
   <link rel="icon" type="image/svg+xml" href="img/fav.svg" />
-  
   <link rel="stylesheet" href="/css/admin.css"> 
-  
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
-
-  <style>
-    .main-content {
-        /* Đặt ảnh nền */
-        background-image: url('/img/fav.png'); 
-        background-size: cover;
-        background-position: center center;
-        background-attachment: fixed;
-        position: relative; /* Cần cho lớp phủ */
-    }
-    /* Thêm lớp phủ mờ để nội dung dễ đọc hơn */
-    .main-content::before {
-        content: "";
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        /* Đây là màu nền xám mờ từ screenshot của bạn */
-        background-color: rgba(240, 242, 245, 0.9); /* Giao diện sáng */
-        /* Nếu dùng theme tối (ảnh mới): */
-        /* background-color: rgba(30, 30, 40, 0.85); */
-        z-index: 0;
-    }
-    /* Đẩy nội dung tab lên trên lớp phủ */
-    .admin-tab-content, .main-header, .confirm-bar {
-        position: relative;
-        z-index: 1;
-    }
-
-    /* Style cho các nút Vercel */
-    .vercel-links {
-        padding: 2rem;
-        display: flex;
-        gap: 1.5rem;
-        justify-content: center;
-        align-items: center;
-        flex-wrap: wrap;
-        /* Thêm nền cho dễ đọc */
-        background: var(--light, #fff);
-        border-radius: 8px;
-        box-shadow: var(--shadow, 0 4px 6px -1px rgb(0 0 0 / 0.1));
-    }
-    .vercel-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 24px;
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #fff;
-        background-color: #1a1a1a; /* Màu Vercel */
-        border: 1px solid #444;
-        border-radius: 8px;
-        text-decoration: none;
-        transition: all 0.2s ease;
-    }
-    .vercel-btn:hover {
-        background-color: #333;
-        border-color: #888;
-        transform: translateY(-2px);
-    }
-    .vercel-btn svg {
-        width: 20px;
-        height: 20px;
-        fill: currentColor;
-    }
-    
-    /* Style cho thanh tìm kiếm (lấy từ CSS cũ) */
-    .controls {
-        display: flex;
-        gap: 10px;
-    }
-    .controls input {
-        padding: 0.6rem 1rem;
-        border: 1px solid var(--border, #e2e8f0);
-        border-radius: 8px;
-        font-size: 14px;
-        background: var(--light, #fff);
-        color: var(--text-dark, #334155);
-    }
-  </style>
   </head>
 <body>
   <aside class="sidebar" id="adminSidebar">
@@ -96,14 +15,11 @@
       <span>Admin Panel</span>
     </div>
     <nav>
-      <a href="#" class="tab-btn" data-tab="dashboardTab"><span class="icon">🏠</span> <span>Trang chủ</span></a>
+      <a href="/" class="tab-btn" data-tab="dashboardTab"><span class="icon">🏠</span> <span>Trang chủ</span></a>
       <a href="#" class="tab-btn active" data-tab="gamesTab"><span class="icon">🎮</span> <span>Trò chơi</span></a>
       <a href="#" class="tab-btn" data-tab="roomsTab"><span class="icon">🚪</span> <span>Phòng chơi</span></a>
       <a href="#" class="tab-btn" data-tab="usersTab"><span class="icon">👥</span> <span>Người dùng</span></a>
-      
       <a href="#" class="tab-btn" data-tab="analyticsTab"><span class="icon">📊</span> <span>Quản lý web</span></a>
-      
-      <a href="/" target="_blank" style="margin-top: auto;"><span class="icon">🌐</span> <span>Về trang chủ</span></a>
       <div class="sidebar-auth">
         <button id="btnLogout">Đăng xuất</button>
       </div>
@@ -113,13 +29,6 @@
   <div class="overlay" id="popupOverlay"></div>
 
   <main class="main-content">
-    <header class="main-header">
-        <button class="icon-btn" id="navToggleBtn" aria-label="Toggle Navigation">
-            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
-        </button>
-        <h1>Dashboard Admin</h1>
-    </header>
-    
     <div class="confirm-bar" id="confirmBar" style="display: none;">
       <span>Bạn có <span id="pendingChangesCount">0</span> thay đổi đang chờ</span>
       <div class="confirm-bar-actions">
@@ -209,11 +118,11 @@
             <div class="section-title">Quản lý web (Vercel)</div>
        </div>
        <div class="vercel-links">
-            <a href="https://vercel.com/kienduc24/datn-smoky/analytics" target="_blank" class="vercel-btn">
+            <a href="https://vercel.com/kines-projects/datn/analytics" target="_blank" class="vercel-btn">
                 <svg viewBox="0 0 24 24"><path d="M3 12h2v9H3v-9zm4 4h2v5H7v-5zm4-8h2v13h-2V8zm4 3h2v10h-2V11zm4-6h2v16h-2V5z"></path></svg>
                 Vercel Analytics
             </a>
-            <a href="https://vercel.com/kienduc24/datn-smoky/speed-insights" target="_blank" class="vercel-btn">
+            <a href="https://vercel.com/kines-projects/datn/speed-insights" target="_blank" class="vercel-btn">
                 <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v5h-2V7zm0 7h2v2h-2v-2z"></path></svg>
                 Speed Insights
             </a>
