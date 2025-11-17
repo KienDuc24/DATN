@@ -109,16 +109,25 @@ body {
     padding: 1.5rem;
     transition: margin-left 0.3s ease;
 }
+
 /* 2. Dịch chuyển main content khi nav mở (chỉ trên desktop) */
+/* --- ĐÂY LÀ KHỐI ĐÃ SỬA LỖI --- */
 @media (min-width: 769px) {
-    .sidebar.active {
-        transform: translateX(0);
+    .sidebar {
+        transform: translateX(0); /* Luôn hiện sidebar trên desktop */
     }
-    /* Khi sidebar active, đẩy main-content sang phải */
-    .sidebar.active + .overlay + .main-content {
-        margin-left: 250px;
+    .main-content {
+        margin-left: 250px; /* Luôn đẩy main content sang phải 250px */
+    }
+    #navToggleBtn {
+        display: none; /* Ẩn nút hamburger trên desktop */
+    }
+    .overlay {
+        display: none !important; /* Không bao giờ hiển thị overlay trên desktop */
     }
 }
+/* --- KẾT THÚC KHỐI SỬA LỖI --- */
+
 /* 3. Trên mobile, không đẩy content */
 @media (max-width: 768px) {
     .main-content {
