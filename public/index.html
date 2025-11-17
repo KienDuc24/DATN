@@ -97,9 +97,11 @@
         </select>
       </div>
     </div>
+    
     <div class="games-slider-container" id="all-container">
       <div class="games-slider-scroll" id="allSlider"></div>
-    </div>
+      </div>
+    
     
     <div class="section-title-row" id="featured">
       <div class="section-title" data-i18n="featured">Trò chơi nổi bật</div>
@@ -117,133 +119,40 @@
         </select>
       </div>
     </div>
+    
     <div class="games-slider-container">
       <div class="games-slider-scroll" id="featuredSlider"></div>
-    </div>
+      </div>
+    
     
     <div class="section-title-row" id="category">
       <div class="section-title" data-i18n="by_category">Game theo thể loại</div>
     </div>
-    <div id="category-list"></div>
+    <div id="category-list">
+        </div>
   </main>
 
   <div id="auth-modal" class="auth-modal" style="display:none;">
-    <div class="auth-modal-content">
-      <button class="auth-modal-close" type="button" onclick="document.getElementById('auth-modal').style.display='none'">&times;</button>
-      <div class="auth-tabs">
-        <button id="loginTab" class="auth-tab active" type="button">Đăng nhập</button>
-        <button id="registerTab" class="auth-tab" type="button">Đăng ký</button>
-      </div>
-      <div class="auth-social">
-        <button id="googleLoginBtn" class="social-btn social-google" type="button">Continue with Google</button>
-        <button id="facebookLoginBtn" class="social-btn social-facebook" type="button" style="display:none;">Continue with Facebook</button>
-        <button id="anonymousLoginBtn" class="social-btn social-guest" type="button">Login as Guest</button>
-      </div>
-      <div class="auth-or"><span>OR</span></div>
-      <form id="loginForm" class="auth-form">
-        <input id="login-username" type="text" placeholder="Username" required />
-        <input id="login-password" type="password" placeholder="Password" required />
-        <button id="togglePassword" type="button" class="toggle-password-btn-below">
-          <span class="eye-icon">👁</span> Hiện mật khẩu
-        </button>
-        <button type="submit" class="login-btn">Login</button>
-        <div id="login-message" class="auth-message"></div>
-      </form>
-      <form id="registerForm" class="auth-form" style="display:none;">
-        <input id="register-username" type="text" placeholder="Username" required />
-        <input class="hide" id="register-password" type="password" placeholder="Password" required />
-        <input class="hide" id="register-password2" type="password" placeholder="Confirm password" required />
-        <button id="toggleRegisterPassword" type="button" class="register-btn" style="margin-bottom: 8px;">
-          <span class="eye-icon">👁</span> Hiện mật khẩu
-        </button>
-        <button type="submit" class="register-btn">Register</button>
-        <div id="register-message" class="auth-message"></div>
-      </form>
-    </div>
+    ...
   </div>
-  
   <div id="profile-modal" class="profile-modal" style="display:none;">
-    <div class="profile-modal-content" style="text-align: left; max-width: 400px;">
-      <span class="profile-modal-close" id="closeProfileModal">&times;</span>
-      <h2 style="text-align: center;">Cài đặt tài khoản</h2>
-      
-      <form id="settings-form" class="auth-form" style="padding: 0; min-width: 300px;">
-        <label for="settings-displayName">Tên hiển thị:</label>
-        <input id="settings-displayName" type="text" placeholder="Tên hiển thị của bạn" required />
-        
-        <label for="settings-email">Email (dùng để xác thực):</label>
-        <input id="settings-email" type="email" placeholder="Nhập email của bạn" />
-        <small style="color: #bbb; font-size: 0.8rem; margin-top: -5px; display: block;">
-          Lưu ý: Chức năng gửi mail xác thực đang được phát triển.
-        </small>
-        
-        <div class="profile-modal-actions" style="margin-top: 20px;">
-          <button type="submit" id="saveSettingsBtn" class="btn">Lưu thay đổi</button>
-        </div>
-      </form>
-      
-    </div>
+    ...
   </div>
-  
-  
   <div id="roomModal" class="modal" style="display:none;">
-    <div class="modal-content">
-      <button class="close-btn" onclick="document.getElementById('roomModal').style.display='none'">&times;</button>
-      <div class="modal-title">Tạo hoặc tham gia phòng</div>
-      <div class="modal-actions">
-        <button id="createRoomBtn">Tạo phòng</button>
-        <button id="joinRoomBtn">Tham gia phòng</button>
-      </div>
-      <div id="roomCodeBox" style="display:none;">
-        Mã phòng: <span id="generatedRoomCode"></span>
-        <button id="goToRoomBtn">Vào phòng</button>
-      </div>
-      <div id="joinRoomBox" style="display:none;">
-        <input id="inputJoinRoomCode" placeholder="Nhập mã phòng">
-        <button id="confirmJoinRoomBtn">Vào phòng</button>
-      </div>
-    </div>
+    ...
   </div>
-
   <button id="backToTopBtn" title="Lên đầu trang" onclick="scrollToTop()">&#8679;</button>
-  <div id="loadingSpinner" style="display:none;justify-content:center;align-items:center;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2000;background:rgba(255,255,255,0.7)">
-    <div class="spinner"></div>
+  <div id="loadingSpinner" style="display:none;">
+    ...
   </div>
   <footer class="main-footer">
-    <div class="footer-content">
-      <div class="footer-logo">
-        <img src="img/fav.svg" alt="Camping Game" />
-        <span>Camping Game</span>
-      </div>
-      <div class="footer-links">
-        <a href="mailto:support@campinggame.com">Liên hệ</a>
-      </div>
-      <div class="footer-copyright">
-        &copy; 2025 Camping Game. All rights reserved.
-      </div>
-    </div>
+    ...
   </footer>
-
   <div id="ai-tools-icon" class="ai-tools-icon" title="Hỏi AI Trợ lý">
-      <i class="fas fa-robot"></i>
+    ...
   </div>
   <div id="ai-chatbot" class="ai-chatbot hidden">
-      <div class="chat-header">
-        <span><i class="fas fa-robot"></i> Trợ lý AI</span>
-        <button id="closechatbot" class="close-btn" title="Đóng">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div class="chat-body">
-        <div id="chatMessages" class="chat-messages">
-          </div>
-      </div>
-      <div class="chat-footer">
-        <input id="chatInput" type="text" placeholder="Hỏi tôi về game..." />
-        <button id="sendChat" class="send-btn" title="Gửi">
-          <i class="fas fa-paper-plane"></i>
-        </button>
-      </div>
+    ...
   </div>
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>

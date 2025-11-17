@@ -87,17 +87,20 @@ body::after, body::before {
 .games-slider-scroll {
   display: flex;
   flex-wrap: nowrap;
-  overflow-x: auto; /* Chỉ thanh này cuộn */
+  /* overflow-x: auto; (Xóa cái này đi, chúng ta dùng JS để cuộn) */
+  overflow-x: hidden; /* Đảm bảo không cuộn bằng tay */
   gap: 12px;
   padding: 0 0 6px 0; 
   max-width: 100%;
   justify-content: flex-start; /* Luôn bắt đầu từ trái */
   align-items: stretch;
-  scrollbar-width: none;           /* Firefox */
-  -ms-overflow-style: none;        /* IE 10+ */
-}
-.games-slider-scroll::-webkit-scrollbar {
-  display: none;                   /* Chrome, Safari */
+  
+  /* Thêm transition để cuộn mượt */
+  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+  
+  /* Căn giữa các item nếu không đủ 1 hàng (thêm) */
+  /* Ghi chú: justify-content: center sẽ phá vỡ logic phân trang. */
+  /* Chúng ta sẽ không căn giữa ở đây. */
 }
 .games-slider-scroll .game-card:first-child {
   margin-left: 16px; /* Giảm margin mobile */
@@ -107,11 +110,9 @@ body::after, body::before {
 }
 
 /* 3. Lưới Responsive cho Category (.game-grid) */
+/* (Khối này sẽ không được dùng nếu JS render đúng) */
 .game-grid {
   display: grid;
-  /* Kỹ thuật responsive tự động: 
-     Tối thiểu 1 cột, co giãn 1fr (100%)
-  */
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   width: 100%;
@@ -136,6 +137,7 @@ body::after, body::before {
   animation: fadeInCard 0.7s;
 }
 /* Áp dụng cho card trong grid (auto-fit) */
+/* (Khối này sẽ không được dùng nếu JS render đúng) */
 .game-grid .game-card {
   width: 100%; /* Chiếm 100% cột grid */
 }
@@ -359,7 +361,7 @@ footer {
   transform: scale(1.08);
 }
 
-/* --- Nút chuyển slider trái/phải (Giữ nguyên) --- */
+/* --- Nút chuyển slider trái/phải (KHÔI PHỤC) --- */
 .slider-btn {
   position: absolute;
   top: 50%;
