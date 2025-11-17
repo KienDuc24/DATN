@@ -73,6 +73,7 @@
           
           <button type="button" id="profileBtn">👤 Hồ sơ</button>
           <button type="button" id="settingsBtn">⚙️ Cài đặt tài khoản</button>
+          
           <button type="button" id="logoutBtn">🚪 Đăng xuất</button>
         </div>
       </div>
@@ -97,7 +98,7 @@
       </div>
     </div>
     <div class="games-slider-container" id="all-container">
-      <div class="games-slider" id="allSlider"></div>
+      <div class="games-slider-scroll" id="allSlider"></div>
     </div>
     
     <div class="section-title-row" id="featured">
@@ -117,7 +118,7 @@
       </div>
     </div>
     <div class="games-slider-container">
-      <div class="games-slider" id="featuredSlider"></div>
+      <div class="games-slider-scroll" id="featuredSlider"></div>
     </div>
     
     <div class="section-title-row" id="category">
@@ -135,6 +136,7 @@
       </div>
       <div class="auth-social">
         <button id="googleLoginBtn" class="social-btn social-google" type="button">Continue with Google</button>
+        <button id="facebookLoginBtn" class="social-btn social-facebook" type="button" style="display:none;">Continue with Facebook</button>
         <button id="anonymousLoginBtn" class="social-btn social-guest" type="button">Login as Guest</button>
       </div>
       <div class="auth-or"><span>OR</span></div>
@@ -182,6 +184,8 @@
       
     </div>
   </div>
+  
+  
   <div id="roomModal" class="modal" style="display:none;">
     <div class="modal-content">
       <button class="close-btn" onclick="document.getElementById('roomModal').style.display='none'">&times;</button>
@@ -212,9 +216,7 @@
         <span>Camping Game</span>
       </div>
       <div class="footer-links">
-        <a href="mailto:camppinggame.datn.2025@gmail.com">Liên hệ</a>
-        <a href="#">Chính sách bảo mật</a>
-        <a href="#">Report</a>
+        <a href="mailto:support@campinggame.com">Liên hệ</a>
       </div>
       <div class="footer-copyright">
         &copy; 2025 Camping Game. All rights reserved.

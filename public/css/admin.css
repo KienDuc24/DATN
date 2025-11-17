@@ -1,71 +1,172 @@
-/* public/css/admin.css */
-:root{
-  --bg:#071224; --card:#081726; --accent:#ff9f43; --muted:#9aa4b2;
-  --panel:#0e1720; --glass: rgba(255,255,255,0.03); --success:#22c55e; --danger:#ef4444; --radius:10px;
-  font-family: "Quicksand", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+/* public/css/admin.css (ĐÃ SỬA LỖI NAV) */
+:root {
+    --primary: #ff9800;
+    --secondary: #43cea2;
+    --danger: #ef4444;
+    --dark: #23272f;
+    --light: #fff;
+    --bg-main: #f0f2f5;
+    --bg-sidebar: #262930;
+    --text-light: #f1f5f9;
+    --text-dark: #334155;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh; background: url('../img/fav.png') no-repeat center center fixed; background-size: cover; color:#e6eef8;font-size:14px}
-.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;padding:22px;background:linear-gradient(180deg,var(--card), #071018);border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:18px}
-.sidebar-logo{display:flex;align-items:center;gap:10px}
-.sidebar-logo img{width:36px;height:36px}
-.sidebar-logo span{font-weight:700;color:var(--accent);font-family:"Pacifico",sans-serif}
-nav{flex:1;display:flex;flex-direction:column;gap:6px}
-nav a{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;color:var(--muted);text-decoration:none}
-nav a.active, nav a:hover{background:var(--glass);color:#fff}
-.sidebar-auth{margin-top:auto}
-.sidebar-auth button{width:100%;padding:10px;border-radius:8px;border:none;background:var(--danger);color:white;cursor:pointer}
 
-/* header */
-header{position:sticky;top:0;left:220px;right:0;/* height:72px; */ display:flex;flex-direction:column;align-items:center;padding:0 20px;background:rgba(3,8,18,0.6);backdrop-filter: blur(4px);z-index:30}
-.header-main{display:flex;align-items:center;gap:14px; width:100%; height: 72px;}
-.header-main img{width:46px; height:46px}
-.header-main h1{margin:0;font-size:1.15rem;color:var(--accent); flex: 1;}
-
-/* --- THÊM MỚI: Thanh Xác nhận --- */
-.confirm-bar {
-  display: none; /* Ẩn mặc định */
-  width: 100%;
-  padding: 12px 20px;
-  background: var(--accent);
-  color: var(--bg);
-  font-weight: 700;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+*, *::before, *::after { box-sizing: border-box; }
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-dark);
+    font-size: 14px;
+    line-height: 1.5;
 }
-.confirm-bar span {
-  font-size: 1.1rem;
-}
-.confirm-bar-actions {
-  display: flex;
-  gap: 12px;
-}
-.confirm-bar-actions .btn-save {
-  background: var(--success);
-  color: #fff;
-}
-.confirm-bar-actions .btn-cancel {
-  background: var(--danger);
-  color: #fff;
-}
-/* --------------------------------- */
 
+/* --- SỬA LỖI NAV: CSS CHO SIDEBAR --- */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 250px;
+    background: var(--bg-sidebar);
+    color: var(--text-light);
+    display: flex;
+    flex-direction: column;
+    z-index: 1020; /* Nằm trên overlay */
+    padding: 1rem;
+    box-shadow: var(--shadow);
+    /* 1. Ẩn theo mặc định */
+    transform: translateX(-100%); 
+    transition: transform 0.3s ease;
+}
+.sidebar.active {
+    /* 2. Hiện khi có class .active (do JS thêm vào) */
+    transform: translateX(0); 
+}
+/* --- KẾT THÚC SỬA --- */
 
-/* main layout */
-.main-content{margin-left:220px;padding:22px 28px 60px;min-height:calc(100vh - 72px)}
-.admin-tabs{display:flex;gap:8px;margin-bottom:14px}
-.tab-btn{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px 12px;border-radius:8px;color:var(--muted);cursor:pointer}
-.tab-btn.active{background:linear-gradient(90deg, rgba(255,159,67,0.12), rgba(255,159,67,0.06));color:var(--accent);border-color:rgba(255,159,67,0.2)}
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #4b5563;
+}
+.sidebar-header .logo { width: 32px; height: 32px; border-radius: 8px;}
+.sidebar-header h2 { margin: 0; font-size: 1.25rem; }
 
-/* controls */
-.controls{display:flex;gap:8px;align-items:center}
-.controls input{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    flex-grow: 1;
+}
+nav a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-light);
+    font-weight: 500;
+    transition: background-color 0.2s;
+    cursor: pointer;
+}
+nav a:hover { background-color: #374151; }
+nav a.active { background-color: var(--primary); color: var(--dark); }
+nav a svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    flex-shrink: 0; /* Không bị co lại */
+}
+.home-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+.logout-btn {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: var(--danger);
+    color: var(--light);
+}
 
-/* sections */
-.section-title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.section-title{font-weight:700;color:#fff}
+/* --- SỬA LỖI NAV: MAIN CONTENT --- */
+.main-content {
+    /* 1. Không còn margin-left */
+    margin-left: 0; 
+    padding: 1.5rem;
+    transition: margin-left 0.3s ease;
+}
+/* 2. Trên mobile (dưới 768px), nav sẽ hiện đè lên */
+@media (max-width: 768px) {
+    .main-content {
+        padding: 1rem;
+    }
+    .sidebar.active + .overlay {
+        display: block; /* Hiện overlay */
+    }
+}
+/* 3. Trên desktop (trên 768px), nav SẼ LUÔN HIỆN */
+@media (min-width: 769px) {
+    .sidebar {
+        transform: translateX(0); /* Luôn hiện */
+    }
+    .main-content {
+        margin-left: 250px; /* Đẩy content sang */
+    }
+    #navToggleBtn {
+        display: none; /* Ẩn nút hamburger */
+    }
+}
+/* --- KẾT THÚC SỬA LỖI NAV --- */
+
+.main-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem;
+    background: var(--light);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+}
+.main-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    flex-grow: 1; /* Cho h1 lấp đầy */
+}
+
+/* Nút Toggle Nav (Hamburger) */
+#navToggleBtn {
+    padding: 0.5rem;
+    background: var(--light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    line-height: 0; 
+}
+#navToggleBtn svg {
+    width: 24px;
+    height: 24px;
+    fill: var(--text-dark);
+}
+
 .btn{
   background:linear-gradient(90deg,var(--accent),#ff7a2f);
   border:none;color:#061022;padding:8px 12px;border-radius:8px;cursor:pointer;
@@ -73,90 +174,133 @@ header{position:sticky;top:0;left:220px;right:0;/* height:72px; */ display:flex;
   transition:transform .08s ease, box-shadow .08s ease;
 }
 .btn:hover{ transform:translateY(-2px); box-shadow:0 12px 30px rgba(0,0,0,0.55); }
+.btn-cancel { background: var(--muted); color: var(--text-dark); }
+.btn-save { background: var(--success); color: #fff; }
 
-/* table wrap */
+.icon-btn{
+  width:36px;height:36px;border-radius:8px;border:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:transform .08s ease, opacity .08s;
+  background: none; 
+}
+.icon-btn:hover{ transform:translateY(-2px); opacity:0.98; background: var(--glass); }
+.icon-btn svg { width: 20px; height: 20px; fill: var(--text-muted); }
+.icon-edit:hover svg { fill: var(--primary); }
+.icon-delete:hover svg { fill: var(--danger); }
+
+/* (Thanh confirm, tabs, table... giữ nguyên) */
+.confirm-bar {
+  display: flex;
+  width: 100%;
+  padding: 12px 20px;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+  margin-bottom: 1rem;
+  border-radius: 8px;
+}
+.confirm-bar-actions { display: flex; gap: 12px; }
+
+/* (Tabs) */
+.admin-tab-content { display: none; }
+.admin-tab-content.active { display: block; }
+
+.controls{display:flex;gap:8px;align-items:center}
+.controls input{padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--light);color:inherit}
+
+.section-title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.section-title{font-weight:700;color:var(--text-dark)}
 
 .table-wrap {
-    background: var(--card); /* Dùng màu nền --card */
-    border: 1px solid rgba(255, 255, 255, 0.05); /* Thêm viền ngoài */
-    padding: 0; /* Xóa padding cũ để bảng vừa khít */
+    background: var(--light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0; 
+    overflow-x: auto; /* Cho phép cuộn ngang bảng */
 }
 .admin-table {
     width: 100%;
     border-collapse: collapse;
-    
-    /* QUAN TRỌNG: Sửa lỗi "sai ô" bằng cách cố định layout */
-    table-layout: fixed; 
+    min-width: 1000px; /* Đặt chiều rộng tối thiểu */
 }
 .admin-table thead th {
-    background: rgba(255, 255, 255, 0.03); /* Nền header rõ hơn */
-    padding: 14px 16px; /* Tăng khoảng cách */
-    
-    /* Kẻ ô: Thêm viền */
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    
+    background: #f8fafc;
+    padding: 14px 16px; 
+    border-bottom: 1px solid var(--border);
     font-size: 14px;
     font-weight: 700;
-    color: #fff; /* Cho màu chữ header sáng hơn */
+    color: var(--text-dark);
 }
 .admin-table tbody td {
-    padding: 14px 16px; /* Đồng bộ padding với <th> */
-    border: 1px solid rgba(255, 255, 255, 0.07); /* Đồng bộ viền với <th> */
-    
-    /* Tùy chọn: Giúp căn chỉnh nội dung đẹp hơn */
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
     vertical-align: top; 
+    white-space: nowrap; /* Ngăn gãy dòng */
 }
-.admin-table .col-small:last-child,
-.admin-table .col-medium:last-child {
-    text-align: center;
-}
-.admin-table tbody td:has(.icon-btn) {
-    text-align: center;
-}
-.admin-table tbody td:has(input[type="checkbox"]) {
-    text-align: center;
-}
-/* 6. Làm nổi bật hàng khi di chuột */
-.admin-table tbody tr:hover td {
-    background: rgba(255, 255, 255, 0.03);
+/* Cho phép các ô này gãy dòng */
+.admin-table td:nth-child(1), /* Tên */
+.admin-table td:nth-child(2), /* Tên hiển thị */
+.admin-table td:nth-child(3), /* Email */
+.admin-table td:nth-child(4) { /* Lịch sử */
+    white-space: normal;
 }
 
-/* --- THÊM MỚI: Style cho hàng chờ xóa --- */
+.admin-table tbody tr:last-child td { border-bottom: none; }
+.admin-table tbody tr:hover td {
+    background: rgba(0, 0, 0, 0.02);
+}
 .admin-table tbody tr.row-to-be-deleted td {
   background: rgba(239, 68, 68, 0.1);
   opacity: 0.6;
   text-decoration: line-through;
   font-style: italic;
 }
-.admin-table tbody tr.row-to-be-deleted .icon-btn {
-  display: none; /* Ẩn nút khi đã đánh dấu xóa */
-}
-/* --------------------------------- */
+.admin-table tbody tr.row-to-be-deleted .icon-btn { display: none; }
 
-/* action icons */
-.icon-btn{
-  width:36px;height:36px;border-radius:8px;border:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
-  transition:transform .08s ease, opacity .08s;
+/* (Overlay & Modals) */
+.overlay{
+    position:fixed;
+    left:0;
+    top:0;
+    right:0;
+    bottom:0;
+    background:rgba(2,6,23,0.6);
+    z-index:1010; /* Nằm dưới nav */
+    display:none
 }
-.icon-btn:hover{ transform:translateY(-2px); opacity:0.98; }
-
-.icon-edit{ background:linear-gradient(90deg,#05b5a2,#0ea5a3); color:#042023; }
-.icon-delete{ background:linear-gradient(90deg,#ff6b6b,#ef4444); color:#fff; }
-
-/* popup overlay + modal */
-.popup-overlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(2,6,23,0.6);z-index:999;display:none}
-.auth-popup{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1000;min-width:320px;max-width:720px;background:linear-gradient(180deg,#071426,#071a29);padding:18px;border-radius:var(--radius);box-shadow:0 20px 50px rgba(2,6,23,0.8);display:none;border:1px solid rgba(255,255,255,0.03)}
-.auth-form input, .auth-form select, .auth-form label{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
-.auth-form label { border: none; padding: 0; margin: 4px 0 0 0; } /* Style cho label */
-.auth-form h2{margin:0 0 6px 0}
-.auth-close{position:absolute;right:12px;top:10px;cursor:pointer;color:var(--muted)}
-
-#text{
-  display: none !important;
+.popup-modal {
+    position:fixed;
+    left:50%;
+    top:50%;
+    transform:translate(-50%, -50%);
+    z-index:1030; /* Nằm trên cùng */
+    min-width:320px;
+    max-width:500px; /* Mặc định 500px */
+    background: var(--light);
+    padding:1.5rem;
+    border-radius:var(--radius);
+    box-shadow:0 20px 50px rgba(2,6,23,0.8);
+    display:none;
+    border:1px solid var(--border);
 }
-/* responsive */
-@media (max-width:900px){
-  .sidebar{display:none}
-  header{left:0}
-  .main-content{margin-left:0;padding:16px}
+.popup-modal.wide { max-width: 700px; }
+
+.popup-modal form input, 
+.popup-modal form select, 
+.popup-modal form label,
+.popup-modal form textarea {
+    width:100%;
+    padding:10px;
+    margin:8px 0 4px 0;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:transparent;
+    color:inherit
 }
+.popup-modal form label { border: none; padding: 0; margin: 4px 0 0 0; }
+.popup-modal form h2{margin:0 0 1rem 0; color: var(--text-dark);}
+.auth-close{position:absolute;right:12px;top:10px;cursor:pointer;color:var(--muted); font-size: 1.5rem;}
+.form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; }
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
