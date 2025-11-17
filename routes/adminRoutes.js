@@ -1,4 +1,4 @@
-// routes/adminRoutes.js (ĐÃ SỬA)
+// routes/adminRoutes.js (ĐÃ SỬA: Thêm logic tìm kiếm)
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController'); // <-- Import controller
@@ -8,14 +8,21 @@ module.exports = function(io) {
   // --- API NGƯỜI DÙNG (USERS) ---
   router.get('/users', async (req, res) => {
     try {
-      const users = await adminController.getAllUsers();
+      // SỬA: Thêm logic tìm kiếm
+      const q = req.query.q;
+      let query = {};
+      if (q) {
+        const regex = { $regex: q, $options: 'i' }; // Tìm kiếm không phân biệt hoa thường
+        query = { $or: [{ username: regex }, { email: regex }, { displayName: regex }] };
+      }
+      const users = await adminController.getAllUsers(query); // Gửi query vào controller
       res.json({ users });
     } catch (e) {
       res.status(500).json({ message: e.message });
     }
   });
 
-  router.put('/users/:id', async (req, res) => { // Sửa: Thêm /users/
+  router.put('/users/:id', async (req, res) => { 
     try {
       const updatedUser = await adminController.updateUser(req.params.id, req.body);
       io.emit('admin-users-changed'); 
@@ -25,7 +32,7 @@ module.exports = function(io) {
     }
   });
 
-  router.delete('/users/:id', async (req, res) => { // Sửa: Thêm /users/
+  router.delete('/users/:id', async (req, res) => { 
     try {
       await adminController.deleteUser(req.params.id);
       io.emit('admin-users-changed'); 
@@ -38,14 +45,21 @@ module.exports = function(io) {
   // --- API PHÒNG CHƠI (ROOMS) ---
   router.get('/rooms', async (req, res) => {
     try {
-      const rooms = await adminController.getAllRooms();
+      // SỬA: Thêm logic tìm kiếm
+      const q = req.query.q;
+      let query = {};
+      if (q) {
+        const regex = { $regex: q, $options: 'i' };
+        query = { $or: [{ code: regex }, { host: regex }] };
+      }
+      const rooms = await adminController.getAllRooms(query); // Gửi query vào controller
       res.json({ rooms });
     } catch (e) {
       res.status(500).json({ message: e.message });
     }
   });
 
-  router.delete('/rooms/:id', async (req, res) => { // Sửa: Thêm /rooms/
+  router.delete('/rooms/:id', async (req, res) => { 
     try {
       const roomCode = req.params.id;
 
@@ -63,7 +77,14 @@ module.exports = function(io) {
   // --- API TRÒ CHƠI (GAMES) ---
   router.get('/games', async (req, res) => {
     try {
-        const games = await adminController.getAllGames();
+        // SỬA: Thêm logic tìm kiếm
+        const q = req.query.q;
+        let query = {};
+        if (q) {
+          const regex = { $regex: q, $options: 'i' };
+          query = { $or: [{ id: regex }, { 'name.vi': regex }, { 'name.en': regex }] };
+        }
+        const games = await adminController.getAllGames(query); // Gửi query vào controller
         res.json({ games });
     } catch (e) {
         res.status(500).json({ message: e.message });

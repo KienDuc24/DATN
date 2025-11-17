@@ -1,12 +1,13 @@
-// controllers/adminController.js (File mới)
+// controllers/adminController.js (ĐÃ SỬA: Thêm 'query' cho hàm Get)
 
 const User = require('../models/User');
 const Room = require('../models/Room');
 const Game = require('../models/Game');
 
 // --- USER ---
-exports.getAllUsers = () => {
-    return User.find().select('-password');
+// Sửa: Thêm 'query'
+exports.getAllUsers = (query = {}) => {
+    return User.find(query).select('-password');
 };
 
 exports.updateUser = (id, updates) => {
@@ -18,8 +19,9 @@ exports.deleteUser = (id) => {
 };
 
 // --- ROOM ---
-exports.getAllRooms = () => {
-    return Room.find();
+// Sửa: Thêm 'query'
+exports.getAllRooms = (query = {}) => {
+    return Room.find(query);
 };
 
 exports.deleteRoom = (roomCode) => {
@@ -28,8 +30,9 @@ exports.deleteRoom = (roomCode) => {
 };
 
 // --- GAME ---
-exports.getAllGames = () => {
-    return Game.find({});
+// Sửa: Thêm 'query'
+exports.getAllGames = (query = {}) => {
+    return Game.find(query);
 };
 
 exports.createGame = (gameData) => {

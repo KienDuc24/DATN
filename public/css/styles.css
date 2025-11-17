@@ -1,4 +1,4 @@
-/* public/css/styles.css (ĐÃ SỬA LỖI CĂN GIỮA VÀ 1/4 WIDTH) */
+/* public/css/styles.css (ĐÃ SỬA LỖI KÍCH THƯỚC CARD) */
 /* --- Base & Background --- */
 body, html {
   font-family: 'Quicksand', Arial, sans-serif;
@@ -90,9 +90,9 @@ body::after, body::before {
   overflow-x: auto; /* Chỉ thanh này cuộn */
   gap: 12px;
   
-  /* === SỬA LỖI CĂN LỀ === */
-  padding: 0 16px 6px 16px; /* Thêm padding 2 bên */
-  justify-content: flex-start; /* Giữ nguyên flex-start */
+  /* SỬA LỖI CĂN LỀ: Thêm padding 2 bên và giữ justify-content: flex-start */
+  padding: 0 16px 6px 16px; 
+  justify-content: flex-start; 
   
   max-width: 100%;
   align-items: stretch;
@@ -103,8 +103,6 @@ body::after, body::before {
 .games-slider-scroll::-webkit-scrollbar {
   display: none;                   /* Chrome, Safari */
 }
-/* (Xóa margin-left/right cho first/last child) */
-
 
 /* 3. Lưới Responsive cho Category (.game-grid) */
 .game-grid {
@@ -122,6 +120,9 @@ body::after, body::before {
 /* Card game (Mobile) */
 .game-card {
   flex-shrink: 0; 
+  
+  /* SỬA: XÓA 'width: 140px;' CỐ ĐỊNH */
+  
   min-height: 180px;
   margin: 0;
   background: linear-gradient(135deg, #fffbe6 60%, #ffe0b2 100%);
@@ -135,17 +136,16 @@ body::after, body::before {
   animation: fadeInCard 0.7s;
 }
 
-/* === SỬA LỖI 1/4 WIDTH === */
+/* THÊM MỚI: Đặt kích thước 1/4 cho card trong slider */
 .games-slider-scroll .game-card {
-  /* flex-basis: 25% (1/4) 
-    trừ đi (gap / 4) để 4 card vừa khít
-    calc(25% - (12px * 3 / 4)) = calc(25% - 9px)
-  */
-  flex-basis: calc(25% - 9px);
-  flex-shrink: 0;
-  flex-grow: 0;
+  /* 1/4 chiều rộng, trừ 3/4 gap (gap là 12px -> 9px) */
+  flex-basis: calc(25% - 9px); 
   
-  /* Đặt min-width cho màn hình nhỏ */
+  /* Ghi đè lại flex-shrink (dù đã có) */
+  flex-shrink: 0;
+  flex-grow: 0; /* Không co giãn */
+  
+  /* Đặt min-width để tránh vỡ trên màn hình hẹp */
   min-width: 180px; 
 }
 
@@ -153,7 +153,6 @@ body::after, body::before {
 .game-grid .game-card {
   width: 100%; /* Chiếm 100% cột grid */
 }
-/* === KẾT THÚC SỬA 1/4 WIDTH === */
 
 
 @keyframes fadeInCard {
