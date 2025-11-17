@@ -72,6 +72,7 @@ body::after, body::before {
 
 /* --- SỬA LỖI FLEX/GRID --- */
 /* 1. Container cho thanh cuộn ngang (Featured, All) */
+/* === KHÔI PHỤC KHỐI NÀY === */
 .games-slider-container {
   position: relative;
   background: rgba(255,255,255,0.88);
@@ -84,23 +85,22 @@ body::after, body::before {
 }
 
 /* 2. Thanh cuộn ngang (.games-slider-scroll) */
+/* === KHÔI PHỤC KHỐI NÀY === */
 .games-slider-scroll {
   display: flex;
   flex-wrap: nowrap;
-  /* overflow-x: auto; (Xóa cái này đi, chúng ta dùng JS để cuộn) */
-  overflow-x: hidden; /* Đảm bảo không cuộn bằng tay */
+  overflow-x: auto; /* Chỉ thanh này cuộn */
   gap: 12px;
   padding: 0 0 6px 0; 
   max-width: 100%;
   justify-content: flex-start; /* Luôn bắt đầu từ trái */
   align-items: stretch;
-  
-  /* Thêm transition để cuộn mượt */
-  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
-  
-  /* Căn giữa các item nếu không đủ 1 hàng (thêm) */
-  /* Ghi chú: justify-content: center sẽ phá vỡ logic phân trang. */
-  /* Chúng ta sẽ không căn giữa ở đây. */
+  scrollbar-width: none;           /* Firefox */
+  -ms-overflow-style: none;        /* IE 10+ */
+  scroll-behavior: smooth; /* Thêm cuộn mượt */
+}
+.games-slider-scroll::-webkit-scrollbar {
+  display: none;                   /* Chrome, Safari */
 }
 .games-slider-scroll .game-card:first-child {
   margin-left: 16px; /* Giảm margin mobile */
@@ -110,10 +110,11 @@ body::after, body::before {
 }
 
 /* 3. Lưới Responsive cho Category (.game-grid) */
-/* (Khối này sẽ không được dùng nếu JS render đúng) */
+/* === SỬA LẠI KHỐI NÀY ĐỂ CĂN GIỮA NHƯ YÊU CẦU === */
 .game-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center; /* Căn giữa các item trong grid */
   gap: 16px;
   width: 100%;
 }
@@ -123,7 +124,11 @@ body::after, body::before {
 /* Card game (Mobile) */
 .game-card {
   flex-shrink: 0; /* Ngăn co lại trong flex scroll */
-  width: 140px; /* Chiều rộng cố định cho thanh cuộn */
+  
+  /* SỬA: Đặt chiều rộng cố định (hoặc min-width) cho card */
+  /* width: 220px; */
+  width: 180px; /* Giảm kích thước 1 chút để 5 card vừa màn hình 1200px */
+
   min-height: 180px;
   margin: 0;
   background: linear-gradient(135deg, #fffbe6 60%, #ffe0b2 100%);
@@ -136,11 +141,12 @@ body::after, body::before {
   box-sizing: border-box;
   animation: fadeInCard 0.7s;
 }
-/* Áp dụng cho card trong grid (auto-fit) */
-/* (Khối này sẽ không được dùng nếu JS render đúng) */
+
+/* Khối này không cần thiết nữa
 .game-grid .game-card {
-  width: 100%; /* Chiếm 100% cột grid */
+  width: 100%; 
 }
+*/
 
 @keyframes fadeInCard {
   from { opacity: 0; transform: translateY(30px);}
@@ -361,7 +367,8 @@ footer {
   transform: scale(1.08);
 }
 
-/* --- Nút chuyển slider trái/phải (KHÔI PHỤC) --- */
+/* --- Nút chuyển slider trái/phải (Giữ nguyên) --- */
+/* === KHÔI PHỤC KHỐI NÀY === */
 .slider-btn {
   position: absolute;
   top: 50%;
@@ -468,7 +475,7 @@ footer {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 8px #ff980033;
-  transition: background 0.18s, color 0.18s, transform 0.12s, box-shadow 0.18s;
+  transition: background 0.18s, transform 0.12s, box-shadow 0.18s;
   outline: none;
   position: relative;
   overflow: hidden;

@@ -25,9 +25,10 @@ function renderGameCard(game) {
 }
 
 /** * Render slider cho 1 nhóm game với nút < > 
- * (LOGIC PHÂN TRANG MỚI)
+ * --- ĐÂY LÀ HÀM ĐÃ ĐƯỢC SỬA ---
  */
 function renderSlider(games, sliderId, pageKey) {
+  // 1. Tìm container cha và thanh cuộn
   const sliderContainer = document.getElementById(sliderId)?.parentElement; 
   if (!sliderContainer) return;
   
@@ -37,57 +38,53 @@ function renderSlider(games, sliderId, pageKey) {
       return;
   }
 
-  // Lấy trang hiện tại (mặc định là 0)
-  let currentPage = sliderPage[pageKey] || 0;
-  const numItems = games.length;
-  const itemsPerPage = getMaxShow(); // Lấy số lượng item (ví dụ: 5)
+  // 2. Render game
+  slider.innerHTML = games.map(renderGameCard).join('');
 
-  // Tính toán tổng số trang
-  const totalPages = Math.ceil(numItems / itemsPerPage);
-
-  // Lấy các game cho trang hiện tại
-  const startIndex = currentPage * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const gamesToShow = games.slice(startIndex, endIndex);
-
-  // Render các game card
-  slider.innerHTML = gamesToShow.map(renderGameCard).join('');
-
-  // Xóa nút cũ nếu có
+  // 3. Xóa các nút < > cũ (nếu có)
   sliderContainer.querySelectorAll('.slider-btn').forEach(btn => btn.remove());
 
-  // Logic hiển thị nút
-  
-  // Hiển thị nút '<' (Prev)
-  if (currentPage > 0) {
-    const btnLeft = document.createElement('button');
-    btnLeft.className = 'slider-btn left';
-    btnLeft.innerHTML = '‹';
-    btnLeft.onclick = (e) => {
-        e.stopPropagation();
-        sliderPage[pageKey] = currentPage - 1; // Cập nhật trang
-        renderSlider(games, sliderId, pageKey); // Render lại
-    };
-    sliderContainer.appendChild(btnLeft);
-  }
+  // 4. Dùng setTimeout để đợi trình duyệt render và tính toán
+  // (Chúng ta dùng 100ms để đảm bảo ảnh (nếu có) đã bắt đầu tải và layout ổn định)
+  setTimeout(() => {
+    // 5. Kiểm tra xem nội dung có thực sự bị tràn không
+    // (scrollWidth là tổng chiều rộng nội dung, clientWidth là chiều rộng nhìn thấy được)
+    const hasOverflow = slider.scrollWidth > slider.clientWidth + 5; // +5px cho chắc chắn
+    
+    if (hasOverflow) {
+      // 6. Tạo nút Trái (<)
+      const btnLeft = document.createElement('button');
+      btnLeft.className = 'slider-btn left';
+      btnLeft.innerHTML = '‹'; // Bạn có thể dùng icon &lt; hoặc SVG
+      btnLeft.onclick = (e) => {
+        e.stopPropagation(); // Ngăn click vào game card
+        // Cuộn sang trái 90% chiều rộng của vùng chứa
+        let scrollAmount = slider.clientWidth * 0.9;
+        slider.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      };
+      
+      // 7. Tạo nút Phải (>)
+      const btnRight = document.createElement('button');
+      btnRight.className = 'slider-btn right';
+      btnRight.innerHTML = '›'; // Bạn có thể dùng icon &gt; hoặc SVG
+      btnRight.onclick = (e) => {
+        e.stopPropagation(); // Ngăn click vào game card
+        // Cuộn sang phải 90% chiều rộng của vùng chứa
+        let scrollAmount = slider.clientWidth * 0.9;
+        slider.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      };
 
-  // Hiển thị nút '>' (Next)
-  if (currentPage < totalPages - 1) {
-    const btnRight = document.createElement('button');
-    btnRight.className = 'slider-btn right';
-    btnRight.innerHTML = '›';
-    btnRight.onclick = (e) => {
-        e.stopPropagation();
-        sliderPage[pageKey] = currentPage + 1; // Cập nhật trang
-        renderSlider(games, sliderId, pageKey); // Render lại
-    };
-    sliderContainer.appendChild(btnRight);
-  }
+      // 8. Thêm nút vào container cha (để nó nằm đè lên trên)
+      sliderContainer.appendChild(btnLeft);
+      sliderContainer.appendChild(btnRight);
+    }
+  }, 100); 
 }
+/* === KẾT THÚC HÀM ĐÃ SỬA === */
 
 
 /** * Hiển thị các slider theo thể loại 
- * SỬA LỖI: Dùng renderSlider thay vì .game-grid
+ * (Hàm này đã đúng, dùng .game-grid)
  */
 function renderGamesByCategory() {
   const categoryList = document.getElementById('category-list');
@@ -96,43 +93,26 @@ function renderGamesByCategory() {
 
   Object.keys(gamesByCategory).forEach(cat => {
     const catKey = cat.replace(/\s+/g, '-');
-    const games = gamesByCategory[cat];
-    const sliderId = `catSlider-${catKey}`;
-    const pageKey = `cat-${catKey}`; // Tạo pageKey duy nhất cho mỗi thể loại
-
-    // Khởi tạo trang cho thể loại này nếu chưa có
-    if (!sliderPage[pageKey]) {
-        sliderPage[pageKey] = 0;
-    }
-
     const section = document.createElement('div');
     section.className = 'category-slider-section';
     
-    // --- SỬA LỖI Ở ĐÂY ---
-    // 1. Dùng .games-slider-container và .games-slider-scroll
-    // 2. Gán ID (sliderId) cho .games-slider-scroll
     section.innerHTML = `
       <div class="section-title-row" id="cat-${catKey}">
         <div class="section-title">${cat}</div>
       </div>
-      ${renderSortDropdown(pageKey)} <div class="games-slider-container">
-        <div class="games-slider-scroll" id="${sliderId}">
-           </div>
-        </div>
+      ${renderSortDropdown(`cat-${catKey}`)}
+      <div class="game-grid" id="catGrid-${catKey}">
+         ${gamesByCategory[cat].map(renderGameCard).join('')}
+      </div>
     `;
-    // --- KẾT THÚC SỬA ---
     
     categoryList.appendChild(section);
-
-    // Gọi renderSlider cho thể loại này
-    renderSlider(games, sliderId, pageKey);
   });
 }
 
 
 /** Render dropdown sắp xếp */
 function renderSortDropdown(key = '') {
-  // Key bây giờ là 'all', 'featured', hoặc 'cat-KeyName'
   return `
     <div class="sort-dropdown-row">
       <label class="sort-label" data-i18n="sort_by">Sắp xếp theo</label>
@@ -184,7 +164,7 @@ function renderSearchResults(filtered, keyword) {
         );
     }
 
-    // Hiển thị kết quả (SỬA: Dùng .game-grid)
+    // Hiển thị kết quả (Dùng .game-grid)
     searchResultDiv.innerHTML = `
         <div class="section-title-row">
         <div class="section-title">Kết quả tìm kiếm cho "<span style="color:#ff9800">${keyword}</span>"</div>
@@ -374,20 +354,16 @@ function scrollToTop() {
 
 /** Lấy số lượng card tối đa dựa trên kích thước cửa sổ */
 function getMaxShow() {
-  // Con số này RẤT QUAN TRỌNG cho logic phân trang
+  // Con số này chỉ còn ý nghĩa cho thanh cuộn ngang
   if (window.innerWidth <= 600) return 2;
   if (window.innerWidth <= 900) return 3;
   if (window.innerWidth <= 1200) return 4;
-  return 5; // Mặc định là 5 (như bạn nói)
+  return 5;
 }
 
 /** Render lại tất cả slider (dùng khi resize hoặc đổi ngôn ngữ) */
 function rerenderAllSliders() {
   MAX_SHOW = getMaxShow();
-  // Đặt lại tất cả các trang về 0
-  sliderPage = { all: 0, featured: 0 }; 
-  // (trang của category sẽ tự động được reset khi renderGamesByCategory)
-  
   // Render lại slider (cuộn ngang)
   renderSlider(allGames, 'allSlider', 'all');
   renderSlider(featuredGames, 'featuredSlider', 'featured');
