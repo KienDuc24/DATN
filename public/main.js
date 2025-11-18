@@ -1,4 +1,4 @@
-// public/main.js (MỚI)
+// public/main.js (FULL VERSION - FINAL)
 // Chứa logic nghiệp vụ, gọi API, Socket, Auth, Room.
 // File này nên được tải SAU script.js
 
@@ -10,7 +10,7 @@ let sliderPage = { allGames: 0, featured: 0 };
 let LANGS = {};
 let currentLang = localStorage.getItem('lang') || 'vi';
 
-// API & Socket URL (đã được định nghĩa trong HTML)
+// API & Socket URL
 const API_BASE_URL = window.BASE_API || 'https://datn-socket.up.railway.app';
 const SOCKET_URL = window.SOCKET_URL || 'https://datn-socket.up.railway.app';
 
@@ -27,7 +27,7 @@ const socket = (typeof io === 'function') ? io(SOCKET_URL, {
 
 /** Tải danh sách game từ API */
 async function fetchGames() {
-    showLoading(true);
+    showLoading(true); // Hàm UI từ script.js
     try {
         const res = await fetch(`${API_BASE_URL}/api/games`);
         let data = await res.json();
@@ -37,335 +37,223 @@ async function fetchGames() {
         }
         allGames = data;
         groupGames(allGames);
-        sliderPage = { all: 0, featured: 0 };
-        // Gọi hàm render
-        renderSlider(allGames, 'allSlider', 'all');
-        renderSlider(featuredGames, 'featuredSlider', 'featured');
-        renderGamesByCategory();
     } catch (e) {
-        console.error("Failed to fetch games:", e);
+        console.error("fetchGames failed:", e);
     } finally {
         showLoading(false);
     }
 }
 
-/** Tải dữ liệu ngôn ngữ */
-async function fetchLang() {
-    try {
-        const res = await fetch('lang.json');
-        LANGS = await res.json();
-        setLang(currentLang, true); // Gọi setLang sau khi có data
-        // Gán giá trị cho select
-        const langSelect = document.getElementById('langSelect');
-        if(langSelect) langSelect.value = currentLang;
-    } catch (e) {
-        console.error("Failed to fetch lang.json:", e);
-    }
-}
-
-/** Phân nhóm game */
+/** Phân nhóm & Sắp xếp Game */
 function groupGames(games) {
-  games.sort((a, b) => (getGameName(a, 'vi')).localeCompare(getGameName(b, 'vi')));
-  allGames = [...games];
-  featuredGames = games.filter(g => g.featured === true);
-  
-  gamesByCategory = {};
-  games.forEach(g => {
-    const cat = getGameCategory(g, 'vi') || 'Khác';
-    const cats = cat.split(',').map(c => c.trim());
-    cats.forEach(c => {
-        if (!gamesByCategory[c]) gamesByCategory[c] = [];
-        gamesByCategory[c].push(g);
+    // Mặc định sắp xếp theo mới nhất
+    const sorted = sortGamesLogic(games, 'newest');
+    allGames = sorted; 
+    
+    // Lọc game nổi bật
+    featuredGames = allGames.filter(g => g.featured === true); 
+    
+    // Phân loại theo category
+    gamesByCategory = {};
+    allGames.forEach(game => {
+        const cat = getGameCategory(game, currentLang); // Hàm helper từ script.js
+        if (!gamesByCategory[cat]) {
+            gamesByCategory[cat] = [];
+        }
+        gamesByCategory[cat].push(game);
     });
-  });
+
+    // Render giao diện (Hàm từ script.js)
+    rerenderAllSliders();
 }
-
-// --- 3. Logic Tìm kiếm & Sắp xếp ---
-
-/** Logic tìm kiếm */
-function searchGames() {
-  const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
-  
-  if (!keyword) {
-    hideSearchResults(); // Hàm UI từ script.js
-    return;
-  }
-
-  const filtered = allGames.filter(g =>
-    getGameName(g).toLowerCase().includes(keyword) ||
-    getGameDesc(g).toLowerCase().includes(keyword) ||
-    getGameCategory(g).toLowerCase().includes(keyword)
-  );
-
-  renderSearchResults(filtered, keyword); // Hàm UI từ script.js
-}
-// Gán sự kiện cho ô tìm kiếm
-document.getElementById('searchInput')?.addEventListener('input', searchGames);
-document.querySelector('.search-bar button')?.addEventListener('click', searchGames);
-
 
 /** Logic sắp xếp */
-function sortGames(sectionKey, selectEl) {
-  if (!selectEl) {
-    selectEl = document.querySelector(`[onchange*="sortGames('${sectionKey}'"]`);
-  }
-  if (!selectEl) return;
-  const sortBy = selectEl.value;
-
-  let gamesArr;
-  let sliderId;
-  let containerId; // ID của container để render
-  
-  if (sectionKey.startsWith('cat-')) {
-    const catName = sectionKey.replace(/^cat-/, '').replace(/-/g, ' ');
-    gamesArr = gamesByCategory[catName] ? [...gamesByCategory[catName]] : [];
-    containerId = `catGrid-${sectionKey.replace(/^cat-/, '')}`; // Sửa: Dùng ID của grid
-  } else if (sectionKey === 'all') {
-    gamesArr = [...allGames];
-    sliderId = 'allSlider';
-  } else if (sectionKey === 'featured') {
-    gamesArr = [...featuredGames];
-    sliderId = 'featuredSlider';
-  } else {
-    return;
-  }
-
-  // Logic sắp xếp
-  if (sortBy === 'newest') gamesArr.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  else if (sortBy === 'oldest') gamesArr.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-  // ... (các logic sort khác)
-  else if (sortBy === 'az') gamesArr.sort((a, b) => getGameName(a).localeCompare(getGameName(b)));
-  else if (sortBy === 'za') gamesArr.sort((a, b) => getGameName(b).localeCompare(getGameName(a)));
-
-  // Sửa: Render lại
-  if (sliderId) {
-      // Nếu là slider (cuộn ngang)
-      renderSlider(gamesArr, sliderId, sectionKey);
-  } else if (containerId) {
-      // Nếu là grid (thể loại)
-      const container = document.getElementById(containerId);
-      if (container) {
-          container.innerHTML = gamesArr.map(renderGameCard).join('');
-      }
-  }
+function sortGamesLogic(gamesList, method) {
+    const games = [...gamesList]; 
+    switch (method) {
+        case 'newest':
+            return games.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        case 'oldest':
+            return games.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+        case 'az':
+            return games.sort((a, b) => getGameName(a).localeCompare(getGameName(b)));
+        case 'za':
+            return games.sort((a, b) => getGameName(b).localeCompare(getGameName(a)));
+        case 'players_asc':
+            return games.sort((a, b) => (parseInt(a.players) || 0) - (parseInt(b.players) || 0));
+        case 'players_desc':
+            return games.sort((a, b) => (parseInt(b.players) || 0) - (parseInt(a.players) || 0));
+        default:
+            return games;
+    }
 }
 
-// --- 4. Logic Ngôn ngữ ---
-function setLang(lang, firstLoad = false) {
-  currentLang = lang;
-  localStorage.setItem('lang', lang);
-  updateLangUI(); // Hàm UI từ script.js
-  
-  // Render lại game nếu không phải lần tải đầu
-  if (!firstLoad) {
-    rerenderAllSliders(); // Hàm UI từ script.js
-  }
-}
-// Gán sự kiện đổi ngôn ngữ
-document.getElementById('langSelect')?.addEventListener('change', (e) => setLang(e.target.value));
-
-
-// --- 5. Logic Xác thực (Authentication) ---
-
-/** Lưu user vào local và cập nhật UI */
-function saveUserToLocal(user) {
-  try {
-    if (!user || typeof user !== 'object') return;
-    localStorage.setItem('user', JSON.stringify(user));
-    if (user.token) localStorage.setItem('token', user.token);
+/** Sắp xếp và Render lại (được gọi bởi dropdown HTML) */
+function sortGames(key, selectElement) {
+    const method = selectElement.value;
     
-    showUserInfo(user); // Hàm UI từ script.js
-
-    // Gửi sự kiện registerSocket
-    if (socket && user.username && !user.username.startsWith('guest_')) {
-        socket.emit('registerSocket', user.username);
+    if (key === 'all') {
+        const sorted = sortGamesLogic(allGames, method);
+        renderSlider(sorted, 'allSlider', 'all');
+    } else if (key === 'featured') {
+        const sorted = sortGamesLogic(featuredGames, method);
+        renderSlider(sorted, 'featuredSlider', 'featured');
+    } else if (key.startsWith('cat-')) {
+        const catKey = key.replace('cat-', '');
+        // Tìm tên category gốc từ key
+        const catName = Object.keys(gamesByCategory).find(k => k.replace(/\s+/g, '-') === catKey);
+        if (catName) {
+            const sorted = sortGamesLogic(gamesByCategory[catName], method);
+            const sliderId = `catSlider-${catKey}`; 
+            renderSlider(sorted, sliderId, key);
+        }
     }
-  } catch (err) {
-    console.error('saveUserToLocal error', err);
-  }
 }
 
-/** Kiểm tra tính hợp lệ của đăng ký */
-function validateRegister(username, password, password2) {
-  const usernameRegex = /^[a-zA-Z0-9_.]{4,20}$/;
-  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+]{6,}$/;
-  if (!usernameRegex.test(username)) return 'Tên đăng nhập phải từ 4-20 ký tự, chỉ gồm chữ, số, _ hoặc .';
-  if (!passwordRegex.test(password)) return 'Mật khẩu phải từ 6 ký tự, gồm cả chữ và số.';
-  if (password !== password2) return 'Mật khẩu nhập lại không khớp.';
-  return '';
-}
-
-/** Xử lý đăng ký */
-document.getElementById('registerForm')?.addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const username = document.getElementById('register-username').value.trim();
-  const password = document.getElementById('register-password').value;
-  const password2 = document.getElementById('register-password2').value;
-  const msgEl = document.getElementById('register-message');
-  
-  const msg = validateRegister(username, password, password2);
-  if (msg) {
-    if(msgEl) msgEl.innerText = msg;
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, displayName: username }) // Gửi username làm displayName
-    });
-    const data = await res.json();
-    if(msgEl) msgEl.innerText = data.message || (res.ok ? 'Đăng ký thành công!' : 'Lỗi không xác định');
-    if (res.ok) {
-        showAuthTab('login'); // Hàm UI từ script.js
-    }
-  } catch(e) {
-    if(msgEl) msgEl.innerText = 'Lỗi mạng, vui lòng thử lại.';
-  }
-});
-
-/** Xử lý đăng nhập */
-document.getElementById('loginForm')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const username = document.getElementById('login-username').value;
-    const password = document.getElementById('login-password').value;
-    const msgEl = document.getElementById('login-message');
-
+/** Tải file ngôn ngữ */
+async function fetchLang() {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-            if(msgEl) msgEl.innerText = data.message || 'Đăng nhập thất bại';
-            return;
-        }
-        
-        if (data.token && data.user) {
-            saveUserToLocal(data.user);
-            closeAuthModal(); // Hàm UI từ script.js
-            alert('Đăng nhập thành công!');
-        } else {
-            if(msgEl) msgEl.innerText = 'Phản hồi không hợp lệ từ server';
-        }
-    } catch (err) {
-        console.error('[client] login error', err);
-        if(msgEl) msgEl.innerText = 'Lỗi mạng khi đăng nhập.';
+        const res = await fetch('/lang.json');
+        LANGS = await res.json();
+        setLang(currentLang);
+    } catch (e) {
+        console.error("fetchLang failed:", e);
     }
-});
+}
 
-/** Xử lý đăng nhập Google */
-document.getElementById('googleLoginBtn').onclick = function() {
-  window.location.href = `${API_BASE_URL}/auth/google`;
-};
+/** Đặt ngôn ngữ */
+function setLang(lang) {
+    if (!LANGS[lang]) lang = 'vi'; 
+    currentLang = lang;
+    localStorage.setItem('lang', lang);
+    updateLangUI(); // Hàm UI từ script.js
+    
+    // Cập nhật lại nội dung game (vì category name thay đổi theo ngôn ngữ)
+    if (allGames.length > 0) groupGames(allGames);
+    
+    // Cập nhật select box
+    const langSelect = document.getElementById('langSelect');
+    if(langSelect) langSelect.value = lang;
+}
 
-/** Xử lý đăng nhập ẩn danh */
-document.getElementById('anonymousLoginBtn').onclick = function() {
-  const username = 'guest_' + Math.random().toString(36).substring(2, 10);
-  const user = { username: username, displayName: username }; // Thêm displayName
-  saveUserToLocal(user);
-  closeAuthModal(); // Hàm UI
-  alert('Bạn đã đăng nhập ẩn danh với tên: ' + username);
-};
+/** Tìm kiếm */
+function searchGames() {
+    const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
+    
+    if (keyword.length < 2) {
+        hideSearchResults(); // Hàm UI
+        return;
+    }
+    
+    const filtered = allGames.filter(game => {
+        return (
+            getGameName(game, 'vi').toLowerCase().includes(keyword) ||
+            getGameName(game, 'en').toLowerCase().includes(keyword) ||
+            getGameCategory(game, 'vi').toLowerCase().includes(keyword) ||
+            getGameCategory(game, 'en').toLowerCase().includes(keyword)
+        );
+    });
+    
+    renderSearchResults(filtered, keyword); // Hàm UI
+}
 
-/** Xử lý đăng xuất */
-document.getElementById('logoutBtn')?.addEventListener('click', function() {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    hideUserInfo(); // Hàm UI
-});
 
+// --- 3. Logic Phòng (Room) & Chuyển hướng ---
 
-// --- 6. Logic Phòng chơi (Room) ---
+/** Lấy tên user (SỬA: Ưu tiên username để làm ID định danh) */
+function getActiveUsername() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    // Luôn ưu tiên username. Nếu là guest thì username tự sinh.
+    return user.username || 'Guest_' + Math.random().toString(36).substring(2, 8);
+}
 
 /** Xử lý khi click vào game card */
 function handleGameClick(gameId, gameName) {
-  const modal = document.getElementById('roomModal');
-  if (!modal) {
-    console.error('Element #roomModal không tồn tại');
-    return;
-  }
-  
-  window.selectedGameId = gameId;
-  window.selectedGameName = gameName;
+    // Kiểm tra đăng nhập
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.username && !user.isGuest) { // Nếu chưa đăng nhập gì cả
+        openAuthModal('login');
+        return;
+    }
 
-  const game = allGames.find(g => g.id === gameId);
-  let infoHtml = '';
-  if (game) {
-    const name = getGameName(game, currentLang);
-    const desc = getGameDesc(game, currentLang);
-    const players = game.players || '';
-    const category = getGameCategory(game, currentLang);
-    window.selectedGameType = category; // Lưu 'gameType' để gửi đi
-
-    infoHtml = `
-      <div class="modal-game-info" style="display:flex;flex-direction:column;align-items:center;margin-bottom:12px;">
-        <img src="game/${game.id}/Img/logo.png" alt="${name}" style="width:64px;height:64px;border-radius:14px;margin-bottom:8px;box-shadow:0 2px 8px #ff980033;">
-        <div class="modal-game-title" style="font-size:1.15rem;font-weight:700;color:#ff9800;margin-bottom:4px;text-align:center;">${name}</div>
-        <div class="modal-game-desc" style="font-size:1rem;color:#444;text-align:center;margin-bottom:4px;">${desc}</div>
-        <div class="modal-game-players" style="font-size:0.98rem;color:#43cea2;">👥 ${players} ${LANGS[currentLang]?.room_players || 'players'}</div>
+    const modal = document.getElementById('roomModal');
+    if (!modal) return;
+    
+    window.selectedGameId = gameId;
+    window.selectedGameName = gameName;
+    
+    const game = allGames.find(g => g.id === gameId);
+    let infoHtml = '';
+    
+    if (game) {
+        window.selectedGameType = getGameCategory(game, currentLang);
+        const name = getGameName(game, currentLang);
+        const desc = getGameDesc(game, currentLang);
+        const players = game.players || '';
+        
+        infoHtml = `
+          <div class="modal-game-info" style="display:flex;flex-direction:column;align-items:center;margin-bottom:12px;">
+            <img src="game/${game.id}/Img/logo.png" alt="${name}" style="width:64px;height:64px;border-radius:14px;margin-bottom:8px;box-shadow:0 2px 8px #ff980033;">
+            <div class="modal-game-title" style="font-size:1.15rem;font-weight:700;color:#ff9800;margin-bottom:4px;text-align:center;">${name}</div>
+            <div class="modal-game-desc" style="font-size:1rem;color:#444;text-align:center;margin-bottom:4px;">${desc}</div>
+            <div class="modal-game-players" style="font-size:0.98rem;color:#43cea2;">👥 ${players} ${LANGS[currentLang]?.room_players || 'players'}</div>
+          </div>
+        `;
+    }
+    
+    // Render Modal Content đầy đủ
+    modal.innerHTML = `
+      <div class="modal-content">
+        <button class="close-btn" id="closeRoomModal" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:1.7rem;color:#ff9800;cursor:pointer;z-index:2;">&times;</button>
+        ${infoHtml}
+        <div class="modal-title" style="font-size:1.13rem;font-weight:bold;color:#ff9800;margin-bottom:18px;text-align:center;">
+            ${LANGS[currentLang]?.room_create_or_join || 'Tạo hoặc tham gia phòng'}
+        </div>
+        <div class="modal-actions" style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;justify-content:center;">
+          <button id="createRoomBtn" style="padding:10px 28px;border-radius:10px;background:linear-gradient(90deg,#ff9800 60%,#ffc107 100%);color:#fff;font-weight:700;font-size:1.05rem;box-shadow:0 2px 8px #ff980033;transition:background 0.18s,transform 0.12s;">
+            ${LANGS[currentLang]?.room_create || 'Tạo phòng'}
+          </button>
+          <button id="joinRoomBtn" style="padding:10px 28px;border-radius:10px;background:linear-gradient(90deg,#ff9800 60%,#ffc107 100%);color:#fff;font-weight:700;font-size:1.05rem;box-shadow:0 2px 8px #ff980033;transition:background 0.18s,transform 0.12s;">
+            ${LANGS[currentLang]?.room_join || 'Tham gia'}
+          </button>
+        </div>
+        <div id="joinRoomBox" style="display:none;margin-top:18px;text-align:center;width:100%;">
+          <input id="inputJoinRoomCode" placeholder="${LANGS[currentLang]?.room_input_placeholder || 'Nhập mã phòng'}" style="padding:8px 12px;border-radius:8px;border:1.5px solid #ffd54f;margin-bottom:8px;font-size:1rem;width:100%;box-sizing:border-box;">
+          <button id="confirmJoinRoomBtn" style="padding:8px 18px;border-radius:8px;background:#ff9800;color:#fff;font-weight:600;width:100%;">
+            ${LANGS[currentLang]?.room_enter || 'Vào phòng'}
+          </button>
+        </div>
       </div>
     `;
-  }
+    
+    modal.style.display = 'flex';
 
-  // Render lại nội dung modal (đây là phần UI, nhưng nó gắn liền với logic nên tạm để đây)
-  modal.innerHTML = `
-    <div class="modal-content">
-      <button class="close-btn" id="closeRoomModal" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:1.7rem;color:#ff9800;cursor:pointer;z-index:2;">&times;</button>
-      ${infoHtml}
-      <div class="modal-title" style="font-size:1.13rem;font-weight:bold;color:#ff9800;margin-bottom:18px;text-align:center;">${LANGS[currentLang]?.room_create_or_join || 'Tạo hoặc tham gia phòng'}</div>
-      <div class="modal-actions" style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;">
-        <button id="createRoomBtn" style="padding:10px 28px;border-radius:10px;background:linear-gradient(90deg,#ff9800 60%,#ffc107 100%);color:#fff;font-weight:700;font-size:1.05rem;box-shadow:0 2px 8px #ff980033;transition:background 0.18s,transform 0.12s;">${LANGS[currentLang]?.room_create || 'Tạo phòng'}</button>
-        <button id="joinRoomBtn" style="padding:10px 28px;border-radius:10px;background:linear-gradient(90deg,#ff9800 60%,#ffc107 100%);color:#fff;font-weight:700;font-size:1.05rem;box-shadow:0 2px 8px #ff980033;transition:background 0.18s,transform 0.12s;">${LANGS[currentLang]?.room_join || 'Tham gia'}</button>
-      </div>
-      <div id="joinRoomBox" style="display:none;margin-top:18px;text-align:center;">
-        <input id="inputJoinRoomCode" placeholder="${LANGS[currentLang]?.room_input_placeholder || 'Nhập mã phòng'}" style="padding:8px 12px;border-radius:8px;border:1.5px solid #ffd54f;margin-right:8px;font-size:1rem;">
-        <button id="confirmJoinRoomBtn" style="padding:8px 18px;border-radius:8px;background:#ff9800;color:#fff;font-weight:600;">${LANGS[currentLang]?.room_enter || 'Vào phòng'}</button>
-      </div>
-    </div>
-  `;
-  
-  modal.style.display = 'flex';
-
-  // Gán sự kiện cho các nút vừa tạo
-  modal.querySelector('#closeRoomModal').onclick = () => modal.style.display = 'none';
-  modal.querySelector('#createRoomBtn').onclick = handleCreateRoom;
-  modal.querySelector('#joinRoomBtn').onclick = () => {
-    const joinBox = modal.querySelector('#joinRoomBox');
-    if(joinBox) joinBox.style.display = 'block';
-  };
-  modal.querySelector('#confirmJoinRoomBtn').onclick = handleJoinRoom;
+    // Gán sự kiện
+    modal.querySelector('#closeRoomModal').onclick = () => modal.style.display = 'none';
+    modal.querySelector('#createRoomBtn').onclick = handleCreateRoom;
+    modal.querySelector('#joinRoomBtn').onclick = () => {
+        const joinBox = modal.querySelector('#joinRoomBox');
+        if(joinBox) joinBox.style.display = 'block';
+    };
+    modal.querySelector('#confirmJoinRoomBtn').onclick = handleJoinRoom;
 }
-
-/** Lấy tên user (ưu tiên displayName) */
-function getActiveUsername() {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const username = user.username || user.displayName || 'Guest_' + Math.random().toString(36).substring(2, 8);
-    return username;
-}
-
 
 /** Gọi API tạo phòng */
 async function handleCreateRoom() {
-    const gameIdLocal = window.selectedGameId || '';
-    const gameNameLocal = window.selectedGameName || '';
-    const username = getActiveUsername(); // Dùng hàm helper
+    const gameIdLocal = window.selectedGameId;
+    const gameNameLocal = window.selectedGameName;
+    const username = getActiveUsername(); 
 
     const gameTypeLocal = window.selectedGameType || '';
     const roleLocal = 'host';
 
     if (!gameIdLocal || !username || !gameTypeLocal) {
-      alert('Thiếu thông tin game, loại game hoặc người chơi!');
+      alert('Thiếu thông tin game hoặc người chơi!');
       return;
     }
     
     const payload = {
-      player: username,
+      player: username, // Gửi username lên server
       game: gameIdLocal,
       gameType: gameTypeLocal,
       role: roleLocal
@@ -385,17 +273,13 @@ async function handleCreateRoom() {
 
       const data = await res.json();
       const roomCode = data.roomCode || (data.room && data.room.code);
-      if (!roomCode) {
-        alert('Server không trả về mã phòng.');
-        return;
-      }
       
-      // Chuyển hướng
+      // Chuyển hướng: Truyền username qua URL
       const qs = new URLSearchParams({
         code: roomCode,
         gameId: gameIdLocal,
         game: gameNameLocal,
-        user: username
+        user: username 
       }).toString();
       window.location.href = `/room.html?${qs}`;
 
@@ -417,29 +301,25 @@ async function handleJoinRoom() {
     }
 
     try {
-      // Endpoint kiểm tra phòng
       const res = await fetch(`${API_BASE_URL}/api/room?code=${encodeURIComponent(code)}&gameId=${encodeURIComponent(gameId)}`);
-      
       if (!res.ok) {
         const errData = await res.json().catch(() => ({message: 'Phòng không tìm thấy.'}));
         alert(errData.message || 'Lỗi khi kiểm tra phòng.');
         return;
       }
-
       const data = await res.json();
       if (!data.found || !data.room) {
         alert('Phòng không tồn tại hoặc không hợp lệ.');
         return;
       }
 
-      const username = getActiveUsername(); // Dùng hàm helper
+      const username = getActiveUsername(); 
 
-      // Chuyển hướng
       const qs = new URLSearchParams({
         code: code,
         gameId: data.room.game.gameId,
-        game: data.room.game.type, // Lấy tên game từ server
-        user: username
+        game: data.room.game.type,
+        user: username 
       }).toString();
       window.location.href = `/room.html?${qs}`;
     } catch (err) {
@@ -449,125 +329,181 @@ async function handleJoinRoom() {
 }
 
 
-// --- 7. Logic Hồ sơ (Profile) --- (KHÔI PHỤC)
+// --- 4. Logic Xác thực (Authentication) ---
 
-/** Gọi API cập nhật user (displayName và email) */
-async function updateUserOnServer(payload) {
+/** Lưu user vào LocalStorage và cập nhật UI */
+function saveUserToLocal(user) {
+    localStorage.setItem('user', JSON.stringify(user));
+    showUserInfo(user); 
+    closeAuthModal();
+    if (socket && user.username && !user.username.startsWith('guest_')) {
+        socket.emit('registerSocket', user.username);
+    }
+}
+
+/** Xử lý Đăng xuất */
+async function handleLogout() {
+    showLoading(true);
     try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/api/user`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
+        await fetch(`${API_BASE_URL}/api/logout`, { 
+            method: 'POST', 
+            credentials: 'include' 
+        });
+    } catch (e) {
+        console.error("Logout failed (fetch error):", e);
+    } finally {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        hideUserInfo(); 
+        showLoading(false);
+    }
+}
+
+/** Xử lý Cập nhật Profile */
+async function handleUpdateProfile(e) {
+    e.preventDefault();
+    const displayName = document.getElementById('settings-displayName').value;
+    const email = document.getElementById('settings-email').value;
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    if (!user.username) return alert('Lỗi: Không tìm thấy thông tin user.');
+    
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/profile`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ 
+                username: user.username,
+                displayName: displayName, 
+                email: email 
+            })
         });
         
-        const data = await res.json(); // Đọc json dù thành công hay thất bại
+        const updatedUser = await res.json();
         
         if (!res.ok) {
-            console.warn('updateUserOnServer failed', res.status, data.message);
-            return { success: false, message: data.message || 'Cập nhật thất bại' };
+            throw new Error(updatedUser.message || 'Lỗi khi cập nhật');
         }
         
-        if (data && data.user) {
-            localStorage.setItem('user', JSON.stringify(data.user)); // Cập nhật local
-            return { success: true, user: data.user };
-        }
-        return { success: false, message: 'Server không trả về user' };
+        saveUserToLocal(updatedUser);
+        document.getElementById('profile-modal').style.display = 'none';
+        alert('Cập nhật thông tin thành công!');
         
     } catch (err) {
-        console.error('updateUserOnServer error', err);
-        return { success: false, message: err.message };
+        console.error("Update profile failed:", err);
+        alert(`Lỗi: ${err.message}`);
     }
 }
 
-/** Xử lý khi người dùng submit form Cài đặt */
-async function handleUpdateProfile(event) {
-    event.preventDefault(); // Ngăn form submit
-    
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.username) {
-        alert("Lỗi: Không tìm thấy thông tin user. Vui lòng đăng nhập lại.");
-        return;
-    }
-
-    const newDisplayName = document.getElementById('settings-displayName').value.trim();
-    const newEmail = document.getElementById('settings-email').value.trim();
-    
-    if (!newDisplayName) {
-        alert("Tên hiển thị không được để trống.");
-        return;
-    }
-    
-    // (Kiểm tra email cơ bản)
-    if (newEmail && !newEmail.includes('@')) {
-        alert("Vui lòng nhập email hợp lệ.");
-        return;
-    }
-
-    const payload = {
-        username: user.username, // Dùng username cũ để tìm
-        displayName: newDisplayName,
-        email: newEmail || user.email // Gửi email mới, nếu rỗng thì giữ email cũ
-    };
-
-    const result = await updateUserOnServer(payload);
-        
-    if(result.success && result.user) {
-        saveUserToLocal(result.user); 
-        alert('Cập nhật hồ sơ thành công!');
-    } else {
-        alert(`Cập nhật thất bại: ${result.message}`);
-    }
-    
-    const modal = document.getElementById('profile-modal');
-    if(modal) modal.style.display = 'none';
-}
-
-/** Mở modal Cài đặt (được gọi từ script.js) */
 function openSettingsModal() {
-    const modal = document.getElementById('profile-modal'); 
-    if (!modal) {
-        console.error("Modal #profile-modal không tìm thấy!");
-        return;
-    }
-    
-    // Nạp dữ liệu user hiện tại vào form
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const displayNameInput = document.getElementById('settings-displayName');
-    const emailInput = document.getElementById('settings-email');
+    if (!user.username) return;
     
-    if (displayNameInput) displayNameInput.value = user.displayName || user.username || '';
-    if (emailInput) emailInput.value = user.email || '';
+    document.getElementById('settings-displayName').value = user.displayName || '';
+    document.getElementById('settings-email').value = user.email || '';
     
-    // Nút đóng (đã gán ở script.js, nhưng gán lại cho chắc)
-    const closeModalBtn = document.getElementById('closeProfileModal');
-    if(closeModalBtn) closeModalBtn.onclick = () => modal.style.display = 'none';
-
-    modal.style.display = 'flex';
+    document.getElementById('profile-modal').style.display = 'flex';
 }
 
-
-// --- 8. Khởi chạy ---
-document.addEventListener('DOMContentLoaded', function() {
+// --- 5. Khởi chạy (Initialization) ---
+document.addEventListener('DOMContentLoaded', () => {
     
-    // Kiểm tra session đăng nhập
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+    
+    // Login Google
+    const googleLoginBtn = document.getElementById('googleLoginBtn');
+    if (googleLoginBtn) {
+        googleLoginBtn.onclick = () => {
+            window.location.href = `${API_BASE_URL}/auth/google`;
+        };
+    }
+    
+    // Login Guest
+    const anonymousLoginBtn = document.getElementById('anonymousLoginBtn');
+    if (anonymousLoginBtn) {
+        anonymousLoginBtn.onclick = () => {
+            const guestUser = {
+                username: 'guest_' + Date.now(),
+                displayName: 'Khách',
+                isGuest: true
+            };
+            saveUserToLocal(guestUser);
+        };
+    }
+    
+    // Login Normal
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('login-username').value;
+            const p = document.getElementById('login-password').value;
+            const msg = document.getElementById('login-message');
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    if(msg) msg.innerText = data.message || 'Lỗi đăng nhập';
+                } else {
+                    saveUserToLocal(data.user);
+                    alert('Đăng nhập thành công');
+                }
+            } catch(err) { console.error(err); if(msg) msg.innerText = 'Lỗi mạng'; }
+        });
+    }
+
+    // Register Normal
+    const regForm = document.getElementById('registerForm');
+    if (regForm) {
+        regForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('register-username').value;
+            const p = document.getElementById('register-password').value;
+            const p2 = document.getElementById('register-password2').value;
+            const msg = document.getElementById('register-message');
+            
+            if(p !== p2) { if(msg) msg.innerText = 'Mật khẩu không khớp'; return; }
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    if(msg) msg.innerText = data.message || 'Lỗi đăng ký';
+                } else {
+                    alert('Đăng ký thành công');
+                    showAuthTab('login');
+                }
+            } catch(err) { console.error(err); if(msg) msg.innerText = 'Lỗi mạng'; }
+        });
+    }
+
+    // Check Session
     const userStr = localStorage.getItem('user');
     if (userStr) {
         try {
-            showUserInfo(JSON.parse(userStr)); // Hàm UI
+            showUserInfo(JSON.parse(userStr));
         } catch {}
     }
 
-    // Xử lý callback Google
+    // Google Callback
     const params = new URLSearchParams(window.location.search);
     if (params.has('user')) {
         try {
             const user = JSON.parse(decodeURIComponent(params.get('user')));
             saveUserToLocal(user);
-            // Xóa query param khỏi URL
             window.history.replaceState({}, document.title, window.location.pathname);
             alert('Đăng nhập Google thành công! Xin chào ' + (user.displayName || user.username));
         } catch(e) {
@@ -575,23 +511,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Tải dữ liệu
+    // Load Data
     fetchLang();
     fetchGames();
 
-    // Kết nối Socket
+    // Socket Listeners
     if (socket) {
         socket.on('connect', () => {
             console.log('Socket connected:', socket.id);
             const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const username = user.username; // Dùng username (là duy nhất) để đăng ký socket
+            const username = user.username;
             if (username && !username.startsWith('guest_')) {
                 socket.emit('registerSocket', username);
             }
         });
+        
+        // --- QUAN TRỌNG: Lắng nghe thay đổi từ Admin ---
+        socket.on('admin-games-changed', () => {
+            console.log('Game list updated from admin.');
+            fetchGames(); // Tải lại danh sách game
+        });
+        // ----------------------------------------------
     }
     
-    // Gán sự kiện Submit cho Form Cài đặt
+    // Settings
     const settingsForm = document.getElementById('settings-form');
     if (settingsForm) {
         settingsForm.addEventListener('submit', handleUpdateProfile);

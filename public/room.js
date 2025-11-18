@@ -1,9 +1,8 @@
-// js/room.js (Logic gốc + Logic Bot cập nhật)
+// public/room.js (Logic phòng chờ + Hiển thị tên đúng)
 
-// --- IIFE 1: Logic phòng chờ (Gốc) ---
 (function() {
   const BASE_API_URL = 'https://datn-socket.up.railway.app'; 
-  window.__chatbot_API_BASE__ = BASE_API_URL; 
+  window.__chatbot_API_BASE__ = BASE_API_URL; // Để chatbot.js dùng
 
   const socket = io(BASE_API_URL, { 
     path: '/socket.io',
@@ -12,46 +11,34 @@
   
   const urlParams = new URLSearchParams(window.location.search);
   const roomCode = urlParams.get('code');
-  const gameId = urlParams.get('gameId'); // Quan trọng cho Bot
+  const gameId = urlParams.get('gameId');
   const gameName = urlParams.get('game');
-  let username = urlParams.get('user'); // Dùng let
+  // Lấy username từ URL (đã được truyền từ main.js)
+  const usernameFromURL = urlParams.get('user');
 
-  if (!roomCode || !gameId || !gameName) {
-    alert('Thiếu thông tin phòng (code, gameId, gameName). Vui lòng kiểm tra lại!');
+  if (!roomCode || !gameId || !gameName || !usernameFromURL) {
+    alert('Thiếu thông tin phòng. Vui lòng kiểm tra lại!');
     window.location.href = "index.html"; 
     return;
   }
   
-  // Xử lý username (giống logic của bạn)
-  if (!username) {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    username = user.username || user.displayName || user.name;
-  }
-  if (!username) {
-    username = sessionStorage.getItem("playerName");
-  }
-  if (!username) {
-    username = "Guest_" + Math.random().toString(36).substring(2, 8);
-    // Sửa lỗi: Gán vào 'username' chứ không phải 'playerName'
-    if (username) sessionStorage.setItem("playerName", username); 
-  }
-  // Gán lại playerName (tên biến cũ của bạn)
-  const playerName = username;
+  // Luôn dùng username từ URL làm định danh chính
+  const playerName = usernameFromURL;
 
-  console.log("👤 Tên người dùng hiện tại:", playerName);
+  console.log("👤 Username hiện tại:", playerName);
 
   // Hiển thị thông tin phòng
   if (document.getElementById("roomCode")) document.getElementById("roomCode").innerText = roomCode;
   if (document.getElementById("roomCodeDisplay")) document.getElementById("roomCodeDisplay").innerText = roomCode;
   if (document.getElementById("gameName")) document.getElementById("gameName").innerText = gameName; 
 
-  // THÊM MỚI: Lấy icon game (từ logic mới)
   const $gameIcon = document.getElementById("gameIcon");
   if ($gameIcon) {
     $gameIcon.src = `game/${gameId}/Img/logo.png`;
-    $gameIcon.onerror = () => { $gameIcon.src = 'img/fav.svg'; }; // Fallback
+    $gameIcon.onerror = () => { $gameIcon.src = 'img/fav.svg'; }; 
   }
 
+  // Gửi yêu cầu tham gia phòng
   socket.emit("joinRoom", { code: roomCode, gameId: gameId, user: playerName });
 
   socket.on("room-error", ({ message }) => {
@@ -61,10 +48,12 @@
 
   let currentHost = null;
 
+  // SỬA: Xử lý danh sách người chơi (list là mảng object {username, displayName})
   socket.on("update-players", ({ list = [], host }) => {
     currentHost = host;
-    const isHost = (playerName === host); 
-    console.log("👥 Danh sách người chơi hiện tại:", list);
+    const isHost = (playerName === host); // So sánh bằng username
+
+    console.log("👥 Danh sách người chơi:", list);
 
     const listEl = document.getElementById("playerList");
     if (listEl) {
@@ -73,28 +62,42 @@
       } else {
         // Sắp xếp host lên đầu
         const sortedList = list.sort((a, b) => {
-            // Sửa: Xử lý cả 'a' và 'a.name'
-            const nameA = (typeof a === 'object' && a.name) ? a.name : a; 
-            const nameB = (typeof b === 'object' && b.name) ? b.name : b;
-            return (nameA === host ? -1 : nameB === host ? 1 : 0);
+            const uA = a.username || a.name || a; // Hỗ trợ cả cấu trúc cũ và mới
+            const uB = b.username || b.name || b;
+            return (uA === host ? -1 : uB === host ? 1 : 0);
         });
         
         listEl.innerHTML = sortedList.map(player => {
-          const p_name = (typeof player === 'object' && player.name) ? player.name : player; // Xử lý cả object và string
-          const isPlayerHost = (p_name === host);
+          // Xử lý dữ liệu linh hoạt (phòng khi server gửi format cũ)
+          let p_username, p_display;
           
-          const kickButton = (isHost && !isPlayerHost) 
-            ? `<button class="kick-btn" onclick="window.kickPlayer('${p_name}')" title="Kick ${p_name}">
-                 <i class="fas fa-times"></i> Kick
+          if (typeof player === 'object') {
+              // Format mới: { username, displayName }
+              p_username = player.username || player.name;
+              p_display = player.displayName || p_username;
+          } else {
+              // Format cũ: "string_name"
+              p_username = player;
+              p_display = player;
+          }
+          
+          const isPlayerHost = (p_username === host);
+          const isMe = (p_username === playerName);
+          
+          // Nút Kick: Gửi p_username (ID) đi
+          const kickButton = (isHost && !isMe) 
+            ? `<button class="kick-btn" onclick="window.kickPlayer('${p_username}')" title="Kick ${p_display}">
+                 ❌
                </button>`
             : "";
 
-          const hostTag = isPlayerHost 
-            ? `<span>(👑 Chủ phòng)</span>` 
-            : "";
+          const hostTag = isPlayerHost ? `<span>(👑 Chủ phòng)</span>` : "";
+          const youTag = isMe ? `<span>(Bạn)</span>` : "";
 
           return `<li>
-                    <span>${p_name} ${hostTag}</span>
+                    <span class="player-name ${isPlayerHost ? 'host' : ''}">
+                        ${p_display} ${hostTag} ${youTag}
+                    </span>
                     ${kickButton}
                   </li>`;
         }).join("");
@@ -117,20 +120,15 @@
   window.copyCode = function() {
     navigator.clipboard.writeText(roomCode).then(() => {
         alert("📋 Mã phòng đã được sao chép!");
-    }).catch(err => {
-        alert('Lỗi khi sao chép. Vui lòng thử lại.');
-    });
+    }).catch(err => {});
   };
 
   window.startGame = function() {
-    console.log('Chủ phòng yêu cầu bắt đầu game...');
     socket.emit('startGame', { code: roomCode });
   }
 
-  // THÊM: Logic kick
   window.kickPlayer = function(playerToKick) {
-    if (confirm(`Bạn có chắc muốn kick người chơi "${playerToKick}" không?`)) {
-      console.log(`Yêu cầu kick: ${playerToKick}`);
+    if (confirm(`Bạn có chắc muốn kick người chơi này không?`)) {
       socket.emit('kickPlayer', { code: roomCode, playerToKick: playerToKick });
     }
   }
@@ -141,14 +139,13 @@
   });
 
   socket.on('game-started', (data) => {
-    console.log(`Server đã bắt đầu game. Chuyển hướng tới: game/${data.gameId}/index.html`);
     const params = new URLSearchParams({
       code: roomCode,
       gameId: gameId,
       game: gameName,
-      user: playerName
+      user: playerName // Chuyển tiếp username
     }).toString();
     window.location.href = `game/${data.gameId}/index.html?${params}`;
   });
 
-})(); 
+})();

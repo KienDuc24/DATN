@@ -1,9 +1,9 @@
-// controllers/userController.js (FINAL)
+// controllers/userController.js (FULL CODE - FINAL)
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// --- Helper (Giữ nguyên) ---
+// --- Helper ---
 function sanitizeUser(user) {
   if (!user) return null;
   const u = user.toObject ? user.toObject() : Object.assign({}, user);
@@ -42,11 +42,9 @@ exports.registerUser = async (req, res) => {
     res.status(201).json({ message: 'User registered successfully', user: sanitizeUser(user) });
   } catch (err) {
     console.error('[userController] /register error:', err.message);
-    
     if (err.code === 11000 && err.keyPattern && err.keyPattern.email) {
         return res.status(400).json({ message: 'Email này đã được sử dụng.' });
     }
-    
     res.status(500).json({ message: 'Lỗi server khi đăng ký' });
   }
 };
@@ -100,7 +98,6 @@ exports.getUserByUsername = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const body = req.body || {};
-    // Xác định user cần update
     const identifier = body.username || body._id || (req.user && req.user.username);
     
     if (!identifier) return res.status(400).json({ ok: false, message: 'username or _id required' });
@@ -118,7 +115,7 @@ exports.updateUser = async (req, res) => {
     // Cập nhật user
     const updated = await User.findOneAndUpdate(query, { $set: allowed }, { new: true }).select('-password -passwordHash');
     
-    // --- (Đoạn code cập nhật Room.host ĐÃ ĐƯỢC XÓA BỎ TẠI ĐÂY) ---
+    // (ĐÃ XÓA LOGIC CẬP NHẬT ROOM Ở ĐÂY)
 
     if (!updated) return res.status(404).json({ ok: false, message: 'User not found' });
 
