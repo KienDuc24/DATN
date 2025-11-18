@@ -10,7 +10,147 @@
   
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
   
-  </head>
+  <style>
+    body {
+        background: url('../img/fav.png') no-repeat center center fixed;
+        background-size: cover;
+    }
+    .main-content {
+        position: relative;
+    }
+    /* Lớp phủ mờ cho nội dung chính */
+    .main-content::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: rgba(14, 23, 32, 0.85); /* Màu --panel với 85% opacity */
+        backdrop-filter: blur(4px);
+        z-index: 0;
+    }
+    /* Đẩy nội dung tab lên trên lớp phủ */
+    .admin-tab-content, .header-main, .confirm-bar {
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* (Các style modal từ file admin.css cũ - Rất quan trọng) */
+    .overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 1010;
+        display: none;
+    }
+    .popup-modal {
+        position: fixed;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: var(--card, #081726); /* Dùng màu --card của bạn */
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: var(--radius, 10px);
+        box-shadow: 0 20px 50px rgba(2,6,23,0.8);
+        padding: 1.5rem;
+        z-index: 1020;
+        display: none;
+        width: 90vw;
+        max-width: 500px;
+        color: #e6eef8; /* Thêm màu chữ cho popup */
+    }
+    .popup-modal.wide { max-width: 700px; }
+    .popup-modal h3, .popup-modal h2 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        font-size: 1.25rem;
+        color: var(--accent, #ff9f43); /* Thêm màu chữ */
+    }
+    .popup-modal label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+        font-size: 13px;
+        color: var(--muted, #9aa4b2); /* Thêm màu chữ */
+    }
+    /* SỬA: Style Input như trong image_998e21.jpg */
+    .popup-modal input[type="text"],
+    .popup-modal input[type="email"],
+    .popup-modal select,
+    .popup-modal textarea {
+        width: 100%;
+        padding: 12px; /* Tăng padding */
+        border: 1px solid rgba(255,255,255,0.08); /* Viền rõ hơn 1 chút */
+        border-radius: 8px;
+        font-size: 14px;
+        margin-bottom: 1rem;
+        background: var(--glass); /* Dùng --glass (trong suốt nhẹ) */
+        color: inherit; /* Màu chữ input */
+    }
+    .popup-modal input:focus,
+    .popup-modal select:focus {
+        outline: none;
+        border-color: var(--accent);
+    }
+    /* HẾT SỬA INPUT */
+    
+    .form-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+    .auth-close {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        font-size: 1.5rem;
+        color: var(--muted, #9aa4b2);
+        cursor: pointer;
+        line-height: 1;
+    }
+    .auth-close:hover {
+        color: #fff;
+    }
+    .btn-cancel {
+        background: var(--muted, #9aa4b2);
+        color: var(--dark, #0e1720);
+    }
+    .btn-save {
+        background: var(--success, #22c55e);
+        color: #fff;
+    }
+    
+    /* (Xóa style cột mật khẩu vì không cần nữa) */
+    
+    /* Style cho thanh tìm kiếm (Thêm vào đây để đảm bảo hiện đúng) */
+    .search-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        flex-grow: 1;
+        margin-right: 16px;
+    }
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted, #9aa4b2);
+        pointer-events: none;
+        z-index: 2;
+        width: 20px;
+        height: 20px;
+    }
+    .search-icon svg { width: 100%; height: 100%; }
+    .controls.search-wrapper input {
+        padding-left: 42px !important;
+        width: 100%;
+    }
+  </style>
+</head>
 <body>
   <aside class="sidebar" id="adminSidebar">
     <div class="sidebar-logo">
@@ -36,13 +176,11 @@
 
   <main class="main-content">
     
-    <div class="confirm-bar" id="confirmBar" style="display: none;">
-      <span>Bạn có <span id="pendingChangesCount">0</span> thay đổi đang chờ</span>
-      <div class="confirm-bar-actions">
-        <button class="btn btn-cancel" id="btnCancelChanges">Hủy</button>
-        <button class="btn btn-save" id="btnConfirmChanges">Lưu thay đổi</button>
-      </div>
-    </div>
+    <button class="btn btn-danger" id="btnConfirmChanges" style="display: none; position: fixed; bottom: 20px; left: 240px; z-index: 100;">
+        Lưu thay đổi
+    </button>
+
+
     <section id="dashboardTab" class="admin-tab-content" style="display:none">
         <div class="section-title-row">
             <div class="section-title">Dashboard</div>
