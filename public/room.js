@@ -49,64 +49,54 @@
   let currentHost = null;
 
   // SỬA: Xử lý danh sách người chơi (list là mảng object {username, displayName})
-  socket.on("update-players", ({ list = [], host }) => {
-    currentHost = host;
-    const isHost = (playerName === host); // So sánh bằng username
+  // public/room.js (Thay thế toàn bộ listener 'update-players')
 
-    console.log("👥 Danh sách người chơi:", list);
+socket.on("update-players", ({ list = [], host }) => {
+    currentHost = host;
+    const isHost = (playerName === host); 
+    console.log("👥 Danh sách người chơi hiện tại:", list);
 
     const listEl = document.getElementById("playerList");
     if (listEl) {
-      if (list.length === 0) {
-        listEl.innerHTML = `<li id="loadingPlayers">Chưa có người chơi nào.</li>`;
-      } else {
-        // Sắp xếp host lên đầu
-        const sortedList = list.sort((a, b) => {
-            const uA = a.username || a.name || a; // Hỗ trợ cả cấu trúc cũ và mới
-            const uB = b.username || b.name || b;
-            return (uA === host ? -1 : uB === host ? 1 : 0);
-        });
-        
-        listEl.innerHTML = sortedList.map(player => {
-          // Xử lý dữ liệu linh hoạt (phòng khi server gửi format cũ)
-          let p_username, p_display;
-          
-          if (typeof player === 'object') {
-              // Format mới: { username, displayName }
-              p_username = player.username || player.name;
-              p_display = player.displayName || p_username;
-          } else {
-              // Format cũ: "string_name"
-              p_username = player;
-              p_display = player;
-          }
-          
-          const isPlayerHost = (p_username === host);
-          const isMe = (p_username === playerName);
-          
-          // Nút Kick: Gửi p_username (ID) đi
-          const kickButton = (isHost && !isMe) 
-            ? `<button class="kick-btn" onclick="window.kickPlayer('${p_username}')" title="Kick ${p_display}">
-                 ❌
-               </button>`
-            : "";
-
-          const hostTag = isPlayerHost ? `<span>(👑 Chủ phòng)</span>` : "";
-          const youTag = isMe ? `<span>(Bạn)</span>` : "";
-
-          return `<li>
-                    <span class="player-name ${isPlayerHost ? 'host' : ''}">
-                        ${p_display} ${hostTag} ${youTag}
-                    </span>
-                    ${kickButton}
-                  </li>`;
-        }).join("");
+      if (!Array.isArray(list) || list.length === 0) {
+        listEl.innerHTML = `<li style="text-align:center">Chưa có người chơi nào.</li>`;
+        return; 
       }
+      
+      // 1. Sắp xếp host lên đầu (Sử dụng .name để so sánh)
+      const sortedList = list.sort((a, b) => {
+          const nameA = a.name; 
+          const nameB = b.name;
+          return (nameA === host ? -1 : nameB === host ? 1 : 0);
+      });
+      
+      // 2. Render danh sách
+      listEl.innerHTML = sortedList.map(player => {
+        const p_name = player.name;
+        // Hiển thị displayName, nếu null thì hiển thị name (username)
+        const p_displayName = player.displayName || p_name; 
+        const isPlayerHost = (p_name === host);
+        
+        const kickButton = (isHost && !isPlayerHost) 
+          ? `<button class="kick-btn" onclick="window.kickPlayer('${p_name}')" title="Kick ${p_displayName}">
+               <i class="fas fa-times"></i> Kick
+             </button>`
+          : "";
+
+        const hostTag = isPlayerHost 
+          ? `<span>(👑 Chủ phòng)</span>` 
+          : "";
+
+        return `<li>
+                  <span>${p_displayName} ${hostTag}</span>
+                  ${kickButton}
+                </li>`;
+      }).join("");
     }
 
     const startBtn = document.querySelector(".start-btn");
     if (startBtn) startBtn.style.display = isHost ? "inline-block" : "none";
-  });
+});
 
   window.leaveRoom = function() {
     socket.emit("leaveRoom", { code: roomCode, player: playerName });
