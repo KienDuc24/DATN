@@ -1,4 +1,4 @@
-// public/game/DrawGuess/script.js (FIX LỖI CÔNG CỤ VẼ VÀ LOGIC POPUP MỚI)
+// public/game/Draw/script.js (FIX LỖI CÔNG CỤ VẼ VÀ LOGIC POPUP MỚI)
 
 (() => {
     const GAME_ID = 'DG';
@@ -23,7 +23,8 @@
     const $playersCount = document.getElementById('playersCount');
     const $gameStatus = document.getElementById('game-status');
     const $wordHint = document.getElementById('word-hint');
-    const $hintText = document.getElementById('hint-text');
+    // NOTE: $hintText không tồn tại trong index.html của bạn, giữ lại để tránh lỗi nếu có trong HTML cũ
+    // const $hintText = document.getElementById('hint-text'); 
     const $timer = document.getElementById('timer');
     const $scoreGrid = document.getElementById('scoreGrid');
     const $chatMessages = document.getElementById('chatMessages');
@@ -344,6 +345,7 @@
 
     function pickAvatarFor(name) {
         const safeName = name || 'guest';
+        // Tìm player object trong danh sách roomPlayers
         const player = roomPlayers.find(p => p.name === safeName);
         if (player?.avatar) return player.avatar;
         return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
@@ -407,7 +409,8 @@
 
         if ($gameStatus) $gameStatus.textContent = `Vòng ${round}: ${drawer} đang vẽ...`;
         
-        if ($hintText) $hintText.textContent = '_ '.repeat(wordHint).trim();
+        // Cần có element $hintText trong index.html
+        // if ($hintText) $hintText.textContent = '_ '.repeat(wordHint).trim(); 
         if ($wordHint) $wordHint.classList.remove('hidden');
         
         renderScores(scores, drawer, roomPlayers);
@@ -419,7 +422,7 @@
     socket.on(`${GAME_ID}-secret-word`, ({ word }) => {
         if ($gameStatus) $gameStatus.textContent = `BẠN ĐANG VẼ: ${word}`;
         if ($wordHint) $wordHint.classList.remove('hidden');
-        if ($hintText) $hintText.textContent = word; 
+        // if ($hintText) $hintText.textContent = word; // Cần có element $hintText
     });
 
     socket.on(`${GAME_ID}-drawing`, (data) => {
@@ -519,15 +522,15 @@
         }
     });
 
-    // --- 4. HÀM RENDER ĐIỂM SỐ ---
+    // --- 4. HÀM RENDER ĐIỂM SỐ (ĐÃ SỬA ĐỔI ĐỂ DÙNG DISPLAY NAME) ---
     function renderScores(scores, drawerName, playerList = []) {
         if (!$scoreGrid) return;
         $scoreGrid.innerHTML = '';
         
         const safePlayerList = Array.isArray(playerList) ? playerList : [];
         
-        const playerNames = safePlayerList.map(p => p.name);
-        // SỬA LỖI: Chỉ reset điểm khi state.scores là null/undefined (khi game mới bắt đầu)
+        // Lấy danh sách tên (username) để tính toán điểm và sắp xếp
+        const playerNames = safePlayerList.map(p => p.name); 
         const currentScores = scores || {}; 
         
         const mergedScores = playerNames.reduce((acc, name) => ({ ...acc, [name]: currentScores[name] || 0 }), { ...currentScores });
@@ -538,6 +541,10 @@
             const isHost = name === currentHost;
             const isYou = name === playerName;
             
+            // THÊM: Tìm đối tượng người chơi và lấy displayName
+            const playerObj = safePlayerList.find(p => p.name === name);
+            const displayName = playerObj ? playerObj.displayName || name : name; // SỬ DỤNG displayName, fallback về name
+
             const row = document.createElement('div');
             row.className = `score-row ${isDrawer ? 'drawer-turn' : ''} ${isYou ? 'you' : ''}`;
             
@@ -552,8 +559,7 @@
                 ${crownIcon}
                 <div><img src="${pickAvatarFor(name)}" alt="${name}"></div>
                 <div class="score-name-tags">
-                    <span class="player-name">${name}</span>
-                    <div class="tags-container">${tags.join(' ')}</div>
+                    <span class="player-name">${displayName}</span> <div class="tags-container">${tags.join(' ')}</div>
                 </div>
                 <div class="score-value">${mergedScores[name] || 0}</div>
             `;
@@ -580,7 +586,12 @@
         sortedScores.forEach(([player, score], index) => {
             const isWinner = index === 0 && isFinal;
             const rankStyle = isWinner ? 'color: var(--accent-green); font-weight: bold;' : '';
-            content += `<li style="${rankStyle}"><strong>${player}</strong>: ${score} điểm</li>`;
+            
+            // Tìm displayName cho popup
+            const playerObj = roomPlayers.find(p => p.name === player);
+            const displayName = playerObj ? playerObj.displayName || player : player; 
+            
+            content += `<li style="${rankStyle}"><strong>${displayName}</strong>: ${score} điểm</li>`;
         });
         content += '</ol>';
         
