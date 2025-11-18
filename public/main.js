@@ -345,7 +345,7 @@ function handleGameClick(gameId, gameName) {
 /** Lấy tên user (ưu tiên displayName) */
 function getActiveUsername() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const username = user.displayName || user.username || 'Guest_' + Math.random().toString(36).substring(2, 8);
+    const username = user.username || user.displayName || 'Guest_' + Math.random().toString(36).substring(2, 8);
     return username;
 }
 

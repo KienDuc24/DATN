@@ -1,4 +1,4 @@
-// public/admin.js (ĐÃ SỬA: Khôi phục Role, Trạng thái, Sửa lỗi 401, Sửa lỗi ID)
+// public/admin.js (FINAL VERSION: Fix Event Delegation & 401 Error)
 
 const ADMIN_API = 'https://datn-socket.up.railway.app'; 
 let allGamesCache = []; // Cache để lấy thông tin game
@@ -18,7 +18,6 @@ const API_ENDPOINTS = {
 
 // --- Kết nối Socket Admin ---
 try {
-  // Đảm bảo bạn đã nạp thư viện socket.io trong admin.html
   const socket = io(ADMIN_API, { path: '/socket.io', withCredentials: true });
   socket.on('connect', () => console.log('Admin socket connected'));
   socket.on('admin-rooms-changed', () => loadData());
@@ -26,49 +25,61 @@ try {
   socket.on('admin-games-changed', () => loadData());
   socket.on('admin-user-status-changed', () => loadData());
 } catch (e) {
-  console.error("Socket.IO connection failed. Hãy đảm bảo đã thêm <script src='...socket.io.min.js'></script> vào admin.html", e);
+  console.error("Socket.IO connection failed.", e);
 }
 
 function el(id){return document.getElementById(id);}
 function showOverlay(show){ 
-    const overlay = el('popupOverlay'); // ID này phải có trong HTML
+    const overlay = el('popupOverlay'); 
     if (overlay) overlay.style.display = show ? 'block' : 'none'; 
 }
 function debounce(fn,wait){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
 
 // --- LOGIC THANH XÁC NHẬN ---
 function updateConfirmBar() {
-    // ID 'confirmBar' và 'btnConfirmChanges' phải khớp với HTML mới của bạn
-    const bar = el('btnConfirmChanges'); // Nút "Lưu thay đổi" màu đỏ
-    const countEl = el('pendingChangesCount'); // (Tùy chọn)
+    // Tìm nút lưu thay đổi (hỗ trợ cả 2 kiểu ID cũ/mới cho chắc chắn)
+    const bar = el('btnConfirmChanges') || el('confirmBar'); 
+    const countEl = el('pendingChangesCount');
     
     if (!bar) {
-        if (pendingChanges.length > 0) console.warn("Không tìm thấy nút #btnConfirmChanges");
+        if (pendingChanges.length > 0) console.warn("Không tìm thấy nút Lưu thay đổi (btnConfirmChanges)");
         return;
     }
     
     if (pendingChanges.length > 0) {
-        bar.style.display = 'inline-block'; // Hiện nút
-        if (countEl) {
-            countEl.textContent = pendingChanges.length;
-        } else if (bar.tagName === 'BUTTON') {
+        // Có thay đổi -> Hiện nút
+        if (bar.tagName === 'BUTTON') {
+             bar.style.display = 'inline-block';
              bar.textContent = `Lưu thay đổi (${pendingChanges.length})`;
+             // Nếu có nút Hủy riêng
+             const btnCancel = el('btnCancelChanges');
+             if(btnCancel) btnCancel.style.display = 'inline-block';
+        } else {
+            // Logic cho thanh confirm bar cũ (nếu bạn dùng lại)
+            bar.style.display = 'flex';
+            if(countEl) countEl.textContent = pendingChanges.length;
         }
     } else {
-        bar.style.display = 'none'; // Ẩn nút
-        if (bar.tagName === 'BUTTON') {
-            bar.textContent = 'Lưu thay đổi';
-        }
+        // Không có thay đổi -> Ẩn nút
+        bar.style.display = 'none';
+        const btnCancel = el('btnCancelChanges');
+        if(btnCancel) btnCancel.style.display = 'none';
     }
 }
+
 function addChange(change) {
   let key = change.id;
+  // Tạo key duy nhất để không bị trùng lặp thay đổi trên cùng 1 item
   if(change.type === 'user') key = `user-${change.id}`;
   if(change.type === 'game') key = `game-${change.id}`;
 
+  // Xóa thay đổi cũ của item này (nếu có) để cập nhật mới
   pendingChanges = pendingChanges.filter(c => c.key !== key);
+  
   change.key = key;
   pendingChanges.push(change);
+  
+  console.log('Pending Changes:', pendingChanges); // Debug log
   updateConfirmBar();
 }
 
@@ -95,23 +106,20 @@ async function executePendingChanges() {
             } else if (action === 'save') {
                 method = 'POST';
                 url = (type === 'game') ? API_ENDPOINTS.GAMES : API_ENDPOINTS.USERS;
-            } else if (type === 'room' && action === 'delete') { // Xử lý xóa phòng
+            } else if (type === 'room' && action === 'delete') { 
                 method = 'DELETE';
                 url = API_ENDPOINTS.ROOM_ID(id);
             }
             
-            if (!url) {
-                throw new Error(`Hành động không xác định: ${action} cho ${type}`);
-            }
+            if (!url) throw new Error(`Hành động không xác định: ${action} cho ${type}`);
 
-            // --- *** ĐÂY LÀ PHẦN ĐÃ SỬA LỖI 401 *** ---
+            // Gọi API (Đã sửa lỗi 401)
             const res = await fetch(url, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // 'credentials' phải nằm ngoài 'headers'
+                credentials: 'include', 
                 body: (method !== 'DELETE') ? JSON.stringify(payload) : undefined
             });
-            // --- *** KẾT THÚC SỬA LỖI *** ---
             
             if (!res || !res.ok) {
                 const errData = await res.json().catch(() => ({ message: res.statusText }));
@@ -120,64 +128,59 @@ async function executePendingChanges() {
             
         } catch (err) {
             console.error('Failed to execute change:', change, err);
-            alert(`Lỗi khi thực thi ${change.action} ${change.type} ${change.id}: ${err.message}`);
-            // Thêm lại thay đổi thất bại vào hàng chờ
+            alert(`Lỗi khi lưu ${change.type} ${change.id}: ${err.message}`);
+            // Đưa lại vào hàng chờ nếu lỗi
             pendingChanges.push(change);
             hasError = true;
         }
     }
     
-    updateConfirmBar(); // Cập nhật lại bar nếu có lỗi
+    updateConfirmBar(); 
     
-    if (!hasError) {
-        alert('Đã lưu tất cả thay đổi!');
+    if (!hasError && changesToExecute.length > 0) {
+        alert('Đã lưu tất cả thành công!');
     }
-    loadData(); // Tải lại toàn bộ
+    loadData(); // Tải lại dữ liệu mới nhất
 }
-
 
 function cancelPendingChanges() {
-    if (confirm('Bạn có chắc muốn hủy tất cả thay đổi chưa lưu?')) {
+    if (confirm('Hủy bỏ tất cả thay đổi chưa lưu?')) {
         pendingChanges = [];
         updateConfirmBar();
-        loadData(); // Tải lại dữ liệu gốc từ server
+        loadData(); // Reset lại giao diện về trạng thái gốc
     }
 }
-// ------------------------------------
 
+// --- UI & NAVIGATION ---
 function showTab(tabId){
-  // Cập nhật cho giao diện mới
   document.querySelectorAll('.admin-tab-content').forEach(e => e.style.display = 'none');
-  document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active')); // Giả sử nav link có class 'active'
+  document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
   
   const tabContent = el(tabId);
-  if(tabContent) tabContent.style.display = 'block'; // 'block' hoặc 'flex' tùy CSS của bạn
+  if(tabContent) tabContent.style.display = 'block'; 
   
   const tabButton = document.querySelector(`.sidebar nav a[data-tab="${tabId}"]`);
   if(tabButton) tabButton.classList.add('active');
 }
 
-// --- HÀM fetchApi (Đã có credentials) ---
 async function fetchApi(url) {
     const res = await fetch(url, { credentials: 'include' }); 
     if (!res.ok) {
-        let errorMessage = res.statusText;
         if (res.status === 401) {
-            alert('Phiên đăng nhập hết hạn.');
+            alert('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
             logoutAdmin();
         }
-        console.error(`[fetchApi] Lỗi: ${errorMessage}`);
-        throw new Error(errorMessage);
+        throw new Error(res.statusText);
     }
     return await res.json(); 
 }
 
-// --- Cập nhật cache ---
+// --- DATA FETCHING ---
 async function fetchUsers(q){
   const url = new URL(API_ENDPOINTS.USERS);
   if (q) url.searchParams.set('q', q);
   const j = await fetchApi(url.toString());
-  allUsersCache = j.users || []; // Cập nhật cache
+  allUsersCache = j.users || []; 
   return allUsersCache;
 }
 async function fetchRooms(q){
@@ -190,114 +193,101 @@ async function fetchGames(q){
   const url = new URL(API_ENDPOINTS.GAMES);
   if (q) url.searchParams.set('q', q);
   const j = await fetchApi(url.toString());
-  allGamesCache = j.games || []; // Cập nhật cache
+  allGamesCache = j.games || [];
   return allGamesCache;
 }
 
-// --- SỬA LỖI: CẬP NHẬT RENDER USER (Khôi phục Trạng thái) ---
+// --- RENDER FUNCTIONS ---
 function renderUsersTable(users){
   const tbody = el('adminUsersList'); 
-  if (!tbody) { console.warn('adminUsersList tbody not found'); return; }
+  if (!tbody) return;
   tbody.innerHTML = '';
-  if (!Array.isArray(users) || users.length === 0) {
+  
+  if (!users || users.length === 0) {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Không có người dùng</td></tr>`;
     return;
   }
+
   users.forEach(u => {
     const id = u._id || u.id || '';
     const username = u.username || '';
     const displayName = u.displayName || 'N/A';
+    const passwordHash = u.password || 'N/A';
     
+    // Format lịch sử chơi
     let historyHtml = 'Chưa chơi game nào';
     if (Array.isArray(u.playHistory) && u.playHistory.length) {
       const recentGames = u.playHistory.slice(-3).reverse();
       historyHtml = recentGames.map(game => 
-        `<div style="white-space: normal;"><small>${game.gameName || game.gameId} (lúc: ${new Date(game.playedAt).toLocaleString()})</small></div>`
+        `<div style="white-space: normal; font-size: 11px; margin-bottom: 2px;">• ${game.gameName || game.gameId} (${new Date(game.playedAt).toLocaleDateString('vi-VN')})</div>`
       ).join('');
     }
     
-    // SỬA: Khôi phục logic Trạng thái
-    let statusText = 'Offline';
-    let statusColor = '#ef4444'; // Màu đỏ cho offline
-    if (u.status === 'online') {
-        statusText = 'Online';
-        statusColor = '#22c55e'; // Màu xanh cho online
-    } else if (u.status === 'playing') {
-        statusText = 'Playing';
-        statusColor = '#ff9f43'; // Màu cam cho playing
-    }
+    // Format trạng thái
+    let statusHtml = '<span style="color:#ef4444;font-weight:600;">Offline</span>';
+    if (u.status === 'online') statusHtml = '<span style="color:#22c55e;font-weight:600;">Online</span>';
+    else if (u.status === 'playing') statusHtml = '<span style="color:#ff9f43;font-weight:600;">Playing</span>';
 
     const tr = document.createElement('tr');
-    tr.id = `user-row-${id}`;
-    // SỬA: Bỏ Mật khẩu, thêm Trạng thái
     tr.innerHTML = `
       <td>${username}</td>
       <td>${displayName}</td>
       <td>${u.email || 'N/A'}</td>
-      <td style="font-size: 0.85rem; max-width: 250px;">${historyHtml}</td>
-      
-      <td><span style="color:${statusColor}; font-weight:600;">${statusText}</span></td>
-      
-      <td style="display:flex;gap:8px;align-items:center; justify-content: center;">
-        <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-        <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+      <td>${historyHtml}</td>
+      <td>${statusHtml}</td>
+      <td style="text-align:center;">
+        <button class="icon-btn icon-edit" title="Sửa" data-id="${id}">✏️</button>
+        <button class="icon-btn icon-delete" title="Xóa" data-id="${id}">🗑️</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
-  
-  // Gán sự kiện cho các nút
-  tbody.querySelectorAll('.icon-edit').forEach(btn => btn.addEventListener('click', onEditUser));
-  tbody.querySelectorAll('.icon-delete').forEach(btn => btn.addEventListener('click', onDeleteUser));
+  // Lưu ý: Sự kiện click được xử lý bởi Event Delegation ở cuối file
 }
-// --- KẾT THÚC SỬA ---
 
 function renderRoomsTable(rooms){
-// ... (Hàm này giữ nguyên như trước)
   const tbody = el('adminRoomsList'); 
-  if (!tbody) { console.warn('adminRoomsList tbody not found'); return; }
+  if (!tbody) return;
   tbody.innerHTML = '';
-  if (!Array.isArray(rooms) || rooms.length === 0) {
+  
+  if (!rooms || rooms.length === 0) {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center">Không có phòng chơi</td></tr>`;
     return;
   }
+
   rooms.forEach(r => {
     const roomId = r.code || r.id || r._id || '';
     const gameName = (r.game && (r.game.gameId || r.game.type)) ? (r.game.gameId || r.game.type) : (r.game || '');
     const owner = r.host || '';
     const participants = Array.isArray(r.players) ? r.players.map(p => p.name).join(', ') : '-';
     
-    let status = r.status || 'open';
-    if (status === 'open') status = 'Đang chờ';
-    if (status === 'playing') status = 'Đang chơi';
-    if (status === 'closed') status = 'Đã đóng';
+    let status = r.status === 'playing' ? 'Đang chơi' : (r.status === 'closed' ? 'Đã đóng' : 'Đang chờ');
 
     const tr = document.createElement('tr');
-    tr.id = `room-row-${roomId}`;
     tr.innerHTML = `
-      <td><div style="font-weight:600">${gameName}</div></td>
+      <td><strong>${gameName}</strong></td>
       <td>${String(roomId)}</td>
       <td>${owner}</td>
-      <td style="max-width:360px; white-space: normal;">${participants || '-'}</td>
+      <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis;">${participants}</td>
       <td>${status}</td>
-      <td style="display:flex;gap:6px; justify-content: center;">
-        <button class="icon-btn icon-delete" title="Xóa" data-id="${roomId}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+      <td style="text-align:center;">
+        <button class="icon-btn icon-delete" title="Xóa phòng" data-id="${roomId}">🗑️</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll('.icon-delete').forEach(btn => btn.addEventListener('click', onDeleteRoom));
 }
 
 function renderGamesTable(games){
-// ... (Hàm này giữ nguyên như trước)
   const tbody = el('adminGamesList'); 
-  if (!tbody) { console.warn('adminGamesList tbody not found'); return; }
+  if (!tbody) return;
   tbody.innerHTML = '';
-  if (!Array.isArray(games) || games.length === 0) {
+  
+  if (!games || games.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center">Không có trò chơi</td></tr>`;
     return;
   }
+
   games.forEach(g => {
     const id = g.id || '';
     const title = (g.name && (g.name.vi || g.name.en)) ? (g.name.vi || g.name.en) : (g.title || g.name || '');
@@ -305,251 +295,162 @@ function renderGamesTable(games){
     const category = (g.category && (g.category.vi || g.category.en)) ? (g.category.vi || g.category.en) : (g.category || '');
     const players = g.players || '';
     const featuredChecked = g.featured ? 'checked' : '';
+
     const tr = document.createElement('tr');
-    tr.id = `game-row-${id}`;
     tr.innerHTML = `
       <td>
-        <div style="font-weight:600">${title}</div>
-        <div style="color:var(--muted);font-size:12px; white-space: normal;">${String(desc).slice(0,120)}</div>
+        <div style="font-weight:700; font-size: 1.05em;">${title}</div>
+        <div style="color:#888;font-size:12px; margin-top:4px;">${String(desc).slice(0,80)}...</div>
       </td>
       <td>${category}</td>
       <td>${players}</td>
-      <td style="text-align:center; vertical-align: middle;">
-        <input type="checkbox" class="game-feature-checkbox" data-id="${id}" ${featuredChecked} aria-label="Nổi bật"/>
+      <td style="text-align:center;">
+        <input type="checkbox" class="game-feature-checkbox" data-id="${id}" ${featuredChecked} style="width:20px;height:20px;cursor:pointer;" />
       </td>
-      <td style="display:flex;gap:6px; justify-content: center; vertical-align: middle;">
-        <button class="icon-btn icon-edit" title="Sửa" data-id="${id}" aria-label="Sửa"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-        <button class="icon-btn icon-delete" title="Xóa" data-id="${id}" aria-label="Xóa"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+      <td style="text-align:center;">
+        <button class="icon-btn icon-edit" title="Sửa" data-id="${id}">✏️</button>
+        <button class="icon-btn icon-delete" title="Xóa" data-id="${id}">🗑️</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
-  
-  // SỬA: Gán sự kiện onFeatureGame
-  tbody.querySelectorAll('.game-feature-checkbox').forEach(cb => cb.addEventListener('change', onFeatureGame));
-  tbody.querySelectorAll('.icon-edit').forEach(b=>b.addEventListener('click', onEditGame));
-  tbody.querySelectorAll('.icon-delete').forEach(b=>b.addEventListener('click', onDeleteGame));
 }
 
-// --- Handlers ---
-// SỬA: Thêm lại 'userRole'
+// --- HANDLERS (Xử lý sự kiện) ---
+
+// 1. Game Handlers
+function openGameForm(game){
+  showOverlay(true);
+  el('gameFormPopup').style.display = 'block';
+  el('gameFormTitle').innerText = game ? 'Sửa trò chơi' : 'Thêm trò chơi';
+  
+  // Reset form nếu thêm mới
+  if (!game) {
+      el('gameForm').reset();
+      el('gameIdOrig').value = '';
+  } else {
+      el('gameIdOrig').value = game.id || ''; 
+      el('gameId').value = game.id || '';
+      el('gameNameVI').value = game.name?.vi || '';
+      el('gameNameEN').value = game.name?.en || '';
+      el('gameDescVI').value = game.desc?.vi || '';
+      el('gameDescEN').value = game.desc?.en || '';
+      el('gameCatVI').value = game.category?.vi || '';
+      el('gameCatEN').value = game.category?.en || '';
+      el('gamePlayers').value = game.players || '';
+  }
+}
+function closeGameForm(){ el('gameFormPopup').style.display='none'; showOverlay(false); }
+
+function onFeatureGame(e) {
+  const id = e.target.dataset.id;
+  const checked = e.target.checked;
+  const originalGame = allGamesCache.find(g => g.id === id);
+  
+  if (originalGame) {
+    const payload = { ...originalGame, featured: checked };
+    addChange({ type: 'game', action: 'update', id: id, payload: payload });
+  }
+}
+
+// 2. User Handlers
 function openUserForm(user){ 
   showOverlay(true); el('userFormPopup').style.display = 'block'; 
   el('userFormTitle').innerText = user ? 'Sửa người dùng' : 'Thêm người dùng'; 
-  el('userId').value = user? user._id : ''; 
-  el('userUsername').value = user? user.username : ''; 
-  el('userDisplayName').value = user? (user.displayName || '') : ''; 
-  el('userEmail').value = user? user.email : ''; 
-  el('userRole').value = user? user.role || 'user' : 'user'; // ĐÃ THÊM LẠI
-}
-function closeUserForm(){ 
-    el('userFormPopup').style.display='none'; 
-    showOverlay(false); 
-}
-
-async function onEditUser(e){ 
-    const id = e.currentTarget.dataset.id; 
-    try{ 
-        const u = allUsersCache.find(x=>x._id===id); 
-        if(!u) return alert('User not found in cache'); 
-        openUserForm(u); 
-    } catch(err){ 
-        console.error(err); alert('Lỗi'); 
-    } 
-}
-
-// SỬA: Thêm lại 'role'
-async function saveUser(e){ 
-  e.preventDefault(); 
-  const id = el('userId').value; 
   
-  const payload = { 
-    username: el('userUsername').value.trim(), 
-    displayName: el('userDisplayName').value.trim(), 
-    email: el('userEmail').value.trim(),
-    role: el('userRole').value // ĐÃ THÊM LẠI
-  }; 
-  
-  if(!payload.username) return alert('Username không được để trống'); 
+  if (!user) {
+      el('userForm').reset();
+      el('userId').value = '';
+  } else {
+      el('userId').value = user._id || ''; 
+      el('userUsername').value = user.username || ''; 
+      el('userDisplayName').value = user.displayName || ''; 
+      el('userEmail').value = user.email || ''; 
+      // el('userRole').value = user.role || 'user';
+  }
+}
+function closeUserForm(){ el('userFormPopup').style.display='none'; showOverlay(false); }
 
-  const action = id ? 'update' : 'save';
-  addChange({ type: 'user', action: action, id: id, payload: payload });
-  
-  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
-  closeUserForm(); 
-}
-async function onDeleteUser(e){ 
-  const id = e.currentTarget.dataset.id; 
-  if(!confirm('Xác nhận đưa user này vào hàng chờ xóa?')) return; 
-  
-  addChange({ type: 'user', action: 'delete', id: id });
-  el(`user-row-${id}`).classList.add('row-to-be-deleted');
-}
+// --- SUBMIT HANDLERS ---
 
-// ... (Các hàm open/close/save/delete cho Room và Game giữ nguyên như trước) ...
-function openRoomForm(room){ 
-  showOverlay(true); 
-  el('roomFormPopup').style.display = 'block'; 
-  el('roomFormTitle').innerText = room ? 'Sửa phòng' : 'Thêm phòng'; 
-  el('roomId').value = room? (room.code || room.id || room._id || '') : ''; 
-  el('roomName').value = room? (room.name || '') : ''; 
-  const sel = el('roomGame');
-  const gameId = room ? ( (room.game && (room.game.gameId || room.game.type)) || '' ) : '';
-  if(sel) sel.value = gameId || '';
-  el('roomOwner').value = room? (room.owner || room.host || '') : ''; 
-  el('roomStatus').value = room? (room.status || 'Đang chờ') : 'Đang chờ'; 
-}
-function closeRoomForm(){ el('roomFormPopup').style.display='none'; showOverlay(false); }
-async function onEditRoom(e){ const id = e.currentTarget.dataset.id; try{ const rooms = await fetchRooms(); const r = rooms.find(x=>x.code===id); if(!r) return alert('Room not found'); openRoomForm(r); }catch(err){ console.error(err); alert('Lỗi'); } }
-async function saveRoom(e){
-  e.preventDefault();
-  const id = el('roomId').value.trim(); 
-  const roomName = el('roomName').value.trim();
-  const roomOwner = el('roomOwner').value.trim();
-  if (!roomName) return alert('Tên phòng không được để trống');
-  const selGame = el('roomGame');
-  if(!selGame || !selGame.value) return alert('Vui lòng chọn trò chơi.');
-  const gameName = selGame.options[selGame.selectedIndex].text;
-  const payload = {
-    code: id || undefined, 
-    name: roomName,
-    host: roomOwner,
-    status: el('roomStatus').value,
-    game: { id: selGame.value, name: gameName, type: selGame.value }
-  };
-  const action = id ? 'update' : 'save';
-  addChange({ type: 'room', action: action, id: id, payload: payload }); 
-  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
-  closeRoomForm();
-}
-async function onDeleteRoom(e){ 
-  const id = e.currentTarget.dataset.id; // Room ID là 'code'
-  if(!confirm('Xác nhận đưa phòng này vào hàng chờ xóa?')) return; 
-  addChange({ type: 'room', action: 'delete', id: id });
-  el(`room-row-${id}`).classList.add('row-to-be-deleted');
-}
-
-function openGameForm(game){
-  showOverlay(true);
-  el('gameFormPopup').style.display = 'block'; // ID này phải khớp HTML mới
-  el('gameFormTitle').innerText = game ? 'Sửa trò chơi' : 'Thêm trò chơi';
-  el('gameIdOrig').value = game ? (game.id || '') : ''; 
-  el('gameId').value = game ? (game.id || '') : '';
-  el('gameNameVI').value = (game && game.name && game.name.vi) ? game.name.vi : ( (typeof game?.name === 'string') ? game.name : '' );
-  el('gameNameEN').value = (game && game.name && game.name.en) ? game.name.en : '';
-  el('gameDescVI').value = (game && game.desc && game.desc.vi) ? game.desc.vi : ( (typeof game?.desc === 'string') ? game.desc : '' );
-  el('gameDescEN').value = (game && game.desc && game.desc.en) ? game.desc.en : '';
-  el('gamePlayers').value = game ? (game.players||'') : '';
-  el('gameCatVI').value = (game && game.category && game.category.vi) ? game.category.vi : ( (typeof game?.category === 'string') ? game.category : '' );
-  el('gameCatEN').value = (game && game.category && game.category.en) ? game.category.en : '';
-}
-function closeGameForm(){ 
-    el('gameFormPopup').style.display='none'; 
-    showOverlay(false); 
-}
-async function onEditGame(e){
-  const id = e.currentTarget.dataset.id;
-  const g = allGamesCache.find(x => (x.id) === id); // Dùng cache
-  if (!g) return alert('Game not found in cache');
-  openGameForm(g);
-}
 async function saveGame(e){
   e.preventDefault();
   const id = el('gameId').value.trim(); 
   const idOrig = el('gameIdOrig').value.trim();
-  
   if (!id) return alert('Game ID không được để trống');
   
-  let payload = {};
+  const payload = {
+      id: id,
+      name: { vi: el('gameNameVI').value.trim(), en: el('gameNameEN').value.trim() },
+      desc: { vi: el('gameDescVI').value.trim(), en: el('gameDescEN').value.trim() },
+      category: { vi: el('gameCatVI').value.trim(), en: el('gameCatEN').value.trim() },
+      players: el('gamePlayers').value.trim()
+      // featured giữ nguyên từ gốc hoặc mặc định false
+  };
+  
+  // Nếu sửa, giữ lại thuộc tính featured cũ
   if (idOrig) {
-    const original = allGamesCache.find(g => g.id === idOrig);
-    if (original) {
-        payload = { ...original }; 
-    }
+      const old = allGamesCache.find(g => g.id === idOrig);
+      if (old) payload.featured = old.featured;
   }
-
-  payload.id = id;
-  payload.name = { 
-    vi: el('gameNameVI').value.trim(), 
-    en: el('gameNameEN').value.trim() 
-  };
-  payload.desc = { 
-    vi: el('gameDescVI').value.trim(), 
-    en: el('gameDescEN').value.trim() 
-  };
-  payload.players = el('gamePlayers').value.trim();
-  payload.category = { 
-    vi: el('gameCatVI').value.trim(), 
-    en: el('gameCatEN').value.trim() 
-  };
-  payload.featured = payload.featured || false;
 
   const action = idOrig ? 'update' : 'save';
   addChange({ type: 'game', action: action, id: id, payload: payload });
-  alert('Đã thêm thay đổi. Nhấn "Lưu thay đổi" để xác nhận.');
+  alert('Đã thêm thay đổi vào hàng chờ.');
   closeGameForm();
 }
-async function onDeleteGame(e){
-  const id = e.currentTarget.dataset.id;
-  if (!confirm('Xác nhận đưa game này vào hàng chờ xóa?')) return;
-  
-  addChange({ type: 'game', action: 'delete', id: id });
-  el(`game-row-${id}`).classList.add('row-to-be-deleted');
+
+async function saveUser(e){ 
+  e.preventDefault(); 
+  const id = el('userId').value; 
+  const payload = { 
+    username: el('userUsername').value.trim(), 
+    displayName: el('userDisplayName').value.trim(), 
+    email: el('userEmail').value.trim(),
+    // role: el('userRole').value 
+  }; 
+  if(!payload.username) return alert('Username là bắt buộc'); 
+
+  const action = id ? 'update' : 'save';
+  addChange({ type: 'user', action: action, id: id, payload: payload });
+  alert('Đã thêm thay đổi vào hàng chờ.');
+  closeUserForm(); 
 }
 
-// SỬA: Hàm onFeatureGame (khi tick checkbox)
-async function onFeatureGame(e) {
-  const cbEl = e.currentTarget;
-  const id = cbEl.dataset.id;
-  const checked = cbEl.checked;
-  
-  // 1. Lấy payload gốc từ cache
-  const originalGame = allGamesCache.find(g => g.id === id);
-  if (!originalGame) {
-    console.error('Lỗi: Không tìm thấy game trong cache với ID:', id);
-    return alert('Không tìm thấy game. Kiểm tra console để debug.');
-  }
-  
-  // 2. Tạo payload mới chỉ bằng cách cập nhật trường 'featured'
-  const payload = { ...originalGame, featured: !!checked };
-  
-  // 3. Thêm vào hàng chờ thay đổi
-  addChange({ type: 'game', action: 'update', id: id, payload: payload });
+// --- MAIN INIT & EVENT DELEGATION ---
+function setupNavToggle() {
+    const toggleBtn = el('navToggleBtn');
+    const sidebar = el('adminSidebar');
+    const overlay = el('popupOverlay');
+    if (toggleBtn && sidebar && overlay) {
+        toggleBtn.onclick = () => {
+            sidebar.classList.toggle('active');
+            overlay.style.display = 'block';
+        };
+        overlay.onclick = () => {
+            sidebar.classList.remove('active');
+            overlay.style.display = 'none';
+            // Đóng mọi modal
+            document.querySelectorAll('.popup-modal').forEach(m => m.style.display='none');
+        };
+    }
 }
-// --- KẾT THÚC SỬA ---
-
 
 async function syncGames() {
-    if (!confirm('Bạn có chắc muốn ĐỒNG BỘ (Cập nhật/Thêm mới) toàn bộ trò chơi từ tệp games.json lên Database không?\n\nHành động này sẽ được thực thi ngay lập tức.')) {
-        return;
-    }
+    if (!confirm('Đồng bộ toàn bộ game từ games.json?')) return;
     try {
-        const resJson = await fetch('/games.json'); 
-        if (!resJson.ok) {
-            throw new Error(`Không thể tải tệp /games.json. Status: ${resJson.status}`);
-        }
-        const gamesData = await resJson.json(); 
-        if (!Array.isArray(gamesData) || gamesData.length === 0) {
-            return alert('Tệp games.json rỗng hoặc không hợp lệ.');
-        }
-
+        const res = await fetch('/games.json');
+        const games = await res.json();
         const resSync = await fetch(API_ENDPOINTS.GAME_SYNC, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify(gamesData) 
+            body: JSON.stringify(games)
         });
-
         const result = await resSync.json();
-        if (!resSync.ok) {
-            throw new Error(result.message || 'Lỗi từ server khi đồng bộ');
-        }
-        alert(`Đồng bộ hoàn tất!\nĐã cập nhật: ${result.updated}\nĐã tạo mới: ${result.created}`);
+        alert(`Đồng bộ xong: ${result.updated} cập nhật, ${result.created} mới.`);
         loadData();
-    } catch (err) {
-        console.error('Lỗi khi đồng bộ games:', err);
-        alert(`Đã xảy ra lỗi khi đồng bộ: ${err.message}`);
-    }
+    } catch(e) { alert('Lỗi đồng bộ: ' + e.message); }
 }
 
 function logoutAdmin(){ 
@@ -558,138 +459,125 @@ function logoutAdmin(){
 }
 
 async function loadData(){
-  try{
-    const usersQ = el('usersSearch') ? el('usersSearch').value.trim() : '';
-    const roomsQ = el('roomsSearch') ? el('roomsSearch').value.trim() : '';
-    const gamesQ = el('gamesSearch') ? el('gamesSearch').value.trim() : '';
+  try {
+    const qG = el('gamesSearch') ? el('gamesSearch').value : '';
+    const qU = el('usersSearch') ? el('usersSearch').value : '';
+    const qR = el('roomsSearch') ? el('roomsSearch').value : '';
 
-    const [usersRes, roomsRes, gamesRes] = await Promise.all([
-        fetchUsers(usersQ),
-        fetchRooms(roomsQ),
-        fetchGames(gamesQ) 
+    const [u, r, g] = await Promise.all([
+        fetchUsers(qU), fetchRooms(qR), fetchGames(qG)
     ]);
-
-    renderUsersTable(usersRes || []);
-    renderRoomsTable(roomsRes || []);
-    renderGamesTable(gamesRes || []);
-  } catch (err) {
-    console.error('loadData error:', err);
-  }
+    renderUsersTable(u);
+    renderRoomsTable(r);
+    renderGamesTable(g);
+  } catch (err) { console.error(err); }
 }
 
-async function populateGameOptions(){
-  const sel = el('roomGame'); 
-  if(!sel) return;
-  sel.innerHTML = '<option value="">-- Chọn trò chơi --</option>';
-  try{
-    allGamesCache.forEach(g=>{
-      const gid = g.id || '';
-      const label = (g.name && (g.name.vi || g.name.en)) ? (g.name.vi || g.name.en) : (g.title || gid);
-      if(!gid) return;
-      const opt = document.createElement('option');
-      opt.value = gid;
-      opt.textContent = label;
-      sel.appendChild(opt);
-    });
-  }catch(err){
-    console.error('populateGameOptions error', err);
-  }
-}
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Setup Nav & Overlay
+    setupNavToggle();
 
-function setupNavToggle() {
-    const toggleBtn = el('navToggleBtn'); 
-    const sidebar = el('adminSidebar'); 
-    const overlay = el('popupOverlay'); 
+    // 2. Gán sự kiện cho các nút chính (kiểm tra tồn tại để tránh lỗi null)
+    const btnAddGame = el('btnAddGame');
+    if(btnAddGame) btnAddGame.onclick = () => openGameForm(null);
     
-    if (toggleBtn && sidebar && overlay) {
-        toggleBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
-            overlay.style.display = 'block'; 
+    const btnAddUser = el('btnAddUser');
+    if(btnAddUser) btnAddUser.onclick = () => openUserForm(null);
+
+    const btnSync = el('btnSyncGames');
+    if(btnSync) btnSync.onclick = syncGames;
+    
+    const btnLogout = el('btnLogout');
+    if(btnLogout) btnLogout.onclick = logoutAdmin;
+    
+    // Nút Lưu/Hủy thay đổi
+    const btnConfirm = el('btnConfirmChanges');
+    if(btnConfirm) btnConfirm.onclick = executePendingChanges;
+    const btnCancel = el('btnCancelChanges');
+    if(btnCancel) btnCancel.onclick = cancelPendingChanges;
+
+    // 3. Search Inputs
+    ['gamesSearch', 'usersSearch', 'roomsSearch'].forEach(id => {
+        const inp = el(id);
+        if(inp) inp.onkeyup = debounce(loadData, 400);
+    });
+
+    // 4. Form Submits
+    const fGame = el('gameForm');
+    if(fGame) fGame.onsubmit = saveGame;
+    const fUser = el('userForm');
+    if(fUser) fUser.onsubmit = saveUser;
+
+    // 5. Tab Navigation
+    document.querySelectorAll('.sidebar nav a[data-tab]').forEach(a => {
+        a.onclick = (e) => {
+            e.preventDefault();
+            showTab(a.getAttribute('data-tab'));
+            if(window.innerWidth < 768) el('popupOverlay').click(); // Đóng nav mobile
+        };
+    });
+
+    // 6. EVENT DELEGATION (Quan trọng nhất để fix lỗi sự kiện bảng)
+    
+    // Delegation cho bảng Game (Edit, Delete, Checkbox)
+    const gamesList = el('adminGamesList');
+    if (gamesList) {
+        gamesList.addEventListener('click', (e) => {
+            const target = e.target.closest('button, input'); // Tìm nút hoặc input
+            if (!target) return;
+
+            const id = target.dataset.id;
+            
+            if (target.classList.contains('icon-edit')) {
+                const game = allGamesCache.find(g => g.id === id);
+                if(game) openGameForm(game);
+            } 
+            else if (target.classList.contains('icon-delete')) {
+                if(confirm('Xóa game này?')) addChange({ type: 'game', action: 'delete', id: id });
+            }
         });
         
-        overlay.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            overlay.style.display = 'none';
-            // Đóng tất cả các modal (nếu chúng đang mở)
-            const modals = document.querySelectorAll('.popup-modal, .auth-popup'); // Hỗ trợ cả class cũ
-            modals.forEach(m => m.style.display = 'none');
+        // Riêng sự kiện change cho checkbox
+        gamesList.addEventListener('change', (e) => {
+            if (e.target.classList.contains('game-feature-checkbox')) {
+                onFeatureGame(e);
+            }
         });
     }
-}
 
-// SỬA LỖI: Gán sự kiện an toàn (Safe Listeners)
-document.addEventListener('DOMContentLoaded', ()=>{
-  
-  const safeAddListener = (id, event, handler) => {
-    const element = el(id);
-    if (element) {
-      element.addEventListener(event, handler);
-    } else {
-      console.warn(`Element with ID '${id}' not found. Listener not added.`);
+    // Delegation cho bảng User (Edit, Delete)
+    const usersList = el('adminUsersList');
+    if (usersList) {
+        usersList.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const id = btn.dataset.id;
+
+            if (btn.classList.contains('icon-edit')) {
+                const user = allUsersCache.find(u => u._id === id);
+                if(user) openUserForm(user);
+            }
+            else if (btn.classList.contains('icon-delete')) {
+                if(confirm('Xóa người dùng này?')) addChange({ type: 'user', action: 'delete', id: id });
+            }
+        });
     }
-  };
 
-  const safeAddListenerAll = (selector, event, handler) => {
-    const elements = document.querySelectorAll(selector);
-    if (elements.length > 0) {
-      elements.forEach(el => el.addEventListener(event, handler));
-    } else {
-      console.warn(`No elements found with selector '${selector}'.`);
+    // Delegation cho bảng Room (Delete)
+    const roomsList = el('adminRoomsList');
+    if (roomsList) {
+        roomsList.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const id = btn.dataset.id;
+
+            if (btn.classList.contains('icon-delete')) {
+                if(confirm('Xóa phòng này?')) addChange({ type: 'room', action: 'delete', id: id });
+            }
+        });
     }
-  };
-  
-  // Gán sự kiện cho các tab nav
-  safeAddListenerAll('.sidebar nav a[data-tab]', 'click', (e) => {
-    const t = e.currentTarget.getAttribute('data-tab');
-    if (t) {
-      e.preventDefault();
-      showTab(t);
-      if (window.innerWidth < 768) { // Logic cho mobile
-          const sidebar = el('adminSidebar');
-          if (sidebar) sidebar.classList.remove('active');
-          const overlay = el('popupOverlay');
-          if (overlay) overlay.style.display = 'none';
-      }
-    }
-  });
 
-  // Gán sự kiện cho các ô tìm kiếm
-  safeAddListener('usersSearch', 'keyup', debounce(()=> loadData(), 400));
-  safeAddListener('roomsSearch', 'keyup', debounce(()=> loadData(), 400));
-  safeAddListener('gamesSearch', 'keyup', debounce(()=> loadData(), 400));
-  
-  // Gán sự kiện submit cho các form
-  safeAddListener('userForm', 'submit', saveUser);
-  safeAddListener('roomForm', 'submit', saveRoom);
-  safeAddListener('gameForm', 'submit', saveGame);
-  
-  
-  // Gán sự kiện cho các nút "Thêm mới"
-  safeAddListener('btnAddGame', 'click', () => openGameForm(null)); 
-  safeAddListener('btnAddUser', 'click', () => openUserForm(null)); 
-
-  const addRoomBtn = el('btnAddRoom'); 
-  if(addRoomBtn) { 
-      addRoomBtn.onclick = async () => { 
-          if(allGamesCache.length === 0) await fetchGames();
-          populateGameOptions(); 
-          openRoomForm(null); 
-      }; 
-  }
-
-  // Gán sự kiện cho thanh confirm
-  safeAddListener('btnConfirmChanges', 'click', executePendingChanges); 
-  safeAddListener('btnCancelChanges', 'click', cancelPendingChanges); 
-  
-  // Gán sự kiện cho nút sync
-  safeAddListener('btnSyncGames', 'click', syncGames); 
-  
-  // Gán sự kiện logout
-  safeAddListener('btnLogout', 'click', logoutAdmin); 
-
-  // Setting up nav
-  setupNavToggle(); 
-
-  showTab('gamesTab'); 
-  loadData();
+    // Init Load
+    showTab('gamesTab');
+    loadData();
 });
