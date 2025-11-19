@@ -1,5 +1,3 @@
-// public/admin.js (FINAL VERSION: Pagination + Sort Latest + Full Features)
-
 const ADMIN_API = 'https://datn-socket.up.railway.app'; 
 
 // Các endpoint API
@@ -47,6 +45,11 @@ try {
 const el = id => document.getElementById(id);
 const showOverlay = show => { const o = el('adminOverlay'); if(o) o.style.display = show ? 'flex' : 'none'; };
 
+// --- FORM MODAL LOGIC (Các biến được đưa ra ngoài) ---
+const modal = el('gameModal');
+const form = el('gameForm');
+let isEditing = false; // Used by openGameForm and saveGame
+
 // --- 1. MAIN INIT ---
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -76,9 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(el('gamesSearch')) el('gamesSearch').onkeyup = debounce(() => { pageState.games = 1; fetchGames(el('gamesSearch').value); }, 400);
 
     // Form Submits
-    const fGame = el('gameForm');
-    // CHÚ Ý: Dòng này đã được sửa thành gán function 'saveGame' rõ ràng.
-    if(fGame) fGame.onsubmit = saveGame; 
+    if(form) form.onsubmit = saveGame; // <-- FIX LỖI: Gán hàm saveGame
     
     // Socket listeners
     if(socket) {
@@ -323,7 +324,7 @@ function renderGamesTable(games) {
     tbody.innerHTML = games.map(g => `
         <tr>
             <td>${g.id}</td>
-            <td><img src="/game/${g.id}/Img/logo.png" class="game-thumb" onerror="this.src='/img/fav.svg'"></td>
+            <td><img src="${ADMIN_API}/game/${g.id}/Img/logo.png" class="game-thumb" onerror="this.src='/img/fav.svg'"></td>
             <td>
                 <div><b>VI:</b> ${g.name?.vi || ''}</div>
                 <div style="color:#666;font-size:0.9em"><b>EN:</b> ${g.name?.en || ''}</div>
@@ -430,10 +431,7 @@ function logoutAdmin() {
       .finally(()=> location.href='/admin-login.html'); 
 }
 
-// --- FORM MODAL LOGIC ---
-const modal = el('gameModal');
-const form = el('gameForm');
-let isEditing = false;
+// --- FORM MODAL LOGIC (Tách thành hàm riêng) ---
 
 function openGameForm(game) {
     isEditing = !!game;
@@ -456,10 +454,10 @@ function openGameForm(game) {
         el('gameIdInput').disabled = false;
         el('gameIdOriginal').value = '';
     }
-    modal.style.display = 'block';
+    if (modal) modal.style.display = 'block';
 }
 
-// HÀM SAVE GAME (ĐÃ ĐƯỢC KHAI BÁO RÕ RÀNG VÀ GÁN Ở DÒNG 94)
+// HÀM SAVE GAME (ĐÃ KHAI BÁO RÕ RÀNG)
 async function saveGame(e) {
     e.preventDefault();
     showOverlay(true);
@@ -482,7 +480,7 @@ async function saveGame(e) {
         body: JSON.stringify(payload)
     });
     
-    modal.style.display = 'none';
+    if (modal) modal.style.display = 'none';
     showOverlay(false);
 }
 
@@ -491,7 +489,6 @@ if(modal) {
     document.querySelectorAll('.close-modal, .close-modal-btn').forEach(btn => {
         btn.onclick = () => modal.style.display = 'none';
     });
-    // ĐÃ CHUYỂN LOGIC SUBMIT SANG HÀM saveGame VÀ GÁN Ở DÒNG 94
 }
 
 // Helper Debounce
