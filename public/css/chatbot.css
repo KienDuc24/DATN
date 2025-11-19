@@ -427,3 +427,25 @@
         bottom: 85px;
     }
 }
+
+/* Thêm vào public/css/chatbot.css (phần Header) */
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#chatbot-reset {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.7);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+}
+#chatbot-reset:hover {
+    color: #fff;
+    transform: rotate(-180deg);
+}
