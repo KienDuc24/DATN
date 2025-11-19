@@ -1,4 +1,4 @@
-// public/chatbot.js (FULL: Sync History + Smart Suggestions + Personalization)
+// public/chatbot.js (FINAL: Full Language Sync + History + Smart Suggestions)
 
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Render HTML
@@ -48,10 +48,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const history = JSON.parse(sessionStorage.getItem('chat_history') || '[]');
             if (history.length > 0) {
                 history.forEach(msg => {
-                    // False = chỉ hiện lên UI, không lưu lại lần nữa
                     addMessageToUI(msg.sender, msg.text, false); 
                 });
-                // Cuộn xuống cuối sau khi load
                 setTimeout(() => messagesArea.scrollTop = messagesArea.scrollHeight, 100);
                 return true; 
             }
@@ -63,7 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const history = JSON.parse(sessionStorage.getItem('chat_history') || '[]');
             history.push({ sender, text });
-            if (history.length > 50) history.shift(); // Giới hạn 50 tin
+            if (history.length > 50) history.shift(); 
             sessionStorage.setItem('chat_history', JSON.stringify(history));
         } catch (e) { console.error('History save error', e); }
     }
@@ -71,12 +69,13 @@ document.addEventListener("DOMContentLoaded", () => {
     function clearHistory() {
         sessionStorage.removeItem('chat_history');
         messagesArea.innerHTML = '';
-        // Reset lại trạng thái ban đầu
         initWelcome();
     }
     
     resetBtn.addEventListener('click', () => {
-        if(confirm('Xóa toàn bộ cuộc trò chuyện?')) clearHistory();
+        const lang = getCurrentLang();
+        const msg = lang === 'vi' ? 'Xóa toàn bộ cuộc trò chuyện?' : 'Clear all chat history?';
+        if(confirm(msg)) clearHistory();
     });
 
     // 4. Context & Auth Helpers
@@ -120,9 +119,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const lang = getCurrentLang();
         return LANGS[lang]?.[key] || defaultText || key;
     }
+    
     function applyLanguage() {
+        // Cập nhật tiêu đề và placeholder ngay khi mở
         titleText.innerText = t('chat_title', 'Trợ lý AI');
         inputField.placeholder = t('chat_placeholder', 'Hỏi gì đó...');
+        resetBtn.title = getCurrentLang() === 'vi' ? 'Xóa lịch sử' : 'Clear history';
     }
     loadChatLanguage(); 
 
@@ -147,13 +149,11 @@ document.addEventListener("DOMContentLoaded", () => {
         let buttonsHTML = '';
 
         if (context.page === 'room') {
-            // Phòng game: 2 gợi ý
             const btn1 = lang === 'vi' ? 'Mô tả game này' : 'Describe this game';
             const btn2 = lang === 'vi' ? 'Luật chơi thế nào?' : 'How to play?';
             buttonsHTML += `<button class="suggestion-btn" data-question="${btn1}">${btn1} <i class="fas fa-info-circle"></i></button>`;
             buttonsHTML += `<button class="suggestion-btn" data-question="${btn2}">${btn2} <i class="fas fa-book"></i></button>`;
         } else {
-            // Trang chủ: 2 hoặc 3 gợi ý
             const btnList = lang === 'vi' ? 'Bạn có những game gì?' : 'List available games';
             const btnFind = lang === 'vi' ? 'Tìm game theo yêu cầu' : 'Find game by requirement';
             
@@ -208,19 +208,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 8. Logic Chat Chính
     chatIcon.addEventListener("click", () => {
-        applyLanguage();
+        applyLanguage(); // Cập nhật ngôn ngữ giao diện ngay khi mở
         chatWindow.classList.remove("hidden");
         chatIcon.classList.add("hidden");
         inputField.focus();
 
-        // Kiểm tra lịch sử
         const hasHistory = loadHistory();
         
-        // Nếu không có lịch sử, hiện chào mừng
         if (!hasHistory && messagesArea.querySelectorAll('.message').length === 0) {
-            initWelcome();
+            initWelcome(); // Tạo lời chào mới theo ngôn ngữ hiện tại
         } else {
-            // Nếu có lịch sử, hiện lại gợi ý ở cuối để tiện dùng tiếp
+            // Nếu đã có lịch sử, chỉ hiện lại nút gợi ý
             setTimeout(addSuggestionButtons, 200);
         }
     });
@@ -230,7 +228,6 @@ document.addEventListener("DOMContentLoaded", () => {
         chatIcon.classList.remove("hidden");
     });
 
-    // Hàm render và lưu tin nhắn
     function addMessageToUI(sender, text, save = true) {
         if (sender === 'user') removeSuggestionButtons();
 
@@ -270,14 +267,17 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const context = getChatbotContext();
             const username = getUserName();
+            const lang = getCurrentLang(); // Lấy ngôn ngữ hiện tại
 
+            // --- SỬA: Gửi 'language' lên server ---
             const response = await fetch(`${API_BASE_URL}/api/ai/ask`, { 
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     question: text,
                     gameId: context.gameId,
-                    username: username
+                    username: username,
+                    language: lang // <-- Gửi 'vi' hoặc 'en'
                 })
             });
 
@@ -286,13 +286,17 @@ document.addEventListener("DOMContentLoaded", () => {
             
             if (!response.ok) throw new Error(data.error || "Lỗi server");
 
-            const aiReply = data.answer || "Xin lỗi, tôi không hiểu câu hỏi.";
+            // Fallback nếu server không trả lời
+            const fallbackMsg = lang === 'vi' ? "Xin lỗi, tôi không hiểu câu hỏi." : "Sorry, I didn't understand the question.";
+            const aiReply = data.answer || fallbackMsg;
+            
             addMessageToUI("bot", aiReply, true); 
 
         } catch (error) {
             console.error("Chat error:", error);
             if(document.body.contains(loadingDiv)) messagesArea.removeChild(loadingDiv);
-            addMessageToUI("bot", "Không thể kết nối tới máy chủ AI.", false); 
+            const errMsg = getCurrentLang() === 'vi' ? "Lỗi kết nối." : "Connection error.";
+            addMessageToUI("bot", errMsg, false); 
         } finally {
             inputField.disabled = false;
             inputField.focus();

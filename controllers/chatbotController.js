@@ -1,40 +1,30 @@
-// controllers/chatbotController.js (CÁ NHÂN HÓA + LỊCH SỬ CHAT)
+// controllers/chatbotController.js (FINAL: Enforce Language)
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
 const fs = require('fs'); 
-const User = require('../models/User'); // Import User model
+const User = require('../models/User'); 
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-
-if (!GOOGLE_API_KEY) {
-    console.warn('[chatbotController] Thiếu GOOGLE_API_KEY trong file .env');
-}
-
 const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
-
-// Lưu trữ phiên chat trong bộ nhớ (RAM)
-// Key: "username_gameId" -> Value: ChatSession Object
 const userChatSessions = new Map();
 
 const BASE_SYSTEM_PROMPT = `
-BẠN LÀ AI: Bạn là trợ lý AI thông minh của website "Camping Game".
-NHIỆM VỤ: Trả lời ngắn gọn, súc tích, đúng trọng tâm.
+BẠN LÀ AI: Trợ lý AI thông minh của website "Camping Game".
+NHIỆM VỤ: Trả lời ngắn gọn, thân thiện, hữu ích.
 
 THÔNG TIN NGƯỜI DÙNG:
 Tên: %USER_NAME%
 
-QUY TẮC QUAN TRỌNG:
-1. Luôn xưng hô thân thiện (nếu biết tên thì gọi tên, không thì gọi là 'bạn').
-2. Không yêu cầu mật khẩu hay thông tin nhạy cảm.
-3. Nếu người dùng hỏi về game, hãy dùng dữ liệu được cung cấp dưới đây.
-4. Nếu người dùng chào, hãy chào lại kèm tên họ.
-
 DỮ LIỆU GAME HIỆN TẠI:
 %GAME_DATA_JSON%
+
+QUY TẮC CHUNG:
+1. Không yêu cầu mật khẩu/thông tin nhạy cảm.
+2. Dùng dữ liệu game được cung cấp để trả lời chính xác.
 `;
 
-// Hàm tải dữ liệu game (như cũ)
+// ... (Hàm loadGameData, loadAllGamesData giữ nguyên) ...
 function loadGameData(gameId) {
     let gameData = {};
     if (gameId.includes('.') || gameId.includes('/') || gameId.includes('\\')) throw new Error('gameId không hợp lệ.');
@@ -55,32 +45,29 @@ function loadAllGamesData() {
 }
 
 async function answerRuleQuestion(req, res) {
-    const { question, gameId, username } = req.body; // Nhận thêm username
+    const { question, gameId, username, language } = req.body; // Nhận thêm language
     
-    if (!question || !gameId) {
-        return res.status(400).json({ error: 'Thiếu thông tin câu hỏi hoặc gameId.' });
-    }
-    if (!GOOGLE_API_KEY) {
-        return res.status(500).json({ error: 'Chưa cấu hình Server AI.' });
-    }
+    if (!question || !gameId) return res.status(400).json({ error: 'Thiếu thông tin.' });
+    if (!GOOGLE_API_KEY) return res.status(500).json({ error: 'Lỗi Server AI.' });
 
     try {
-        // 1. Lấy thông tin User từ DB (để bot biết tên)
         let displayName = "Khách";
         if (username && !username.startsWith('guest')) {
             const user = await User.findOne({ username: username });
             if (user && user.displayName) displayName = user.displayName;
-        } else if (username && username.startsWith('guest')) {
-            displayName = "Khách";
         }
 
-        // 2. Tạo Key cho Session (Mỗi user + mỗi gameId là 1 phiên chat riêng)
-        // Nếu user đổi game, bot sẽ reset ngữ cảnh game nhưng vẫn nhớ tên (do logic tạo mới bên dưới)
         const sessionKey = `${username || 'guest'}_${gameId}`;
-        
         let chatSession = userChatSessions.get(sessionKey);
 
-        // 3. Nếu chưa có session, tạo mới
+        // --- TẠO CHỈ THỊ NGÔN NGỮ ---
+        const targetLang = language === 'en' ? 'ENGLISH' : 'VIETNAMESE';
+        const langInstruction = `
+        IMPORTANT: You MUST answer the user strictly in ${targetLang}.
+        Even if the user asks in a different language, reply in ${targetLang}.
+        `;
+        // -----------------------------
+
         if (!chatSession) {
             let gameDataJsonString = "Không có dữ liệu game.";
             try {
@@ -91,56 +78,39 @@ async function answerRuleQuestion(req, res) {
                     const data = loadGameData(gameId);
                     gameDataJsonString = JSON.stringify(data, null, 2);
                 }
-            } catch (err) {
-                console.warn(`[Chatbot] Không tải được data game ${gameId}:`, err.message);
-            }
+            } catch (err) {}
 
-            // Inject tên và dữ liệu game vào prompt
             const systemInstruction = BASE_SYSTEM_PROMPT
                 .replace('%USER_NAME%', displayName)
-                .replace('%GAME_DATA_JSON%', gameDataJsonString);
+                .replace('%GAME_DATA_JSON%', gameDataJsonString)
+                + langInstruction; // Thêm chỉ thị vào prompt gốc
 
             const model = genAI.getGenerativeModel({ 
                 model: 'gemini-2.5-flash-preview-09-2025',
                 systemInstruction: { parts: [{ text: systemInstruction }] },
             });
 
-            // Khởi tạo chat session
             chatSession = model.startChat({
-                history: [], // Bắt đầu lịch sử trống
-                generationConfig: {
-                    maxOutputTokens: 500,
-                },
+                history: [],
+                generationConfig: { maxOutputTokens: 500 },
             });
 
-            // Lưu vào bộ nhớ server
             userChatSessions.set(sessionKey, chatSession);
-            
-            // Giới hạn bộ nhớ: Xóa session cũ nếu quá nhiều (tránh tràn RAM)
-            if (userChatSessions.size > 1000) {
-                const firstKey = userChatSessions.keys().next().value;
-                userChatSessions.delete(firstKey);
-            }
+            if (userChatSessions.size > 1000) userChatSessions.delete(userChatSessions.keys().next().value);
         }
 
-        // 4. Gửi tin nhắn
-        const result = await chatSession.sendMessage(question);
+        // Gửi tin nhắn kèm chỉ thị nhắc lại (để bot không quên)
+        const prompt = `${question} (Reply in ${targetLang})`;
+        const result = await chatSession.sendMessage(prompt);
         const response = await result.response;
-        const aiAnswer = response.text();
-
-        res.status(200).json({ answer: aiAnswer });
+        
+        res.status(200).json({ answer: response.text() });
 
     } catch (error) {
-        console.error('Lỗi Chatbot Controller:', error);
-        // Nếu lỗi session, thử xóa session để lần sau tạo lại
-        if (username) {
-             const sessionKey = `${username}_${gameId}`;
-             userChatSessions.delete(sessionKey);
-        }
-        res.status(500).json({ error: 'AI đang bận, vui lòng thử lại.' });
+        console.error('Chat Error:', error);
+        if (username) userChatSessions.delete(`${username}_${gameId}`);
+        res.status(500).json({ error: 'AI busy.' });
     }
 }
 
-module.exports = {
-    answerRuleQuestion
-};
+module.exports = { answerRuleQuestion };
