@@ -25,6 +25,8 @@
         position: relative;
         z-index: 1;
     }
+    .admin-table th:nth-child(6) { width: 10%; }
+    .admin-table th:nth-child(7) { width: 20%; }
   </style>
 </head>
 <body>
@@ -107,7 +109,16 @@
             </div>
           </div>
         </div>
-      </section>
+
+        <div class="table-wrap" style="margin-top: 30px;">
+            <h3 style="padding: 16px; color: var(--text); border-bottom: 1px solid var(--border);">
+                <i class="fas fa-history"></i> Hoạt động Gần đây (Socket Events)
+            </h3>
+            <ul id="activityLog" style="list-style: none; padding: 10px 16px; max-height: 350px; overflow-y: auto;">
+                <li style="padding: 8px 0; border-bottom: 1px dotted var(--border);">Đang chờ kết nối Socket...</li>
+            </ul>
+        </div>
+        </section>
 
       <section id="gamesTab" class="admin-tab-content" style="display:none">
         <header class="content-header">
@@ -128,8 +139,8 @@
               <tr>
                 <th style="width: 15%;">ID</th>
                 <th style="width: 10%;">Ảnh</th>
-                <th style="width: 25%;">Tên (VI/EN)</th>
-                <th style="width: 15%;">Người chơi</th>
+                <th style="width: 20%;">Tên (VI/EN)</th>
+                <th style="width: 10%;">Người chơi</th>
                 <th style="width: 10%;">Nổi bật</th>
                 <th style="width: 10%;">Trạng thái</th>
                 <th style="width: 15%;">Hành động</th>
@@ -191,9 +202,9 @@
                 <th>Tên hiển thị</th>
                 <th>Email</th>
                 <th>Loại</th>
-                <th>Trạng thái</th>
-                <th>Ngày tạo</th>
-                <th>Hành động</th>
+                <th style="width: 10%;">Trạng thái</th>
+                <th style="width: 15%;">Ngày tạo</th>
+                <th style="width: 20%;">Lịch sử chơi</th> <th>Hành động</th>
               </tr>
             </thead>
             <tbody id="adminUsersList"></tbody>
@@ -285,7 +296,34 @@
         </div>
       </form>
   </div>
-
+  
+  <div id="userModal" class="popup-modal" style="display:none; max-width:450px;">
+      <span class="close-modal" id="closeUserModal">&times;</span>
+      <h2 id="userModalTitle">Sửa Người Dùng</h2>
+      <form id="userForm" class="auth-form" style="text-align:left;">
+          <input type="hidden" id="userIdInput">
+          <div class="form-group">
+              <label>Username (Không đổi):</label>
+              <input type="text" id="userUsernameInput" disabled>
+          </div>
+          <div class="form-group">
+              <label>Tên hiển thị:</label>
+              <input type="text" id="userDisplayNameInput" required>
+          </div>
+          <div class="form-group">
+              <label>Email:</label>
+              <input type="email" id="userEmailInput">
+          </div>
+          <div class="form-group">
+              <label>Lịch sử chơi:</label>
+              <textarea id="userPlayHistory" disabled rows="3" style="font-size:0.85em;"></textarea>
+          </div>
+          <div class="form-actions" style="margin-top:20px; text-align:right;">
+              <button type="button" class="btn btn-cancel close-modal-btn">Hủy</button>
+              <button type="submit" class="btn btn-save">Lưu thay đổi</button>
+          </div>
+      </form>
+  </div>
   <div id="adminOverlay" class="admin-overlay" style="display:none;">
     <div class="spinner"></div>
   </div>

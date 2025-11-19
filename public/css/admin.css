@@ -1,20 +1,30 @@
-/* public/css/admin.css (FULL VERSION) */
+/* public/css/admin.css (ĐÃ SỬA: Áp dụng phong cách Camping Game) */
 
 :root {
-  --bg: #0f172a;
-  --card: #1e293b;
-  --sidebar: #0f172a;
+  /* Màu nền & Nền tối (Dark Backgrounds from Auth/Nav) */
+  --bg: #11151a; /* Nền tối tổng thể */
+  --card: #20232a; /* Nền card/bảng */
+  --sidebar: #1a1a2e; /* Nền Sidebar */
+  
+  /* Màu chủ đạo của Camping Game */
+  --primary: #ff9800; /* Màu Cam/Chủ đạo */
+  --primary-hover: #ff7a2f; /* Cam đậm hơn */
+  --accent: #43cea2; /* Màu Xanh ngọc (Accent) */
+
+  /* Màu chữ */
   --text: #f1f5f9;
   --text-muted: #94a3b8;
-  --border: #334155;
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --secondary: #64748b;
-  --accent: #ff9f43;
+  
+  /* Màu trạng thái */
   --success: #22c55e;
   --danger: #ef4444;
-  --radius: 8px;
-  font-family: 'Inter', sans-serif;
+  --pending: #f97316; /* Dùng màu cam cho trạng thái chờ */
+  
+  --border: #334155;
+  --radius: 12px; /* Tăng bo góc để đồng bộ */
+  
+  /* Thêm font Pacifico từ index.html cho tiêu đề */
+  font-family: 'Quicksand', 'Inter', sans-serif;
 }
 
 * {
@@ -24,6 +34,7 @@
 }
 
 body {
+  /* Sử dụng ảnh nền tối mờ từ admin.html */
   background-color: var(--bg);
   color: var(--text);
   font-size: 14px;
@@ -55,8 +66,14 @@ body {
   gap: 12px;
   border-bottom: 1px solid var(--border);
 }
-.sidebar-header img { width: 32px; height: 32px; }
-.sidebar-header span { font-weight: 700; font-size: 1.2rem; color: var(--primary); }
+.sidebar-header img { width: 36px; height: 36px; background: #fff; border-radius: 8px; }
+.sidebar-header span { 
+    font-weight: 700; 
+    font-size: 1.2rem; 
+    color: var(--primary); 
+    font-family: 'Pacifico', cursive; /* Áp dụng font tiêu đề */
+    text-shadow: 1px 1px 2px #000;
+}
 
 .sidebar-nav {
   padding: 20px 10px;
@@ -84,8 +101,8 @@ body {
 }
 
 .nav-item:hover, .nav-item.active {
-  background-color: rgba(59, 130, 246, 0.1);
-  color: var(--primary);
+  background-color: rgba(67, 206, 162, 0.15); /* Dùng màu Accent/Mint */
+  color: var(--accent);
 }
 .nav-item i { width: 20px; text-align: center; }
 
@@ -115,6 +132,7 @@ body {
   padding: 30px;
   position: relative;
 }
+/* Nền tối của main đã được xử lý bằng pseudo-element trong admin.html */
 
 .content-header {
   display: flex;
@@ -122,7 +140,12 @@ body {
   align-items: center;
   margin-bottom: 30px;
 }
-.content-header h1 { font-size: 1.5rem; font-weight: 700; }
+.content-header h1 { 
+    font-size: 1.8rem; 
+    font-weight: 700; 
+    color: var(--primary); 
+    text-shadow: 1px 1px 2px #000;
+}
 
 .header-actions {
   display: flex;
@@ -143,7 +166,7 @@ body {
   width: 250px;
   outline: none;
 }
-.search-box input:focus { border-color: var(--primary); }
+.search-box input:focus { border-color: var(--accent); }
 .search-box i {
   position: absolute;
   left: 12px;
@@ -155,7 +178,7 @@ body {
 /* Buttons */
 .btn {
   padding: 10px 20px;
-  border-radius: var(--radius);
+  border-radius: 8px; /* Giữ 8px cho nút để trông gọn hơn */
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -164,14 +187,35 @@ body {
   gap: 8px;
   text-decoration: none;
   transition: 0.2s;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
-.btn-primary { background: var(--primary); color: white; }
-.btn-primary:hover { background: var(--primary-hover); }
-.btn-secondary { background: var(--card); border: 1px solid var(--border); color: var(--text); }
-.btn-secondary:hover { background: #2d3b4e; }
+.btn-primary { 
+    background: var(--primary); 
+    color: var(--card); /* Màu chữ tối */
+    font-weight: 700;
+}
+.btn-primary:hover { 
+    background: var(--accent); 
+    color: var(--card); 
+}
+.btn-secondary { 
+    background: var(--card); 
+    border: 1px solid var(--primary); 
+    color: var(--primary); 
+}
+.btn-secondary:hover { 
+    background: rgba(255, 152, 0, 0.1); 
+}
 .btn-danger { background: var(--danger); color: white; }
 .btn-cancel { background: var(--secondary); color: white; }
-.btn-save { background: var(--success); color: white; }
+.btn-save { 
+    background: var(--accent); 
+    color: var(--card); 
+    font-weight: 700;
+}
+.btn-save:hover { 
+    background: #36a56b; 
+}
 
 /* Stats Grid */
 .stats-grid {
@@ -187,7 +231,8 @@ body {
   display: flex;
   align-items: center;
   gap: 20px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
 }
 .stat-icon {
   width: 50px; height: 50px;
@@ -197,10 +242,10 @@ body {
   justify-content: center;
   font-size: 1.5rem;
 }
-.stat-icon.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
-.stat-icon.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-.stat-icon.green { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
-.stat-icon.orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
+.stat-icon.purple { background: rgba(255, 152, 0, 0.1); color: var(--primary); }
+.stat-icon.blue { background: rgba(67, 206, 162, 0.1); color: var(--accent); }
+.stat-icon.green { background: rgba(34, 197, 94, 0.1); color: var(--success); }
+.stat-icon.orange { background: rgba(249, 115, 22, 0.1); color: var(--pending); }
 
 .stat-info h3 { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px; }
 .stat-info p { font-size: 1.5rem; font-weight: 700; margin: 0; }
@@ -211,6 +256,7 @@ body {
   border-radius: 12px;
   border: 1px solid var(--border);
   overflow-x: auto;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
 }
 .admin-table {
   width: 100%;
@@ -222,7 +268,7 @@ body {
   padding: 16px;
   background: rgba(255,255,255,0.02);
   border-bottom: 1px solid var(--border);
-  color: var(--text-muted);
+  color: var(--accent); /* Dùng màu xanh ngọc cho tiêu đề cột */
   font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
@@ -230,19 +276,19 @@ body {
 .admin-table td {
   padding: 16px;
   border-bottom: 1px solid var(--border);
-  vertical-align: middle;
+  vertical-align: top; /* Chỉnh lại thành top */
 }
 .admin-table tr:last-child td { border-bottom: none; }
 .admin-table tr:hover { background: rgba(255,255,255,0.02); }
 
 /* Table Elements */
-.game-thumb { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
+.game-thumb { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: white;}
 .user-cell { display: flex; align-items: center; gap: 10px; }
 .user-cell img { width: 32px; height: 32px; border-radius: 50%; }
 .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
 .status-dot.online { background: var(--success); }
 .status-dot.offline { background: var(--secondary); }
-.status-dot.playing { background: var(--accent); }
+.status-dot.playing { background: var(--primary); }
 
 .badge {
     padding: 4px 8px;
@@ -254,6 +300,10 @@ body {
 .badge.pending { background: rgba(249, 115, 22, 0.1); color: #f97316; }
 .badge.google { background: rgba(234, 67, 53, 0.1); color: #ea4335; }
 .badge.local { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.badge.open { background: rgba(67, 206, 162, 0.1); color: var(--accent); }
+.badge.playing { background: rgba(255, 152, 0, 0.1); color: var(--primary); }
+.badge.closed { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
 
 /* Action Buttons in Table */
 .action-btn {
@@ -341,7 +391,7 @@ label {
     color: var(--text-muted);
     font-size: 0.9rem;
 }
-input[type="text"], textarea, select {
+input[type="text"], input[type="email"], textarea, select {
     width: 100%;
     background: #0f172a; /* Darker bg for inputs */
     border: 1px solid var(--border);
@@ -351,7 +401,7 @@ input[type="text"], textarea, select {
     font-size: 0.95rem;
     outline: none;
 }
-input:focus, textarea:focus { border-color: var(--primary); }
+input:focus, textarea:focus { border-color: var(--accent); }
 input:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Vercel Links */
@@ -375,10 +425,10 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
     transition: 0.2s;
 }
 .vercel-card:hover {
-    border-color: var(--text);
+    border-color: var(--accent);
     background: #2d3b4e;
 }
-.vercel-card i { font-size: 2rem; margin-bottom: 5px; }
+.vercel-card i { font-size: 2rem; margin-bottom: 5px; color: var(--accent);}
 
 /* Overlay Loading */
 .admin-overlay {

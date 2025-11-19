@@ -1,4 +1,4 @@
-// public/admin.js (FINAL VERSION: Pagination + Sort Latest + Full Features)
+// public/admin.js (FINAL VERSION: Fixes, User Edit, Log, 8-Column User Table)
 
 const ADMIN_API = 'https://datn-socket.up.railway.app'; 
 
@@ -40,19 +40,23 @@ try {
         transports: ['websocket'],
         withCredentials: true
     });
-    socket.on('connect', () => console.log('Admin Socket Connected'));
+    socket.on('connect', () => {
+        console.log('Admin Socket Connected');
+        logActivity('Connected to Admin Socket', 'success');
+    });
+    socket.on('disconnect', () => logActivity('Disconnected from Admin Socket', 'danger'));
 } catch (e) { console.error("Socket Error:", e); }
 
 // --- DOM Elements ---
 const el = id => document.getElementById(id);
 const showOverlay = show => { const o = el('adminOverlay'); if(o) o.style.display = show ? 'flex' : 'none'; };
 
-// --- FORM MODAL LOGIC (Các biến được đưa ra ngoài) ---
+// --- FORM MODAL LOGIC (Đã sửa lỗi tham chiếu) ---
 const gameModal = el('gameModal');
 const gameForm = el('gameForm');
 let isEditingGame = false; 
 
-const userModal = el('userModal'); // Thêm modal cho User
+const userModal = el('userModal'); // Modal User
 const userForm = el('userForm');
 let isEditingUser = false; 
 
@@ -84,17 +88,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if(gameForm) gameForm.onsubmit = saveGame;
     if(userForm) userForm.onsubmit = saveUser; // Gán hàm save User
     
-    // Socket listeners
+    // Socket listeners (Đã thêm log)
     if(socket) {
-        socket.on('admin-stats-update', loadStats);
-        socket.on('admin-users-changed', () => fetchUsers(el('usersSearch')?.value || ''));
-        socket.on('admin-rooms-changed', () => fetchRooms(el('roomsSearch')?.value || ''));
-        socket.on('admin-games-changed', () => fetchGames(el('gamesSearch')?.value || ''));
+        socket.on('admin-stats-update', () => { loadStats(); logActivity('Dashboard Stats Updated', 'info'); });
+        socket.on('admin-users-changed', () => { fetchUsers(el('usersSearch')?.value || ''); logActivity('User list updated', 'info'); });
+        socket.on('admin-rooms-changed', () => { fetchRooms(el('roomsSearch')?.value || ''); logActivity('Room list updated', 'warning'); });
+        socket.on('admin-games-changed', () => { fetchGames(el('gamesSearch')?.value || ''); logActivity('Game list updated', 'info'); });
     }
 
     // Event Delegation cho bảng (QUAN TRỌNG)
     setupTableDelegation();
-
+    
     // Setup Modals
     setupModals();
 
@@ -151,7 +155,7 @@ async function fetchApi(url, options = {}) {
         return await res.json();
     } catch (err) {
         console.error("API Error:", err);
-        alert('Lỗi kết nối API Admin.'); // Thông báo lỗi chung
+        // alert('Lỗi kết nối API Admin.'); // Bỏ thông báo alert để tránh spam
         return null;
     }
 }
@@ -275,15 +279,25 @@ function renderUsersTable(users) {
     if (!tbody) return;
     
     if (!users.length) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Không có dữ liệu</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center">Không có dữ liệu</td></tr>`; // Sửa colspan = 8
         return;
     }
 
     tbody.innerHTML = users.map(u => {
-        const historyHtml = u.playHistory && u.playHistory.length > 0 
-            ? `<div style="font-size:0.8em;color:#9aa4b2;">Chơi gần nhất: ${u.playHistory[u.playHistory.length - 1].gameName}</div>`
-            : '';
-            
+        
+        // Tạo nội dung chi tiết cho cột Lịch sử chơi
+        let historyHtml = 'Chưa có.';
+        if (u.playHistory && u.playHistory.length > 0) {
+            // Lấy 3 lần chơi gần nhất
+            const recentHistory = u.playHistory.slice(-3).reverse(); 
+            historyHtml = recentHistory.map(h => {
+                // Định dạng ngày giờ cho lịch sử chơi
+                const playedAtFormatted = new Date(h.playedAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit', month: 'numeric', day: 'numeric'});
+                // Sử dụng h.gameName và h.gameId
+                return `<div>${h.gameName} (${h.gameId}) - ${playedAtFormatted}</div>`;
+            }).join('');
+        }
+        
         return `
             <tr>
                 <td><div class="user-cell"><img src="https://api.dicebear.com/7.x/micah/svg?seed=${u.username}" alt="avt"><span>${u.username}</span></div></td>
@@ -291,8 +305,8 @@ function renderUsersTable(users) {
                 <td>${u.email || '-'}</td>
                 <td>${u.googleId ? '<span class="badge google">Google</span>' : '<span class="badge local">Local</span>'}</td>
                 <td><span class="status-dot ${u.status}"></span> ${u.status}</td>
-                <td>${formatDateTime(u.createdAt)} ${historyHtml}</td>
-                <td>
+                <td>${formatDateTime(u.createdAt)}</td>
+                <td style="font-size:0.85em; color:#bbb; line-height: 1.3;">${historyHtml}</td> <td>
                     <button class="action-btn edit" data-id="${u._id}" data-type="user" title="Sửa"><i class="fas fa-edit"></i></button>
                     <button class="action-btn delete" data-id="${u._id}" data-type="user" title="Xóa"><i class="fas fa-trash"></i></button>
                 </td>
@@ -361,7 +375,7 @@ function renderGamesTable(games) {
 // --- 5. ACTIONS & EVENT DELEGATION ---
 
 function setupTableDelegation() {
-    // Bảng Game (Giữ nguyên)
+    // Bảng Game
     const gamesList = el('adminGamesList');
     if (gamesList) {
         gamesList.addEventListener('click', (e) => {
@@ -384,7 +398,7 @@ function setupTableDelegation() {
         });
     }
 
-    // Bảng Room (Giữ nguyên)
+    // Bảng Room
     const roomsList = el('adminRoomsList');
     if (roomsList) {
         roomsList.addEventListener('click', (e) => {
@@ -423,7 +437,7 @@ async function deleteItem(type, id) {
                    : API_ENDPOINTS.USER_ID(id);
                    
     const res = await fetchApi(endpoint, { method: 'DELETE' });
-    if(res) alert(`Thành công! ${type.toUpperCase()} đã bị xóa/đóng.`);
+    if(res) logActivity(`Đã xóa/đóng ${type.toUpperCase()} ID: ${id}`, 'success');
     showOverlay(false);
     // Socket sẽ tự update UI
 }
@@ -434,7 +448,7 @@ async function toggleFeatured(id, checked) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ featured: checked })
     });
-    if(res) alert(`Cập nhật game ${id} thành công!`);
+    if(res) logActivity(`Cập nhật game ${id}: Nổi bật = ${checked}`, 'info');
 }
 
 async function syncGames() {
@@ -442,10 +456,9 @@ async function syncGames() {
     showOverlay(true);
     try {
         const resSync = await fetchApi(API_ENDPOINTS.SYNC_GAMES, { method: 'POST' });
-        // FIX: Đã sửa lỗi hiển thị undefined khi đồng bộ
-        if(resSync) alert(`Đồng bộ xong: ${resSync.updated || 0} cập nhật, ${resSync.created || 0} mới.`);
-        else alert('Đồng bộ thất bại, kiểm tra console.');
-    } catch(e) { alert('Lỗi: ' + e.message); }
+        if(resSync) logActivity(`Đồng bộ thành công: ${resSync.updated || 0} cập nhật, ${resSync.created || 0} mới.`, 'success');
+        else logActivity('Đồng bộ thất bại, kiểm tra console.', 'danger');
+    } catch(e) { logActivity('Lỗi: ' + e.message, 'danger'); }
     showOverlay(false);
 }
 
@@ -468,41 +481,6 @@ function setupModals() {
         document.querySelectorAll('#userModal .close-modal, #userModal .close-modal-btn').forEach(btn => {
             btn.onclick = () => userModal.style.display = 'none';
         });
-    }
-
-    // Thêm HTML cho User Modal (Cần thêm vào admin.html)
-    if (!userModal) {
-        const modalHtml = `
-            <div id="userModal" class="popup-modal" style="display:none; max-width:450px;">
-                <span class="close-modal" id="closeUserModal">&times;</span>
-                <h2 id="userModalTitle">Sửa Người Dùng</h2>
-                <form id="userForm" class="auth-form" style="text-align:left;">
-                    <input type="hidden" id="userIdInput">
-                    <div class="form-group">
-                        <label>Username (Không đổi):</label>
-                        <input type="text" id="userUsernameInput" disabled>
-                    </div>
-                    <div class="form-group">
-                        <label>Tên hiển thị:</label>
-                        <input type="text" id="userDisplayNameInput" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Email:</label>
-                        <input type="email" id="userEmailInput">
-                    </div>
-                    <div class="form-group">
-                        <label>Lịch sử chơi:</label>
-                        <textarea id="userPlayHistory" disabled rows="3" style="font-size:0.85em;"></textarea>
-                    </div>
-                    <div class="form-actions" style="margin-top:20px; text-align:right;">
-                        <button type="button" class="btn btn-cancel close-modal-btn">Hủy</button>
-                        <button type="submit" class="btn btn-save">Lưu thay đổi</button>
-                    </div>
-                </form>
-            </div>
-        `;
-        // Chỉ thêm vào body nếu chưa có (Để tránh lỗi nếu admin.html đã có)
-        // document.body.insertAdjacentHTML('beforeend', modalHtml); 
     }
 }
 
@@ -531,7 +509,7 @@ function openGameForm(game) {
     if (gameModal) gameModal.style.display = 'block';
 }
 
-// Lưu Game (Đã sửa lỗi tham chiếu)
+// Lưu Game
 async function saveGame(e) {
     e.preventDefault();
     showOverlay(true);
@@ -554,7 +532,7 @@ async function saveGame(e) {
         body: JSON.stringify(payload)
     });
     
-    if(res) alert(`Game ${payload.id} đã được lưu thành công.`);
+    if(res) logActivity(`Game ${payload.id} đã được lưu thành công.`, 'success');
     if (gameModal) gameModal.style.display = 'none';
     showOverlay(false);
 }
@@ -571,7 +549,10 @@ function openUserForm(user) {
         el('userEmailInput').value = user.email || '';
         
         const historyText = user.playHistory && user.playHistory.length > 0 
-            ? user.playHistory.map(h => `${h.gameName} (${formatDateTime(h.playedAt)})`).join('\n')
+            ? user.playHistory.map(h => {
+                 const playedAtFormatted = new Date(h.playedAt).toLocaleTimeString('vi-VN', {year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+                 return `${h.gameName} (${h.gameId}) - ${playedAtFormatted}`;
+            }).join('\n')
             : 'Chưa có lịch sử chơi.';
         el('userPlayHistory').value = historyText;
     } 
@@ -597,9 +578,36 @@ async function saveUser(e) {
         body: JSON.stringify(payload)
     });
     
-    if(res) alert(`User ${res.username} đã được cập nhật thành công.`);
+    if(res) logActivity(`User ${res.username} đã được cập nhật thành công.`, 'success');
     if (userModal) userModal.style.display = 'none';
     showOverlay(false);
+}
+
+// --- 7. LOGGING & UTILS ---
+
+function logActivity(message, type = 'info') {
+    const logList = el('activityLog');
+    if (!logList) return;
+
+    const timestamp = new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    const icon = type === 'success' ? '✅' : type === 'danger' ? '❌' : type === 'warning' ? '⚠️' : '💡';
+    const color = type === 'success' ? '#22c55e' : type === 'danger' ? '#ef4444' : type === 'warning' ? '#f97316' : '#94a3b8';
+    
+    const newItem = document.createElement('li');
+    newItem.style.cssText = `padding: 8px 0; border-bottom: 1px dotted var(--border); color: ${color}; font-size: 0.9em;`;
+    newItem.innerHTML = `
+        <span style="color:var(--text-muted); margin-right: 8px;">[${timestamp}]</span> 
+        ${icon} ${message}
+    `;
+
+    // Giới hạn 20 log item
+    if (logList.children.length > 20) {
+        logList.removeChild(logList.children[0]);
+    }
+    
+    // Thêm log mới
+    logList.appendChild(newItem);
+    logList.scrollTop = logList.scrollHeight;
 }
 
 // Helper Debounce

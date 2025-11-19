@@ -1,8 +1,10 @@
-// controllers/adminController.js
+// controllers/adminController.js (CHỈ COPY TOÀN BỘ FILE NÀY)
 
 const User = require('../models/User');
 const Room = require('../models/Room');
 const Game = require('../models/Game');
+const fs = require('fs');
+const path = require('path');
 
 // Hàm hỗ trợ phân trang chung
 async function paginate(model, query, page, limit) {
@@ -11,11 +13,19 @@ async function paginate(model, query, page, limit) {
     // Đếm tổng số lượng (Phải đếm trước khi skip/limit)
     const total = await model.countDocuments(query);
     
-    const data = await model.find(query)
+    // Thêm .lean() cho hiệu năng tốt hơn
+    let queryBuilder = model.find(query)
              .sort({ createdAt: -1 }) // Sắp xếp mới nhất trước
              .skip(skip)
              .limit(limit)
-             .lean(); // Tăng tốc độ query
+             .lean(); 
+
+    // Nếu là User, ta muốn lấy cả lịch sử chơi
+    if (model === User) {
+        // Mongoose 8+ tự động xử lý sub-schema, chỉ cần .lean() để tăng tốc
+    }
+
+    const data = await queryBuilder;
 
     return { 
         data, 
@@ -27,7 +37,6 @@ async function paginate(model, query, page, limit) {
 
 // --- USER ---
 exports.getAllUsers = (query = {}, page = 1, limit = 10) => {
-    // Thêm .populate('playHistory') nếu cần, nhưng hiện tại playHistory đã là sub-schema
     return paginate(User, query, page, limit);
 };
 
@@ -35,10 +44,10 @@ exports.updateUser = (id, updates) => {
     // Chỉ cho phép cập nhật displayName và email từ Admin
     const allowedUpdates = {};
     if (updates.displayName) allowedUpdates.displayName = updates.displayName;
-    if (updates.email) allowedUpdates.email = updates.email;
-    
-    // Thêm lịch sử game vào kết quả trả về
-    return User.findByIdAndUpdate(id, allowedUpdates, { new: true }).select('-password');
+    if (updates.email !== undefined) allowedUpdates.email = updates.email; // Cho phép gán null/empty
+
+    // Lấy user sau khi sửa, bao gồm cả lịch sử chơi
+    return User.findByIdAndUpdate(id, allowedUpdates, { new: true });
 };
 
 exports.deleteUser = (id) => {
@@ -87,10 +96,8 @@ exports.getStats = async () => {
     };
 };
 
-// (Giữ nguyên hàm syncGames)
+// FIX LOGIC: Sync Games chỉ cập nhật từ files.json (isComingSoon được xử lý bởi watchGames.js)
 exports.syncGames = async () => {
-    const fs = require('fs');
-    const path = require('path');
     const gamesJsonPath = path.join(__dirname, '..', 'public', 'games.json');
     if (!fs.existsSync(gamesJsonPath)) return { updated: 0, created: 0 };
     
@@ -102,17 +109,13 @@ exports.syncGames = async () => {
     for (const game of gamesData) {
         if (!game.id) continue;
         
-        // Logic đồng bộ: Nếu file game tồn tại, isComingSoon = false.
-        // Ngược lại, nếu game không có trong folder, ta không xử lý cờ isComingSoon ở đây.
-        // Giả định rằng `watchGames.js` xử lý cờ `isComingSoon` cho các game đã tồn tại trên file system.
-        
         const updatePayload = {
             name: game.name,
             desc: game.desc,
             players: game.players,
             category: game.category,
             featured: game.featured || false,
-            // isComingSoon không được set ở đây.
+            // isComingSoon được cập nhật bởi watchGames.js khi file game tồn tại
         };
 
         const result = await Game.updateOne({ id: game.id }, { $set: updatePayload }, { upsert: true });
@@ -120,9 +123,6 @@ exports.syncGames = async () => {
         if (result.upsertedCount) { created++; }
         else if (result.modifiedCount) { updated++; }
     }
-    
-    // Xử lý các game không còn trong files.json (nếu cần xóa)
-    // Hiện tại ta giữ lại, chỉ cập nhật status khi file game bị xóa.
 
     return { updated, created };
 };
