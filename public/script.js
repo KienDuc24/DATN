@@ -611,7 +611,6 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    // Xử lý Submit Form Quên Mật Khẩu
     // Xử lý Submit Form Quên Mật Khẩu (Đa ngôn ngữ)
     if (forgotForm) {
         forgotForm.addEventListener('submit', async (e) => {
