@@ -1,4 +1,4 @@
-// public/game/Draw/script.js (FIX LỖI CÔNG CỤ VẼ VÀ LOGIC POPUP MỚI)
+// public/game/Draw/script.js
 
 (() => {
     const GAME_ID = 'DG';
@@ -17,6 +17,7 @@
     }
     window.playerName = playerName;
     
+    // --- DOM Elements ---
     const $room = document.getElementById('roomCode');
     const $playersCount = document.getElementById('playersCount');
     const $gameStatus = document.getElementById('game-status');
@@ -41,10 +42,9 @@
     let isDrawing = false;
     let currentTool = 'pen';
     let currentColor = '#000000'; 
-    let currentSize = $sizeSlider ? parseInt($sizeSlider.value) : 5;
+    let currentSize = 5;
     let lastX = 0;
     let lastY = 0;
-    
     let isEraser = false;
     
     const ctx = $canvas ? $canvas.getContext('2d') : null;
@@ -62,13 +62,11 @@
     }
     clearCanvas();
 
-    // --- LOGIC VẼ ---
-    
+    // --- Logic Vẽ (Canvas) ---
     function getMousePos(e) {
         if (!$canvas) return { x: 0, y: 0 };
         const rect = $canvas.getBoundingClientRect();
         let clientX, clientY;
-        
         if (e.touches && e.touches.length > 0) {
             clientX = e.touches[0].clientX;
             clientY = e.touches[0].clientY;
@@ -76,14 +74,9 @@
             clientX = e.clientX;
             clientY = e.clientY;
         }
-
         const scaleX = $canvas.width / rect.width;
         const scaleY = $canvas.height / rect.height;
-        
-        return {
-            x: (clientX - rect.left) * scaleX,
-            y: (clientY - rect.top) * scaleY
-        };
+        return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
     }
     
     function draw({ type, x, y, color, size }) {
@@ -105,7 +98,6 @@
     
     function emitDraw(type, x, y, color = currentColor, size = currentSize) {
         if (currentDrawer !== playerName || !ctx) return; 
-
         const data = { type, x, y, color, size };
         socket.emit(`${GAME_ID}-draw`, { roomCode, data });
         draw(data);
@@ -114,66 +106,43 @@
     function setActiveTool(tool) {
         currentTool = tool;
         isEraser = (tool === 'eraser'); 
-        
         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
         if (activeBtn) activeBtn.classList.add('active');
-
         if ($canvas) {
-            if (tool === 'fill') {
-                $canvas.style.cursor = 'pointer'; 
-            } else if (tool === 'pen' || tool === 'eraser') {
-                $canvas.style.cursor = 'crosshair';
-            }
+            if (tool === 'fill') $canvas.style.cursor = 'pointer'; 
+            else $canvas.style.cursor = 'crosshair';
         }
     }
 
     function handleFillCanvas(e) {
-        if (currentDrawer !== playerName || currentTool !== 'fill' || !ctx) {
-            return;
-        }
-        
+        if (currentDrawer !== playerName || currentTool !== 'fill' || !ctx) return;
         ctx.fillStyle = currentColor;
         ctx.fillRect(0, 0, $canvas.width, $canvas.height);
-        
         socket.emit(`${GAME_ID}-fill`, { roomCode, color: currentColor }); 
-        
         setActiveTool('pen'); 
     }
 
     function handleCanvasClick(e) {
-        if (currentTool === 'fill') {
-            handleFillCanvas(e);
-        }
+        if (currentTool === 'fill') handleFillCanvas(e);
     }
     
     function handleDrawStart(e) {
-        if (currentDrawer !== playerName || !$canvas) {
-            return;
-        }
-
-        if (currentTool === 'fill') {
-            handleFillCanvas(e); 
-            return;
-        }
-
-        if (currentTool !== 'pen' && currentTool !== 'eraser') {
-            return;
-        }
+        if (currentDrawer !== playerName || !$canvas) return;
+        if (currentTool === 'fill') { handleFillCanvas(e); return; }
+        if (currentTool !== 'pen' && currentTool !== 'eraser') return;
 
         isDrawing = true;
         const pos = getMousePos(e);
         lastX = pos.x;
         lastY = pos.y;
-
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('start', lastX, lastY, drawColor, currentSize);
         e.preventDefault();
     }
 
     function handleDrawMove(e) { 
-        if (!isDrawing || currentDrawer !== playerName || !$canvas || (currentTool !== 'pen' && currentTool !== 'eraser')) return;
-        
+        if (!isDrawing || currentDrawer !== playerName || !$canvas) return;
         const pos = getMousePos(e);
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('move', pos.x, pos.y, drawColor, currentSize);
@@ -198,18 +167,9 @@
         $canvas.addEventListener('touchend', handleDrawEnd);
     }
     
-    if ($penTool) {
-        $penTool.addEventListener('click', () => setActiveTool('pen'));
-    }
-
-    if ($eraseBtn) {
-        $eraseBtn.addEventListener('click', () => setActiveTool('eraser'));
-    }
-
-    if ($fillTool) {
-        $fillTool.addEventListener('click', () => setActiveTool('fill'));
-    }
-
+    if ($penTool) $penTool.addEventListener('click', () => setActiveTool('pen'));
+    if ($eraseBtn) $eraseBtn.addEventListener('click', () => setActiveTool('eraser'));
+    if ($fillTool) $fillTool.addEventListener('click', () => setActiveTool('fill'));
     if ($sizeSlider) $sizeSlider.addEventListener('input', (e) => currentSize = parseInt(e.target.value));
     
     if ($clearBtn) $clearBtn.addEventListener('click', () => {
@@ -219,38 +179,25 @@
         }
     });
     
-    const colors = [
-        '#FFFFFF', '#000000', '#C1C1C1', '#4D4D4D', '#EF130B', '#740B07', 
-        '#FF7100', '#C23800', '#FFE400', '#E8A200', '#00CC00', '#005510',
-        '#00B2FF', '#00569E', '#231FD3', '#0E0865', '#A300BA', '#550069',
-        '#D37CAA', '#A75574', '#A0522D', '#63300D'
-    ];
-    
+    // Palette
+    const colors = ['#FFFFFF', '#000000', '#C1C1C1', '#4D4D4D', '#EF130B', '#740B07', '#FF7100', '#C23800', '#FFE400', '#E8A200', '#00CC00', '#005510', '#00B2FF', '#00569E', '#231FD3', '#0E0865', '#A300BA', '#550069', '#D37CAA', '#A75574', '#A0522D', '#63300D'];
     if ($colorPalette) {
         colors.forEach((color, index) => {
             const swatch = document.createElement('div');
             swatch.className = 'color-swatch';
             swatch.style.backgroundColor = color;
-            swatch.dataset.color = color;
-            
-            if (index === 1) { 
-                swatch.classList.add('active');
-                currentColor = color;
-            }
-            
+            if (index === 1) { swatch.classList.add('active'); currentColor = color; }
             swatch.addEventListener('click', () => {
                 currentColor = color;
                 $colorPalette.querySelector('.active')?.classList.remove('active');
                 swatch.classList.add('active');
-                
-                if (currentTool === 'eraser') {
-                    setActiveTool('pen');
-                }
+                if (currentTool === 'eraser') setActiveTool('pen');
             });
             $colorPalette.appendChild(swatch);
         });
     }
 
+    // --- Chat & Game Logic ---
     function renderChatMessage(player, message, type = 'msg-guess') { 
         if (!$chatMessages) return; 
         const el = document.createElement('div');
@@ -262,10 +209,8 @@
 
     function disableGuessInput(disabled = true) { 
         if (!$guessInput || !$sendGuess) return;
-        
         $guessInput.disabled = disabled;
         $sendGuess.disabled = disabled;
-        
         if (currentDrawer === playerName) {
              $guessInput.placeholder = 'Bạn là Họa sĩ. Chỉ có thể chat.';
              $guessInput.disabled = false; 
@@ -273,7 +218,6 @@
         } else {
              $guessInput.placeholder = 'Nhập từ khóa đoán hoặc chat...';
         }
-
         if (disabled) {
             $guessInput.disabled = true;
             $sendGuess.disabled = true;
@@ -285,7 +229,6 @@
         if (!$guessInput) return;
         const guess = $guessInput.value.trim();
         if (!guess) return;
-
         $guessInput.value = '';
         
         if (currentDrawer === playerName) {
@@ -305,14 +248,13 @@
         socket.emit(`${GAME_ID}-join`, { roomCode, player: playerObj });
     });
 
-    // --- ĐÃ SỬA: Luôn dùng DiceBear ---
+    // FIX: Avatar DiceBear
     function pickAvatarFor(name) {
         const safeName = name || 'guest';
         return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
     }
 
     socket.on(`${GAME_ID}-room-update`, ({ state, room }) => {
-        
         currentHost = room.host;
         roomPlayers = room.players;
         
@@ -332,9 +274,7 @@
             startBtn.addEventListener('click', () => {
                 socket.emit(`${GAME_ID}-start-game`, { roomCode });
             });
-            if ($gameStatus) {
-                $gameStatus.appendChild(startBtn);
-            }
+            if ($gameStatus) $gameStatus.appendChild(startBtn);
         }
         
         if (startBtn) {
@@ -364,16 +304,11 @@
     socket.on(`${GAME_ID}-start-round`, ({ drawer, scores, round, wordHint }) => {
         currentDrawer = drawer;
         clearCanvas();
-        
         if ($drawingTools) $drawingTools.classList.toggle('hidden', currentDrawer !== playerName);
-
         if ($gameStatus) $gameStatus.textContent = `Vòng ${round}: ${drawer} đang vẽ...`;
-        
         if ($wordHint) $wordHint.classList.remove('hidden');
-        
         renderScores(scores, drawer, roomPlayers);
         renderChatMessage('Hệ thống', `Vòng ${round} bắt đầu! ${drawer} đang vẽ.`, 'msg-system');
-        
         disableGuessInput(currentDrawer === playerName);
     });
     
@@ -383,9 +318,7 @@
     });
 
     socket.on(`${GAME_ID}-drawing`, (data) => {
-        if (currentDrawer !== playerName) {
-            draw(data);
-        }
+        if (currentDrawer !== playerName) draw(data);
     });
     
     socket.on(`${GAME_ID}-fill-canvas`, ({ color }) => {
@@ -395,9 +328,7 @@
         }
     });
     
-    socket.on(`${GAME_ID}-clear-canvas`, () => {
-        clearCanvas();
-    });
+    socket.on(`${GAME_ID}-clear-canvas`, () => clearCanvas());
 
     socket.on(`${GAME_ID}-timer`, ({ time }) => {
         if ($timer) $timer.textContent = time;
@@ -417,9 +348,7 @@
             playerRow.classList.add('flash-correct');
             setTimeout(() => { playerRow.classList.remove('flash-correct'); }, 1500);
         }
-        
         renderScores(scores, currentDrawer, roomPlayers);
-        
         if (player === playerName) {
             disableGuessInput(true);
             if ($guessInput) $guessInput.placeholder = 'Bạn đã đoán đúng!';
@@ -431,18 +360,13 @@
         if ($drawingTools) $drawingTools.classList.add('hidden'); 
         if ($gameStatus) $gameStatus.textContent = `Vòng kết thúc! Từ khóa là: ${word}`;
         if ($wordHint) $wordHint.classList.add('hidden'); 
-        
-        if (guessed) {
-            renderChatMessage('Hệ thống', `Từ khóa đã được đoán đúng.`, 'msg-system');
-        } else {
-            renderChatMessage('Hệ thống', `Hết giờ! Không ai đoán được.`, 'msg-system');
-        }
+        if (guessed) renderChatMessage('Hệ thống', `Từ khóa đã được đoán đúng.`, 'msg-system');
+        else renderChatMessage('Hệ thống', `Hết giờ! Không ai đoán được.`, 'msg-system');
         
         renderScores(scores, null, roomPlayers);
         disableGuessInput(true);
         
         setTimeout(() => {
-            
             const startBtn = document.getElementById('startGameBtn');
             if (startBtn && currentHost === playerName) {
                  if ($gameStatus) $gameStatus.textContent = '';
@@ -456,27 +380,24 @@
     
     socket.on(`${GAME_ID}-game-over`, ({ finalScores }) => {
         if ($gameStatus) $gameStatus.textContent = '🏆 TRÒ CHƠI KẾT THÚC!';
-        
         disableGuessInput(true);
         if ($drawingTools) $drawingTools.classList.add('hidden');
-        
         showRankingPopup(finalScores, true); 
     });
     
     socket.on(`${GAME_ID}-game-restarted`, () => {
         hidePopup(); 
-        
         if ($gameStatus && currentHost !== playerName) {
             $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
         }
     });
 
+    // --- RENDER ĐIỂM (Đã xóa nút chuyển chủ) ---
     function renderScores(scores, drawerName, playerList = []) {
         if (!$scoreGrid) return;
         $scoreGrid.innerHTML = '';
         
         const safePlayerList = Array.isArray(playerList) ? playerList : [];
-        
         const playerNames = safePlayerList.map(p => p.name); 
         const currentScores = scores || {}; 
         
@@ -487,7 +408,6 @@
             const isDrawer = name === drawerName;
             const isHost = name === currentHost;
             const isYou = name === playerName;
-            
             const playerObj = safePlayerList.find(p => p.name === name);
             const displayName = playerObj ? playerObj.displayName || name : name; 
 
@@ -505,9 +425,12 @@
                 ${crownIcon}
                 <div><img src="${pickAvatarFor(name)}" alt="${name}"></div>
                 <div class="score-name-tags">
-                    <span class="player-name">${displayName}</span> <div class="tags-container">${tags.join(' ')}</div>
+                    <span class="player-name">${displayName}</span> 
+                    <div class="tags-container">${tags.join(' ')}</div>
                 </div>
-                <div class="score-value">${mergedScores[name] || 0}</div>
+                <div class="score-right">
+                    <div class="score-value">${mergedScores[name] || 0}</div>
+                </div>
             `;
             $scoreGrid.appendChild(row);
         });
@@ -515,34 +438,30 @@
     
     function getSortedScores(scores) {
         if (!scores || typeof scores !== 'object') return [];
-        return Object.entries(scores)
-            .sort(([, a], [, b]) => b - a);
+        return Object.entries(scores).sort(([, a], [, b]) => b - a);
     }
     
     function showRankingPopup(scores, isFinal) {
         hidePopup(); 
-        
         const sortedScores = getSortedScores(scores);
         const title = isFinal ? '🏆 BẢNG XẾP HẠNG CUỐI CÙNG' : '✨ KẾT QUẢ VÒNG ĐẤU';
-        
         let content = `<h2 style="color:var(--accent-yellow); margin-bottom: 20px;">${title}</h2>`;
         
         content += '<ol style="padding: 0; list-style-position: inside; text-align: left; font-size: 1.1em; max-height: 250px; overflow-y: auto;">';
         sortedScores.forEach(([player, score], index) => {
             const isWinner = index === 0 && isFinal;
             const rankStyle = isWinner ? 'color: var(--accent-green); font-weight: bold;' : '';
-            
             const playerObj = roomPlayers.find(p => p.name === player);
             const displayName = playerObj ? playerObj.displayName || player : player; 
-            
             content += `<li style="${rankStyle}"><strong>${displayName}</strong>: ${score} điểm</li>`;
         });
         content += '</ol>';
-        
         content += '<div id="popup-actions" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">';
         
         if (isFinal) {
-            content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
+            if (currentHost === playerName) {
+                content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
+            }
             content += `<button id="popup-exit" class="btn btn-danger">Thoát</button>`;
         } else {
             content += `<p>Vòng tiếp theo sẽ bắt đầu sau 5 giây...</p>`;
@@ -584,7 +503,6 @@
                     socket.emit(`${GAME_ID}-restart-game`, { roomCode }); 
                 });
             }
-            
             const exitBtn = document.getElementById('popup-exit');
             if (exitBtn) {
                 exitBtn.addEventListener('click', () => {

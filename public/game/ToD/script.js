@@ -8,31 +8,25 @@
   const url = new URL(window.location.href);
   const params = new URLSearchParams(url.search);
   const roomCode = params.get('code') || '';
-
   let playerName = params.get('user'); 
   
   if (!playerName || !roomCode) {
-    alert('Lỗi: Thiếu thông tin phòng hoặc người dùng. Đang quay về trang chủ.');
+    alert('Lỗi: Thiếu thông tin phòng.');
     window.location.href = '/'; 
     return; 
   }
-
   window.playerName = playerName;
-  try { localStorage.setItem('playerName', playerName); } catch (e) { /* ignore */ }
-
-  // Loại bỏ logic lưu avatarParam và avatarUrl
   sessionStorage.setItem('playerName', playerName);
 
   const $room = document.getElementById('roomCode');
   const $playersCount = document.getElementById('playersCount');
   const $avatars = document.getElementById('avatars');
   const $question = document.getElementById('questionCard');
-  
   const $voteInfo = document.getElementById('voteInfo');
   const $voteCount = document.getElementById('voteCount');
   const $voteTotal = document.getElementById('voteTotal');
-  
   const controls = document.getElementById('controls');
+  
   let $actionBtns = document.getElementById('actionBtns');
   if (! $actionBtns && controls) {
     $actionBtns = document.createElement('div');
@@ -53,31 +47,23 @@
   let currentHost = null;
 
   socket.on('connect', () => {
-    console.log('[ToD][client] socket connected', socket.id, { roomCode, playerName });
     socket.emit('tod-join', { roomCode, player: playerName }); 
     socket.emit('tod-who', { roomCode });
-    setTimeout(()=> socket.emit('tod-who', { roomCode }), 200); 
   });
-
-  socket.on('connect_error', (err) => console.warn('[ToD][client] connect_error', err));
-  socket.on('disconnect', (reason) => console.log('[ToD][client] disconnect', reason));
 
   socket.on('tod-join-failed', ({ reason }) => {
-    alert(reason || 'Không thể vào phòng');
-    window.location.href = '/';
+    alert(reason); window.location.href = '/';
+  });
+  socket.on('kicked', () => {
+    alert('Bạn đã bị kick.'); window.location.href = '/';
   });
 
-  socket.on('kicked', (data) => {
-    alert(data.message || 'Bạn đã bị Admin kick khỏi phòng.');
-    window.location.href = '/';
-  });
-
-  // --- ĐÃ SỬA: Luôn dùng DiceBear ---
   function pickAvatarFor(playerObj = {}) {
     const fallbackName = playerObj.name || playerObj.username || 'guest';
     return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(fallbackName)}`;
   }
 
+  // --- RENDER PLAYER (KHÔNG NÚT CHUYỂN CHỦ) ---
   function renderPlayers(players = [], askedName, host) { 
     if ($playersCount) $playersCount.textContent = `${players.length}`;
     if (!$avatars) return;
@@ -90,35 +76,33 @@
     
     if (!players.length) return;
 
-    players.forEach((p, i) => {
+    players.forEach((p) => {
       const username = p && p.name ? p.name : String(p); 
       const display = p && p.displayName ? p.displayName : username;
       const imgUrl = pickAvatarFor(p);
       
       const el = document.createElement('div');
-      
-      el.className = 'player' + 
-                    (username === playerName ? ' you' : '') + 
-                    (username === askedName ? ' asked' : '') +
-                    (username === host ? ' host' : ''); 
+      el.className = 'player' + (username === playerName ? ' you' : '') + (username === askedName ? ' asked' : '') + (username === host ? ' host' : ''); 
       
       const crown = (username === host) ? '<div class="crown">👑</div>' : '';
       
-      el.innerHTML = `<div class="pic">${crown}<img src="${imgUrl}" alt="${username}"></div><div class="name">${display}</div>`;
+      el.innerHTML = `<div class="pic">${crown}<img src="${imgUrl}" alt="${username}"></div>
+                      <div class="name-container">
+                        <div class="name">${display}</div>
+                      </div>`;
       $avatars.appendChild(el);
     });
   }
 
   socket.on('tod-joined', (payload) => {
-    const rc = (payload && (payload.roomCode || (payload.data && payload.data.roomCode))) || roomCode || '';
-    const host = (payload && (payload.host || (payload.data && payload.data.host))) || '';
-    const players = (payload && (payload.players || (payload.data && payload.data.participants))) || []; 
-    const participantsCount = payload && (payload.participantsCount || (payload.data && payload.data.participantsCount)) || players.length || 0;
-    const status = (payload && payload.status) || 'open';
+    const rc = payload.roomCode || roomCode;
+    const host = payload.host || '';
+    const players = payload.players || []; 
+    const participantsCount = players.length;
+    const status = payload.status || 'open';
     
     currentHost = host; 
-
-    if ($room) $room.textContent = rc || '—';
+    if ($room) $room.textContent = rc;
     if ($playersCount) $playersCount.textContent = participantsCount;
 
     renderPlayers(players, currentAskedPlayer, currentHost);
@@ -131,15 +115,11 @@
         startBtn.className = 'btn btn-primary';
         startBtn.textContent = '🚀 Bắt đầu';
         startBtn.style.margin = '0.5rem';
-        startBtn.addEventListener('click', () => {
-          socket.emit('tod-start-round', { roomCode: rc });
-        });
+        startBtn.addEventListener('click', () => socket.emit('tod-start-round', { roomCode: rc }));
         controls.appendChild(startBtn);
       }
-      
       const isHost = (host && playerName === host);
       const isGameNotRunning = !currentAskedPlayer; 
-      
       startBtn.style.display = (isHost && isGameNotRunning && status !== 'closed') ? 'inline-block' : 'none';
     }
   });
@@ -147,10 +127,7 @@
   socket.on('tod-your-turn', ({ player }) => {
     currentAskedPlayer = player; 
     socket.emit('tod-who', { roomCode }); 
-    
-    // Fallback displayName
-    const turnDisplay = player; // Cần logic server gửi displayName hoặc tự map từ list players nếu muốn chính xác hơn
-    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn — chọn Sự thật hoặc Thử thách' : `⏳ ${turnDisplay} đang chọn...`;
+    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn' : `⏳ ${player} đang chọn...`;
     
     const startBtn = document.getElementById('startRoundBtn');
     if (startBtn) startBtn.style.display = 'none'; 
@@ -165,29 +142,23 @@
     }
   });
 
-  function toggleQuestionExpand() {
-    if (!$question) return;
-    $question.classList.toggle('collapsed');
-    if (!$question.classList.contains('collapsed')) $question.focus();
-  }
   const toggleBtn = document.getElementById('toggleQuestion');
-  toggleBtn && toggleBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleQuestionExpand(); });
+  toggleBtn && toggleBtn.addEventListener('click', (e)=>{ 
+      const q = document.getElementById('questionCard');
+      if(q) q.classList.toggle('collapsed'); 
+  });
 
   socket.on('tod-question', ({ player, choice, question, totalVoters }) => {
     currentAskedPlayer = player; 
     socket.emit('tod-who', { roomCode }); 
-    
-    const askedDisplay = player;
-
     if ($question) {
       $question.classList.remove('hidden');
       $question.classList.remove('collapsed');
-      $question.classList.toggle('truth', choice === 'truth');
-      $question.classList.toggle('dare', choice === 'dare');
+      $question.className = `question-card ${choice}`;
       const qText = $question.querySelector('.q-text');
-      if (qText) qText.textContent = `${askedDisplay} chọn ${choice === 'truth' ? 'Sự thật' : 'Thử thách'}: ${question}`;
+      if (qText) qText.textContent = `${player} - ${choice}: ${question}`;
     }
-    if ($turnText) $turnText.textContent = `${askedDisplay} đang thực hiện`;
+    if ($turnText) $turnText.textContent = `${player} đang thực hiện`;
     
     if (playerName === player) { 
       $actionBtns && ($actionBtns.innerHTML = ''); 
@@ -198,60 +169,33 @@
         const r = document.createElement('button'); r.className='btn btn-reject'; r.textContent='Không thông qua'; r.onclick = () => { socket.emit('tod-vote', { roomCode, player: playerName, vote: 'reject' }); $actionBtns.innerHTML = ''; };
         $actionBtns.appendChild(a); $actionBtns.appendChild(r);
       }
-      
       if ($voteInfo) $voteInfo.style.display = 'block';
       if ($voteCount) $voteCount.textContent = '0';
       if ($voteTotal) $voteTotal.textContent = totalVoters || '?'; 
     }
   });
 
-  socket.on('tod-voted', ({ player, vote, acceptCount, voted, total }) => {
-      if ($voteInfo && $voteInfo.style.display !== 'none') {
-        if ($voteCount) $voteCount.textContent = voted;
-        if ($voteTotal) $voteTotal.textContent = total;
-      }
+  socket.on('tod-voted', ({ voted, total }) => {
+      if ($voteCount) $voteCount.textContent = voted;
+      if ($voteTotal) $voteTotal.textContent = total;
   });
 
   socket.on('tod-result', ({ result }) => {
     currentAskedPlayer = null; 
     socket.emit('tod-who', { roomCode }); 
-    
     if ($voteInfo) $voteInfo.style.display = 'none';
-    if ($turnText) $turnText.textContent = result === 'accepted' ? '✅ Đa số chấp nhận' : '❌ Không đủ, thử lại';
+    if ($turnText) $turnText.textContent = result === 'accepted' ? '✅ Chấp nhận' : '❌ Thất bại';
     if (result === 'accepted' && $question) $question.classList.add('hidden');
   });
 
-  window.addEventListener('resize', () => {
-    socket.emit('tod-who', { roomCode }); 
-  });
-
-  window.addEventListener('beforeunload', () => {
-    socket.disconnect();
-  });
-  
   const backBtn = document.querySelector('.back-btn');
   if (backBtn) {
       backBtn.addEventListener('click', (e) => {
           e.preventDefault();
-          if (confirm('Bạn có chắc muốn rời khỏi phòng game?')) {
+          if (confirm('Thoát phòng game?')) {
               socket.disconnect(); 
               window.location.href = '/'; 
           }
       });
   }
-
-  if (typeof window.ActionBtns === 'undefined') {
-    window.ActionBtns = {
-      disable(selector) {
-        document.querySelectorAll(selector || '.action-btn').forEach(b => { try { b.disabled = true; } catch(e){} });
-      },
-      enable(selector) {
-        document.querySelectorAll(selector || '.action-btn').forEach(b => { try { b.disabled = false; } catch(e){} });
-      },
-      setDisabled(disabled, selector) {
-        return disabled ? this.disable(selector) : this.enable(selector);
-      }
-    };
-  }
-  if (typeof window.$actionBtns === 'undefined') window.$actionBtns = window.ActionBtns;
 })();

@@ -302,12 +302,12 @@ body {
 
 .crown-icon {
     position: absolute;
-    left: 20px; 
-    top: -5px; 
-    font-size: 1.5em;
-    color: var(--accent-yellow);
-    z-index: 3;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+    top: -15px; /* Điều chỉnh vị trí vương miện */
+    left: 50%;
+    transform: translateX(-50%) rotate(15deg);
+    font-size: 1.8rem;
+    z-index: 10;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 .score-name-tags {

@@ -1,4 +1,4 @@
-// backend/sockets/drawSocket.js
+// public/game/Draw/drawSocket.js
 
 const fs = require('fs');
 const path = require('path');
@@ -41,19 +41,17 @@ function getRoomState(code) {
 function getPlayersFromRoom(room) {
     if (!room) return [];
     let raw = room.players || [];
-    // Avatar luôn là null
     return raw.map(p => ({ name: p.name, displayName: p.displayName || p.name, avatar: null }));
 }
 
-// --- ĐÃ SỬA: Loại bỏ logic lấy avatar từ DB ---
 async function attachAvatarsToPlayers(players) {
   const names = (players || []).map(p => p.name).filter(Boolean);
   if (!names.length) {
     return players;
   }
+  
   let users = [];
   try {
-    // Chỉ lấy tên, bỏ qua avatar
     users = await User.find({ username: { $in: names } }).lean().select('username displayName name');
   } catch (e) {
     console.warn('[Draw] attachAvatarsToPlayers user lookup failed', e && e.message);
@@ -65,12 +63,8 @@ async function attachAvatarsToPlayers(players) {
 
   return (players || []).map(p => {
     const user = map[p.name];
-    
-    // LUÔN TRẢ VỀ NULL CHO AVATAR
     const avatar = null;
-    
     const outDisplayName = p.displayName || (user ? (user.displayName || user.name) : p.name);
-    
     return { name: p.name, displayName: outDisplayName || null, avatar: avatar };
   });
 }
@@ -113,7 +107,6 @@ async function getMaxRounds(roomCode) {
     const players = getPlayersFromRoom(room);
     return players.length * MAX_ROUNDS_PER_PLAYER;
 }
-
 
 async function endRound(io, roomCode, guessed) {
     const state = getRoomState(roomCode);
@@ -160,7 +153,6 @@ async function startRound(io, roomCode) {
     }
     
     const state = getRoomState(roomCode);
-    
     state.currentWord = getRandomWord();
     state.drawer = players[state.currentIndex % players.length].name;
     state.timer = ROUND_TIME;
@@ -185,9 +177,11 @@ async function startRound(io, roomCode) {
     startTimer(io, roomCode);
 }
 
+// --- MODULE EXPORT ---
 module.exports = (socket, io) => {
     console.log(`[${GAME_ID}] handler attached for socket ${socket.id}`);
     
+    // 1. Join
     socket.on(`${GAME_ID}-join`, async ({ roomCode, player }) => {
         try {
             const room = await Room.findOne({ code: roomCode }).lean();
@@ -208,6 +202,7 @@ module.exports = (socket, io) => {
         } catch (e) { console.error(`[${GAME_ID}] join error`, e); }
     });
 
+    // 2. Start Game
     socket.on(`${GAME_ID}-start-game`, async ({ roomCode }) => {
         const room = await Room.findOne({ code: roomCode });
         if (room && room.host === gameSocketMap.get(socket.id).player) {
@@ -218,10 +213,10 @@ module.exports = (socket, io) => {
         }
     });
 
+    // 3. Draw Events
     socket.on(`${GAME_ID}-draw`, ({ roomCode, data }) => {
         const state = getRoomState(roomCode);
         const playerInfo = gameSocketMap.get(socket.id);
-
         if (playerInfo && playerInfo.player === state.drawer) {
             socket.to(roomCode).emit(`${GAME_ID}-drawing`, data);
         }
@@ -230,7 +225,6 @@ module.exports = (socket, io) => {
     socket.on(`${GAME_ID}-clear`, ({ roomCode }) => {
         const state = getRoomState(roomCode);
         const playerInfo = gameSocketMap.get(socket.id);
-        
         if (playerInfo && playerInfo.player === state.drawer) {
             state.drawingData = [];
             socket.to(roomCode).emit(`${GAME_ID}-clear-canvas`);
@@ -240,12 +234,12 @@ module.exports = (socket, io) => {
     socket.on(`${GAME_ID}-fill`, ({ roomCode, color }) => {
         const state = getRoomState(roomCode);
         const playerInfo = gameSocketMap.get(socket.id);
-        
         if (playerInfo && playerInfo.player === state.drawer) {
             io.to(roomCode).emit(`${GAME_ID}-fill-canvas`, { color });
         }
     });
 
+    // 4. Guess
     socket.on(`${GAME_ID}-guess`, async ({ roomCode, player, guess }) => {
         const state = getRoomState(roomCode);
         const drawer = state.drawer;
@@ -254,10 +248,7 @@ module.exports = (socket, io) => {
              return io.to(roomCode).emit(`${GAME_ID}-chat-message`, { player: player, message: guess });
         }
 
-        io.to(roomCode).emit(`${GAME_ID}-chat-message`, { 
-            player: player, 
-            message: guess 
-        });
+        io.to(roomCode).emit(`${GAME_ID}-chat-message`, { player: player, message: guess });
 
         if (isCorrectGuess(guess, state.currentWord)) {
             if (state.guesses.has(player)) return;
@@ -269,9 +260,7 @@ module.exports = (socket, io) => {
             state.guesses.add(player);
             
             io.to(roomCode).emit(`${GAME_ID}-correct-guess`, { 
-                player: player, 
-                scores: state.scores,
-                time: remainingTime 
+                player: player, scores: state.scores, time: remainingTime 
             });
 
             const room = await Room.findOne({ code: roomCode }).lean();
@@ -283,6 +272,7 @@ module.exports = (socket, io) => {
         }
     });
 
+    // 5. Disconnect
     socket.on('disconnect', async () => {
         const userInfo = gameSocketMap.get(socket.id);
         if (!userInfo) return; 
@@ -327,23 +317,21 @@ module.exports = (socket, io) => {
             io.emit('admin-rooms-changed'); 
             
             io.to(code).emit(`${GAME_ID}-chat-message`, { 
-                player: 'Hệ thống', 
-                message: `${player} đã rời phòng.`, 
-                type: 'msg-system' 
+                player: 'Hệ thống', message: `${player} đã rời phòng.`, type: 'msg-system' 
             });
 
         } catch (e) {
-            console.error(`[${GAME_ID}] Lỗi xử lý disconnect của ${player} trong phòng ${code}:`, e);
+            console.error(`[${GAME_ID}] disconnect error`, e);
         }
     });
 
+    // 6. Restart Game
     socket.on(`${GAME_ID}-restart-game`, async ({ roomCode }) => {
         const state = getRoomState(roomCode);
         const room = await Room.findOne({ code: roomCode });
         const playerInfo = gameSocketMap.get(socket.id);
 
         if (room && playerInfo && room.host === playerInfo.player) {
-            
             state.scores = {};
             state.currentIndex = 0;
             state.drawer = null;
