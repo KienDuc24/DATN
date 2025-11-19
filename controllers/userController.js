@@ -3,7 +3,7 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto'); // Thêm cái này
-const sendEmail = require('../utils/sendEmail'); // Thêm cái này
+const sendEmail = require('../services/sendEmail'); // Thêm cái này
 
 // --- Helper ---
 function sanitizeUser(user) {
