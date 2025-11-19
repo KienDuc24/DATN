@@ -8,20 +8,20 @@ const Game = require('../models/Game');
 async function paginate(model, query, page, limit) {
     const skip = (page - 1) * limit;
     
-    const [data, total] = await Promise.all([
-        model.find(query)
+    // Đếm tổng số lượng (Phải đếm trước khi skip/limit)
+    const total = await model.countDocuments(query);
+    
+    const data = await model.find(query)
              .sort({ createdAt: -1 }) // Sắp xếp mới nhất trước
              .skip(skip)
              .limit(limit)
-             .lean(), // Tăng tốc độ query
-        model.countDocuments(query)
-    ]);
+             .lean(); // Tăng tốc độ query
 
     return { 
         data, 
         total, 
         page, 
-        pages: Math.ceil(total / limit) 
+        pages: Math.ceil(total / limit) // Trả về tổng số trang
     };
 }
 
