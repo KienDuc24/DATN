@@ -1,677 +1,443 @@
-// public/script.js (FULL CODE - FINAL)
+// public/game/Draw/script.js (CỐ ĐỊNH TIẾNG VIỆT & ĐỒNG BỘ UI HOST)
 
-// --- Biến cục bộ ---
-let MAX_SHOW = getMaxShow();
+(() => {
+    const GAME_ID = 'DG';
+    const SOCKET_URL = "https://datn-socket.up.railway.app";
+    window.socket = window.socket || (window.io && io(SOCKET_URL, { transports: ['websocket'], secure: true }));
 
-// --- 1. Render & Cập nhật Giao diện (UI Rendering) ---
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.search);
+    const roomCode = params.get('code') || '';
+    let playerName = params.get('user'); 
 
-/** Render 1 game card */
-function renderGameCard(game) {
-  const name = getGameName(game, currentLang);
-  const desc = getGameDesc(game, currentLang);
-  const category = getGameCategory(game, currentLang);
-  return `
-    <div class="game-card" onclick="handleGameClick('${game.id}', '${name.replace(/'/g, "\\'")}')">
-      ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
-      <img src="game/${game.id}/Img/logo.png" alt="${name}" />
-      <div class="game-title">${name}</div>
-      <div class="game-category">${category}</div>
-      <div class="game-desc">${desc}</div>
-      ${game.players ? `<div class="game-players">👥 ${game.players} ${LANGS[currentLang]?.players || ''}</div>` : ""}
-    </div>
-  `;
-}
-
-/** Render slider cho 1 nhóm game với nút < > */
-function renderSlider(games, sliderId, pageKey) {
-  const sliderContainer = document.getElementById(sliderId)?.parentElement; 
-  if (!sliderContainer) return;
-  
-  const slider = sliderContainer.querySelector('.games-slider-scroll'); 
-  if (!slider) {
-      console.warn('Không tìm thấy .games-slider-scroll cho sliderId:', sliderId);
-      return;
-  }
-
-  slider.innerHTML = games.map(renderGameCard).join('');
-
-  // Xóa nút cũ
-  sliderContainer.querySelectorAll('.slider-btn').forEach(btn => btn.remove());
-
-  setTimeout(() => {
-    const hasOverflow = slider.scrollWidth > slider.clientWidth + 5; 
+    if (!playerName || !roomCode) {
+        alert('Lỗi: Thiếu thông tin phòng. Đang quay về trang chủ.');
+        window.location.href = '/'; 
+        return; 
+    }
+    window.playerName = playerName;
     
-    if (hasOverflow) {
-      const btnLeft = document.createElement('button');
-      btnLeft.className = 'slider-btn left';
-      btnLeft.innerHTML = '‹'; 
-      
-      const btnRight = document.createElement('button');
-      btnRight.className = 'slider-btn right';
-      btnRight.innerHTML = '›'; 
-      
-      btnLeft.onclick = (e) => {
-        e.stopPropagation(); 
-        slider.scrollBy({ left: -slider.clientWidth * 0.8, behavior: 'smooth' }); 
-      };
-      
-      btnRight.onclick = (e) => {
-        e.stopPropagation(); 
-        slider.scrollBy({ left: slider.clientWidth * 0.8, behavior: 'smooth' }); 
-      };
+    // --- DOM Elements ---
+    const $room = document.getElementById('roomCode');
+    const $playersCount = document.getElementById('playersCount');
+    const $gameStatus = document.getElementById('game-status');
+    const $wordHint = document.getElementById('word-hint');
+    const $timer = document.getElementById('timer');
+    const $scoreGrid = document.getElementById('scoreGrid');
+    const $chatMessages = document.getElementById('chatMessages');
+    const $guessInput = document.getElementById('guessInput');
+    const $sendGuess = document.getElementById('sendGuess');
+    const $drawingTools = document.getElementById('drawingTools');
+    const $canvas = document.getElementById('drawingCanvas');
+    const $clearBtn = document.getElementById('clearBtn');
+    const $sizeSlider = document.getElementById('sizeSlider');
+    const $eraseBtn = document.querySelector('.tool-btn[data-tool="eraser"]');
+    const $penTool = document.querySelector('.tool-btn[data-tool="pen"]');
+    const $fillTool = document.querySelector('.tool-btn[data-tool="fill"]');
+    const $colorPalette = document.getElementById('colorPalette'); 
 
-      sliderContainer.appendChild(btnLeft);
-      sliderContainer.appendChild(btnRight);
+    let currentHost = null;
+    let currentDrawer = null;
+    let roomPlayers = []; 
+    let isDrawing = false;
+    let currentTool = 'pen';
+    let currentColor = '#000000'; 
+    let currentSize = 5;
+    
+    const ctx = $canvas ? $canvas.getContext('2d') : null;
+    if ($canvas) {
+        $canvas.width = $canvas.offsetWidth;
+        $canvas.height = $canvas.offsetHeight;
+    }
+    function clearCanvas() {
+        if (ctx) { ctx.fillStyle = 'white'; ctx.fillRect(0, 0, $canvas.width, $canvas.height); }
+    }
+    clearCanvas();
 
-      const updateButtonVisibility = () => {
-        const scrollLeft = slider.scrollLeft;
-        const scrollWidth = slider.scrollWidth;
-        const clientWidth = slider.clientWidth;
+    // --- Logic Vẽ (Giữ nguyên) ---
+    function getMousePos(e) {
+        if (!$canvas) return { x: 0, y: 0 };
+        const rect = $canvas.getBoundingClientRect();
+        let clientX = e.touches?.[0]?.clientX || e.clientX;
+        let clientY = e.touches?.[0]?.clientY || e.clientY;
+        const scaleX = $canvas.width / rect.width;
+        const scaleY = $canvas.height / rect.height;
+        return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    }
+    function draw({ type, x, y, color, size }) {
+        if (!ctx) return; 
+        if (type === 'start') {
+            ctx.beginPath(); ctx.moveTo(x, y);
+            ctx.strokeStyle = color; ctx.lineWidth = size;
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        } else if (type === 'move') {
+            ctx.lineTo(x, y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x, y);
+        }
+    }
+    function emitDraw(type, x, y, color = currentColor, size = currentSize) {
+        if (currentDrawer !== playerName || !ctx) return; 
+        const data = { type, x, y, color, size };
+        socket.emit(`${GAME_ID}-draw`, { roomCode, data });
+        draw(data);
+    }
+    // (Các hàm xử lý sự kiện vẽ... giữ nguyên logic cũ)
+    function setActiveTool(tool) {
+        currentTool = tool;
+        document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+        if ($canvas) $canvas.style.cursor = (tool === 'fill') ? 'pointer' : 'crosshair';
+    }
+    function handleFillCanvas() {
+        if (currentDrawer !== playerName || currentTool !== 'fill' || !ctx) return;
+        ctx.fillStyle = currentColor; ctx.fillRect(0, 0, $canvas.width, $canvas.height);
+        socket.emit(`${GAME_ID}-fill`, { roomCode, color: currentColor }); 
+        setActiveTool('pen'); 
+    }
+    function handleDrawStart(e) {
+        if (currentDrawer !== playerName || !$canvas) return;
+        if (currentTool === 'fill') { handleFillCanvas(); return; }
+        isDrawing = true;
+        const pos = getMousePos(e);
+        const drawColor = (currentTool === 'eraser') ? 'white' : currentColor;
+        emitDraw('start', pos.x, pos.y, drawColor, currentSize);
+        e.preventDefault();
+    }
+    function handleDrawMove(e) { 
+        if (!isDrawing || currentDrawer !== playerName || !$canvas) return;
+        const pos = getMousePos(e);
+        const drawColor = (currentTool === 'eraser') ? 'white' : currentColor;
+        emitDraw('move', pos.x, pos.y, drawColor, currentSize);
+        e.preventDefault();
+    }
+    function handleDrawEnd() { if (currentDrawer === playerName) isDrawing = false; }
+    
+    if ($canvas) {
+        $canvas.addEventListener('click', (e) => { if(currentTool === 'fill') handleFillCanvas(); }); 
+        $canvas.addEventListener('mousedown', handleDrawStart);
+        $canvas.addEventListener('mousemove', handleDrawMove);
+        $canvas.addEventListener('mouseup', handleDrawEnd);
+        $canvas.addEventListener('mouseout', handleDrawEnd);
+        $canvas.addEventListener('touchstart', handleDrawStart);
+        $canvas.addEventListener('touchmove', handleDrawMove);
+        $canvas.addEventListener('touchend', handleDrawEnd);
+    }
+    if ($penTool) $penTool.addEventListener('click', () => setActiveTool('pen'));
+    if ($eraseBtn) $eraseBtn.addEventListener('click', () => setActiveTool('eraser'));
+    if ($fillTool) $fillTool.addEventListener('click', () => setActiveTool('fill'));
+    if ($sizeSlider) $sizeSlider.addEventListener('input', (e) => currentSize = parseInt(e.target.value));
+    if ($clearBtn) $clearBtn.addEventListener('click', () => {
+        if (currentDrawer === playerName && confirm('Xóa toàn bộ bảng vẽ?')) {
+            socket.emit(`${GAME_ID}-clear`, { roomCode });
+            clearCanvas();
+        }
+    });
+    
+    // Palette
+    const colors = ['#FFFFFF', '#000000', '#C1C1C1', '#4D4D4D', '#EF130B', '#740B07', '#FF7100', '#C23800', '#FFE400', '#E8A200', '#00CC00', '#005510', '#00B2FF', '#00569E', '#231FD3', '#0E0865', '#A300BA', '#550069', '#D37CAA', '#A75574', '#A0522D', '#63300D'];
+    if ($colorPalette) {
+        colors.forEach((color, index) => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.style.backgroundColor = color;
+            if (index === 1) { swatch.classList.add('active'); currentColor = color; }
+            swatch.addEventListener('click', () => {
+                currentColor = color;
+                $colorPalette.querySelector('.active')?.classList.remove('active');
+                swatch.classList.add('active');
+                if (currentTool === 'eraser') setActiveTool('pen');
+            });
+            $colorPalette.appendChild(swatch);
+        });
+    }
 
-        if (scrollLeft < 10) { 
-          btnLeft.style.display = 'none';
+    // --- Chat & Game Logic (Tiếng Việt Cố định) ---
+    function renderChatMessage(player, message, type = 'msg-guess') { 
+        if (!$chatMessages) return; 
+        const el = document.createElement('div');
+        el.className = `chat-message ${type}`;
+        el.innerHTML = `<strong>${player}:</strong> ${message}`;
+        $chatMessages.appendChild(el);
+        $chatMessages.scrollTop = $chatMessages.scrollHeight;
+    }
+
+    function disableGuessInput(disabled = true) { 
+        if (!$guessInput || !$sendGuess) return;
+        $guessInput.disabled = disabled;
+        $sendGuess.disabled = disabled;
+        if (currentDrawer === playerName) {
+             $guessInput.placeholder = 'Bạn là Họa sĩ. Chỉ có thể chat.';
+             $guessInput.disabled = false; 
+             $sendGuess.disabled = false;
         } else {
-          btnLeft.style.display = 'flex';
+             $guessInput.placeholder = 'Nhập đáp án hoặc chat...';
         }
+        if (disabled) {
+            $guessInput.disabled = true;
+            $sendGuess.disabled = true;
+            $guessInput.placeholder = 'Chờ vòng mới...';
+        }
+    }
 
-        if (scrollWidth - scrollLeft - clientWidth < 10) { 
-          btnRight.style.display = 'none';
+    function handleSendGuess() {
+        if (!$guessInput) return;
+        const guess = $guessInput.value.trim();
+        if (!guess) return;
+        $guessInput.value = '';
+        
+        if (currentDrawer === playerName) {
+            socket.emit(`${GAME_ID}-guess`, { roomCode, player: playerName, guess: `(Chat): ${guess}` });
         } else {
-          btnRight.style.display = 'flex';
+            socket.emit(`${GAME_ID}-guess`, { roomCode, player: playerName, guess });
         }
-      };
-
-      slider.addEventListener('scroll', updateButtonVisibility);
-      updateButtonVisibility();
     }
-  }, 100); 
-}
 
-/** Hiển thị các slider theo thể loại */
-function renderGamesByCategory() {
-  const categoryList = document.getElementById('category-list');
-  if (!categoryList) return;
-  categoryList.innerHTML = ''; 
-
-  Object.keys(gamesByCategory).forEach(cat => {
-    const catKey = cat.replace(/\s+/g, '-');
-    const sliderId = `catSlider-${catKey}`; 
-    
-    const section = document.createElement('div');
-    section.className = 'category-slider-section';
-    
-    section.innerHTML = `
-      <div class="section-title-row" id="cat-${catKey}">
-        <div class="section-title">${cat}</div>
-      </div>
-      ${renderSortDropdown(`cat-${catKey}`)}
-      
-      <div class="games-slider-container">
-        <div class="games-slider-scroll" id="${sliderId}">
-        </div>
-      </div>
-    `;
-    
-    categoryList.appendChild(section);
-    renderSlider(gamesByCategory[cat], sliderId, `cat-${catKey}`);
-  });
-}
-
-/** Render dropdown sắp xếp */
-function renderSortDropdown(key = '') {
-  return `
-    <div class="sort-dropdown-row">
-      <label class="sort-label" data-i18n="sort_by">Sắp xếp theo</label>
-      <div class="sort-dropdown">
-        <select class="sort-select" onchange="sortGames('${key}', this)">
-          <option value="newest" data-i18n="sort_newest">Mới nhất</option>
-          <option value="oldest" data-i18n="sort_oldest">Cũ nhất</option>
-          <option value="players_asc" data-i18n="sort_players_asc">Số người tăng</option>
-          <option value="players_desc" data-i18n="sort_players_desc">Số người giảm</option>
-          <option value="az" data-i18n="sort_az">A-Z</option>
-          <option value="za" data-i18n="sort_za">Z-A</option>
-        </select>
-      </div>
-    </div>
-  `;
-}
-
-/** Hiển thị kết quả tìm kiếm */
-function renderSearchResults(filtered, keyword) {
-    const main = document.querySelector('.main-content');
-    let searchResultDiv = document.getElementById('search-result');
-
-    Array.from(main.children).forEach(child => {
-        if (child.id !== 'search-result') child.style.display = 'none';
+    if ($sendGuess) $sendGuess.addEventListener('click', handleSendGuess);
+    if ($guessInput) $guessInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleSendGuess();
     });
 
-    if (!searchResultDiv) {
-        searchResultDiv = document.createElement('div');
-        searchResultDiv.id = 'search-result';
-        main.appendChild(searchResultDiv);
-    }
-    searchResultDiv.style.display = '';
-
-    if (filtered.length === 0) {
-        searchResultDiv.innerHTML = `<div style="color:#ff9800;font-size:1.2rem;padding:32px 0;">Không tìm thấy trò chơi phù hợp.</div>`;
-        return;
-    }
-
-    function highlight(text) {
-        text = (text === undefined || text === null) ? '' : String(text);
-        if (!text) return '';
-        return text.replace(
-        new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'),
-        '<span style="background:#ff9800;color:#fff;border-radius:4px;padding:1px 4px;">$1</span>'
-        );
-    }
-
-    const sliderId = "searchSlider";
-    searchResultDiv.innerHTML = `
-        <div class="section-title-row">
-        <div class="section-title">Kết quả tìm kiếm cho "<span style="color:#ff9800">${keyword}</span>"</div>
-        </div>
-        
-        <div class="games-slider-container">
-          <div class="games-slider-scroll" id="${sliderId}">
-             ${filtered.map(game => {
-                const name = getGameName(game, currentLang);
-                const desc = getGameDesc(game, currentLang);
-                const category = getGameCategory(game, currentLang);
-                return `
-                <div class="game-card" onclick="handleGameClick('${game.id}', '${name.replace(/'/g, "\\'")}')">
-                    ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
-                    <img src="game/${game.id}/Img/logo.png" alt="${name}" />
-                    <div class="game-title">${highlight(name)}</div>
-                    <div class="game-category">${highlight(category)}</div>
-                    <div class="game-desc">${highlight(desc)}</div>
-                    ${game.players ? `<div class="game-players">👥 ${highlight(game.players)} ${LANGS[currentLang]?.players || 'người chơi'}</div>` : ""}
-                </div>
-                `;
-            }).join('')}
-          </div>
-        </div>
-    `;
-    
-    renderSlider(filtered, sliderId, 'search');
-}
-
-function hideSearchResults() {
-    const main = document.querySelector('.main-content');
-    const searchResultDiv = document.getElementById('search-result');
-    Array.from(main.children).forEach(child => {
-        if (child.id !== 'search-result') child.style.display = '';
-    });
-    if (searchResultDiv) searchResultDiv.style.display = 'none';
-}
-
-// --- Modal Auth ---
-function openAuthModal(tab = 'login') {
-  document.getElementById('auth-modal').style.display = 'flex';
-  showAuthTab(tab);
-  document.getElementById('loginTab').onclick = function() {
-    showAuthTab('login');
-  };
-  document.getElementById('registerTab').onclick = function() {
-    showAuthTab('register');
-  };
-}
-
-function showAuthTab(tab) {
-  const loginForm = document.getElementById('loginForm');
-  const registerForm = document.getElementById('registerForm');
-  const loginTab = document.getElementById('loginTab');
-  const registerTab = document.getElementById('registerTab');
-  if (tab === 'login') {
-    loginForm.style.display = '';
-    registerForm.style.display = 'none';
-    loginTab.classList.add('active');
-    registerTab.classList.remove('active');
-  } else {
-    loginForm.style.display = 'none';
-    registerForm.style.display = '';
-    loginTab.classList.remove('active');
-    registerTab.classList.add('active');
-  }
-}
-
-function closeAuthModal() {
-  const modal = document.querySelector('.auth-form-modal, .auth-modal, .modal');
-  if (modal) modal.style.display = 'none';
-}
-
-// --- HÀM HELPER TẠO AVATAR ---
-function getAvatarUrl(name) {
-    const safeName = name || 'guest';
-    return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
-}
-
-// --- CẬP NHẬT: Hiển thị Avatar trên Header ---
-function showUserInfo(user) {
-  const headerAuthBtns = document.getElementById('headerAuthBtns');
-  if (headerAuthBtns) headerAuthBtns.style.display = 'none';
-  const sidebarAuthBtns = document.getElementById('sidebarAuthBtns');
-  if (sidebarAuthBtns) sidebarAuthBtns.style.display = 'none';
-
-  const userInfo = document.getElementById('userInfo');
-  const userAvatar = document.getElementById('userAvatar'); 
-  
-  if (userInfo) {
-    userInfo.style.display = 'flex';
-  }
-  
-  // TẠO URL DICEBEAR
-  const avatarUrl = getAvatarUrl(user.username);
-
-  if (userAvatar) {
-    // HIỆN LẠI AVATAR
-    userAvatar.style.display = 'block'; 
-    userAvatar.src = avatarUrl; 
-  }
-
-  let usernameText = document.getElementById('header-username-text');
-  if (!usernameText) {
-      usernameText = document.createElement('span');
-      usernameText.id = 'header-username-text';
-      usernameText.style.cssText = 'color: #ff9800; font-weight: 700; margin-right: 10px; cursor: pointer;'; 
-      userInfo.prepend(usernameText); 
-  }
-  usernameText.textContent = user.displayName || user.username || 'User'; 
-
-  const dropdownAvatar = document.getElementById('dropdownAvatar');
-  const dropdownUsername = document.getElementById('dropdownUsername');
-  const dropdownEmail = document.getElementById('dropdownEmail'); 
-  
-  if (dropdownAvatar) {
-      // HIỆN LẠI AVATAR DROPDOWN
-      dropdownAvatar.style.display = 'block'; 
-      dropdownAvatar.src = avatarUrl;
-  }
-  if (dropdownUsername) dropdownUsername.innerText = user.displayName || user.username || 'User';
-  if (dropdownEmail) dropdownEmail.innerText = user.email || ''; 
-}
-
-
-function hideUserInfo() {
-    const headerAuthBtns = document.getElementById('headerAuthBtns');
-    if (headerAuthBtns) headerAuthBtns.style.display = '';
-    const sidebarAuthBtns = document.getElementById('sidebarAuthBtns');
-    if (sidebarAuthBtns) sidebarAuthBtns.style.display = '';
-    const userInfo = document.getElementById('userInfo');
-    if (userInfo) userInfo.style.display = 'none';
-    
-    const usernameText = document.getElementById('header-username-text');
-    if(usernameText) usernameText.textContent = '';
-    
-    const userAvatar = document.getElementById('userAvatar');
-    if (userAvatar) {
-        userAvatar.style.display = 'block';
-        userAvatar.src = 'img/guestlogo.png'; // Trả về ảnh mặc định
-    }
-
-    const userDropdown = document.getElementById('userDropdown');
-    if (userDropdown) userDropdown.style.display = 'none';
-}
-
-
-function showLoading(show = true) {
-  const spinner = document.getElementById('loadingSpinner');
-  if(spinner) spinner.style.display = show ? 'flex' : 'none';
-}
-
-// --- 2. Chức năng Phụ & Hiệu ứng (Auxiliary UI) ---
-
-function toggleSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
-  if (!sidebar || !overlay) return;
-  if (sidebar.classList.contains('show')) {
-    sidebar.classList.remove('show');
-    overlay.classList.remove('show');
-  } else {
-    sidebar.classList.add('show');
-    overlay.classList.add('show');
-  }
-}
-
-function toggleCategory(catId) {
-  const content = document.getElementById(`${catId}-content`);
-  const arrow = document.getElementById(`${catId}-arrow`);
-  if (!content || !arrow) return;
-  if (content.style.display === 'none' || content.style.display === '') {
-    content.style.display = 'block';
-    arrow.innerHTML = '&#9660;';
-  } else {
-    content.style.display = 'none';
-    arrow.innerHTML = '&#9654;';
-  }
-}
-
-function showMobileSearch() {
-  const header = document.querySelector('.header-main');
-  if(header) header.classList.add('mobile-searching');
-  setTimeout(() => {
-    const searchInput = document.getElementById('searchInput');
-    if(searchInput) searchInput.focus();
-  }, 100);
-}
-
-function scrollToTop() {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function getMaxShow() {
-  if (window.innerWidth <= 600) return 2;
-  if (window.innerWidth <= 900) return 3;
-  if (window.innerWidth <= 1200) return 4;
-  return 5;
-}
-
-function rerenderAllSliders() {
-  MAX_SHOW = getMaxShow();
-  renderSlider(allGames, 'allSlider', 'all');
-  renderSlider(featuredGames, 'featuredSlider', 'featured');
-  renderGamesByCategory();
-  updateLangUI();
-}
-
-// --- 3. Helper đa ngôn ngữ (i18n) ---
-
-function updateLangUI() {
-  if (!LANGS || !LANGS[currentLang]) return;
-  const langData = LANGS[currentLang];
-  
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (langData[key]) {
-      if (el.tagName === 'A' && el.querySelector('.icon')) {
-        const icon = el.querySelector('.icon');
-        el.innerHTML = icon.outerHTML + ' ' + langData[key];
-      } else {
-        el.innerText = langData[key];
-      }
-    }
-  });
-
-  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-    const key = el.getAttribute('data-i18n-placeholder');
-    if (langData[key]) el.placeholder = langData[key];
-  });
-
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput && langData.search_placeholder)
-    searchInput.placeholder = langData.search_placeholder;
-
-  document.querySelectorAll('.sort-label').forEach(el => {
-    el.textContent = langData.sort_by || 'Sắp xếp theo';
-  });
-
-  document.querySelectorAll('.sort-select').forEach(select => {
-    select.querySelectorAll('option').forEach(opt => {
-      const key = opt.getAttribute('data-i18n');
-      if (key && langData[key]) opt.textContent = langData[key];
-    });
-  });
-
-  const loginBtn = document.querySelector('.auth-btn[data-i18n="login"]');
-  if(loginBtn) loginBtn.innerText = langData.login;
-  const registerBtn = document.querySelector('.auth-btn[data-i18n="register"]');
-  if(registerBtn) registerBtn.innerText = langData.register;
-
-  const authOr = document.querySelector('.auth-or span');
-  if (authOr && langData.or) authOr.innerText = langData.or;
-}
-
-function getGameName(game, lang = currentLang) {
-  if (typeof game.name === 'string') return game.name;
-  return game.name?.[lang] || game.name?.vi || game.name?.en || '';
-}
-
-function getGameDesc(game, lang = currentLang) {
-  if (typeof game.desc === 'string') return game.desc;
-  return game.desc?.[lang] || game.desc?.vi || game.desc?.en || '';
-}
-
-function getGameCategory(game, lang = currentLang) {
-  if (typeof game.category === 'string') return game.category;
-  return game.category?.[lang] || game.category?.vi || game.category?.en || '';
-}
-
-
-// --- 4. Gắn sự kiện DOM ---
-
-document.addEventListener('DOMContentLoaded', function() {
-    
-    window.addEventListener('scroll', function() {
-        const btn = document.getElementById('backToTopBtn');
-        if(!btn) return;
-        if (window.scrollY > 200) {
-            btn.classList.add('show');
-        } else {
-            btn.classList.remove('show');
-        }
+    socket.on('connect', () => {
+        const playerObj = { name: playerName };
+        socket.emit(`${GAME_ID}-join`, { roomCode, player: playerObj });
     });
 
-    window.addEventListener('resize', function() {
-        const newMax = getMaxShow();
-        if (newMax !== MAX_SHOW) {
-            rerenderAllSliders();
-        }
-    });
-
-    const loginPwdInput = document.getElementById('login-password');
-    const loginToggleBtn = document.getElementById('togglePassword');
-    
-    if (loginPwdInput && loginToggleBtn) {
-        loginToggleBtn.onclick = function(e) {
-            e.preventDefault();
-            const isHidden = loginPwdInput.type === 'password';
-            loginPwdInput.type = isHidden ? 'text' : 'password';
-            
-            const icon = isHidden ? '🙈' : '👁';
-            const text = isHidden ? ' Ẩn mật khẩu' : ' Hiện mật khẩu';
-            
-            this.innerHTML = `<span class="eye-icon">${icon}</span>${text}`;
-        };
+    function pickAvatarFor(name) {
+        const safeName = name || 'guest';
+        return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
     }
 
-    const toggleRegisterBtn = document.getElementById('toggleRegisterPassword');
-    const pw1 = document.getElementById('register-password');
-    const pw2 = document.getElementById('register-password2');
-    
-    if (toggleRegisterBtn && pw1 && pw2) {
-        toggleRegisterBtn.onclick = function(e) {
-            e.preventDefault();
-            const isHidden = pw1.type === 'password';
-            pw1.type = isHidden ? 'text' : 'password';
-            pw2.type = isHidden ? 'text' : 'password';
-            
-            const icon = isHidden ? '🙈' : '👁️';
-            const text = isHidden ? ' Ẩn mật khẩu' : ' Hiện mật khẩu';
-            
-            this.innerHTML = `<span class="eye-icon">${icon}</span>${text}`;
-        };
-    }
-    
-    const forgotBtn = document.getElementById('forgotPasswordBtn');
-    if (forgotBtn) {
-        forgotBtn.onclick = function() {
-            alert('Tính năng quên mật khẩu sẽ được bổ sung sau!');
-        };
-    }
-
-    const sidebarToggle = document.querySelector('.sidebar-toggle');
-    if(sidebarToggle) sidebarToggle.onclick = toggleSidebar;
-    
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-    if(sidebarOverlay) sidebarOverlay.onclick = toggleSidebar;
-
-    const searchToggleBtn = document.getElementById('searchToggleBtn');
-    if(searchToggleBtn) searchToggleBtn.onclick = showMobileSearch;
-
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('blur', function() {
-            setTimeout(() => { 
-                if (window.innerWidth <= 700 && !this.value) {
-                document.querySelector('.header-main').classList.remove('mobile-searching');
-                }
-            }, 150);
-        });
+    socket.on(`${GAME_ID}-room-update`, ({ state, room }) => {
+        currentHost = room.host;
+        roomPlayers = room.players;
         
-        searchInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && window.innerWidth <= 700 && !this.value) {
-                document.querySelector('.header-main').classList.remove('mobile-searching');
-            }
-        });
-    }
-
-    const backToTopBtn = document.getElementById('backToTopBtn');
-    if(backToTopBtn) backToTopBtn.onclick = scrollToTop;
-    
-    const authModalClose = document.querySelector('.auth-modal-close');
-    if(authModalClose) authModalClose.onclick = () => document.getElementById('auth-modal').style.display = 'none';
-
-    const userInfo = document.getElementById('userInfo');
-    const userDropdown = document.getElementById('userDropdown');
-    let dropdownVisible = false;
-
-    if (userInfo && userDropdown) {
-        userInfo.onclick = function(e) {
-            e.stopPropagation();
-            dropdownVisible = !dropdownVisible;
-            userDropdown.style.display = dropdownVisible ? 'flex' : 'none';
-        };
+        if ($room) $room.textContent = room.code || '—';
+        if ($playersCount) $playersCount.textContent = roomPlayers.length;
         
-        document.addEventListener('click', function() {
-            dropdownVisible = false;
-            userDropdown.style.display = 'none';
-        });
-        userDropdown.onclick = function(e) {
-            e.stopPropagation();
-        };
-    }
-
-    // Khởi tạo UI Profile
-    profileAndSettingsUI();
-});
-
-/**
- * Tạo và quản lý UI cho modal Profile (Hồ sơ) và Settings (Cài đặt)
- */
-function profileAndSettingsUI() {
-    function getUserSafe() {
-        try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
-    }
-
-    // Hàm cập nhật Avatar lên Header (dùng cho các nơi khác gọi)
-    function applyHeaderUser(updated) {
-        const ua = document.getElementById('userAvatar');
-        const da = document.getElementById('dropdownAvatar');
-        const du = document.getElementById('dropdownUsername');
+        renderScores(state.scores, state.drawer, roomPlayers);
         
-        // URL DiceBear mới
-        const avatarUrl = getAvatarUrl(updated.username);
-
-        if (ua) {
-            ua.style.display = 'block'; 
-            ua.src = avatarUrl; 
-        }
-        if (da) {
-            da.style.display = 'block';
-            da.src = avatarUrl;
+        let startBtn = document.getElementById('startGameBtn');
+        const gameNotRunning = !state.drawer;
+        
+        if (!startBtn) {
+            startBtn = document.createElement('button');
+            startBtn.id = 'startGameBtn';
+            startBtn.className = 'btn start-game-btn'; 
+            startBtn.textContent = '🚀 BẮT ĐẦU NGAY';
+            startBtn.addEventListener('click', () => {
+                socket.emit(`${GAME_ID}-start-game`, { roomCode });
+            });
+            if ($gameStatus) $gameStatus.appendChild(startBtn);
         }
         
-        const usernameText = document.getElementById('header-username-text');
-        if (usernameText) usernameText.textContent = updated.displayName || updated.username || 'User';
-        
-        if (du && (updated.displayName || updated.username)) du.innerText = updated.displayName || updated.username;
-        
-        const de = document.getElementById('dropdownEmail');
-        if (de) de.innerText = updated.email || '';
-    }
-    window.applyHeaderUser = applyHeaderUser;
-
-    function setupSettingsModal() {
-        let modal = document.getElementById('profile-modal');
-        if (!modal) return; 
-        
-        modal.querySelector('#closeProfileModal').onclick = () => modal.style.display = 'none';
-    }
-
-    function createProfileCenterPopup() {
-        let pop = document.getElementById('profile-center-popup');
-        if (pop) return pop;
-
-        pop = document.createElement('div');
-        pop.id = 'profile-center-popup';
-        pop.style.cssText = 'position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 1500; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.35);';
-        
-        // HTML Popup Hồ sơ
-        pop.innerHTML = `
-        <div id="profile-center-box" style="min-width:260px;max-width:420px;background:#23272f; color: #fff; border-radius:12px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.32);text-align:center; position: relative; border: 1px solid #ff980033;">
-            <button id="profile-center-close" style="position:absolute;right:10px;top:10px;background:none;border:none;font-size:1.2rem;cursor:pointer; color: #ff9800;">×</button>
-            <img id="profile-center-avatar" src="" style="width:86px;height:86px;border-radius:50%;object-fit:cover;border:2px solid #ff9800;margin-bottom:10px; display:block; margin-left: auto; margin-right: auto;">
-            <div id="profile-center-name" style="font-weight:700;font-size:1.25rem;margin-bottom:4px; color: #ff9800;"></div>
-            <div id="profile-center-email" style="color:#bbb;margin-bottom:12px; font-size: 0.95rem;"></div>
-        </div>
-        `;
-        document.body.appendChild(pop);
-
-        pop.addEventListener('click', (e) => {
-        if (e.target === pop) pop.style.display = 'none';
-        });
-        pop.querySelector('#profile-center-close').addEventListener('click', () => pop.style.display = 'none');
-        return pop;
-    }
-
-    function showProfileCenter(show = true) {
-        const pop = createProfileCenterPopup();
-        const user = getUserSafe();
-        const name = user.displayName || user.username || 'Khách';
-        const email = user.email || '(Chưa có email)';
-        
-        // URL DiceBear
-        const avatarUrl = getAvatarUrl(user.username);
-
-        const aEl = document.getElementById('profile-center-avatar');
-        const nEl = document.getElementById('profile-center-name');
-        const eEl = document.getElementById('profile-center-email');
-        
-        // HIỆN AVATAR TRONG POPUP
-        if (aEl) {
-            aEl.src = avatarUrl;
-            aEl.style.display = 'block';
-        }
-        if (nEl) nEl.innerText = name;
-        if (eEl) eEl.innerText = email;
-        pop.style.display = show ? 'flex' : 'none';
-    }
-
-    const settingsBtn = document.getElementById('settingsBtn');
-    if (settingsBtn) {
-        settingsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if(typeof openSettingsModal === 'function') {
-                openSettingsModal(); 
+        if (startBtn) {
+            if (currentHost === playerName && gameNotRunning) {
+                startBtn.style.display = 'inline-block';
+                if ($gameStatus) $gameStatus.textContent = '';
+                if ($gameStatus) $gameStatus.appendChild(startBtn); 
             } else {
-                alert("Lỗi: Không tìm thấy hàm openSettingsModal()");
+                startBtn.style.display = 'none';
             }
-        });
-    }
+        }
 
-    const profileBtn = document.getElementById('profileBtn');
-    if (profileBtn) {
-        profileBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showProfileCenter(true);
-        });
-    }
+        if (gameNotRunning) {
+            disableGuessInput(true); 
+            if ($drawingTools) $drawingTools.classList.add('hidden');
+            if ($wordHint) $wordHint.classList.add('hidden');
 
-    document.addEventListener('click', () => {
-        const pc = document.getElementById('profile-center-popup');
-        if (pc) pc.style.display = 'none';
+            if (currentHost !== playerName && $gameStatus) {
+                $gameStatus.textContent = `Đang chờ chủ phòng (${currentHost}) bắt đầu...`;
+            } else if (currentHost === playerName && $gameStatus) {
+                 $gameStatus.textContent = ''; 
+                 if (startBtn) $gameStatus.appendChild(startBtn);
+            }
+        }
+    });
+
+    socket.on(`${GAME_ID}-start-round`, ({ drawer, scores, round, wordHint }) => {
+        currentDrawer = drawer;
+        clearCanvas();
+        if ($drawingTools) $drawingTools.classList.toggle('hidden', currentDrawer !== playerName);
+        if ($gameStatus) $gameStatus.textContent = `Vòng ${round}: ${drawer} đang vẽ...`;
+        if ($wordHint) $wordHint.classList.remove('hidden');
+        renderScores(scores, drawer, roomPlayers);
+        renderChatMessage('Hệ thống', `Vòng ${round} bắt đầu! ${drawer} đang vẽ.`, 'msg-system');
+        disableGuessInput(currentDrawer === playerName);
     });
     
-    setupSettingsModal();
-}
+    socket.on(`${GAME_ID}-secret-word`, ({ word }) => {
+        if ($gameStatus) $gameStatus.textContent = `BẠN VẼ: ${word}`;
+        if ($wordHint) $wordHint.classList.remove('hidden');
+    });
+
+    socket.on(`${GAME_ID}-drawing`, (data) => {
+        if (currentDrawer !== playerName) draw(data);
+    });
+    socket.on(`${GAME_ID}-fill-canvas`, ({ color }) => {
+        if (ctx) { ctx.fillStyle = color; ctx.fillRect(0, 0, $canvas.width, $canvas.height); }
+    });
+    socket.on(`${GAME_ID}-clear-canvas`, () => clearCanvas());
+    socket.on(`${GAME_ID}-timer`, ({ time }) => { if ($timer) $timer.textContent = time; });
+
+    socket.on(`${GAME_ID}-chat-message`, ({ player, message }) => {
+        const type = player === currentDrawer ? 'msg-drawer' : 'msg-guess';
+        renderChatMessage(player, message, type);
+    });
+
+    socket.on(`${GAME_ID}-correct-guess`, ({ player, scores, time }) => {
+        renderChatMessage('Hệ thống', `${player} đoán đúng! 🎉 (+${50 + (time||0)} điểm)`, 'msg-correct');
+        const playerRow = document.querySelector(`.score-row.you`);
+        if (player === playerName && playerRow) {
+            playerRow.classList.add('flash-correct');
+            setTimeout(() => { playerRow.classList.remove('flash-correct'); }, 1500);
+        }
+        renderScores(scores, currentDrawer, roomPlayers);
+        if (player === playerName) {
+            disableGuessInput(true);
+            if ($guessInput) $guessInput.placeholder = 'Bạn đã đoán đúng!';
+        }
+    });
+
+    socket.on(`${GAME_ID}-end-round`, ({ word, scores, drawer, guessed }) => {
+        currentDrawer = null;
+        if ($drawingTools) $drawingTools.classList.add('hidden'); 
+        if ($gameStatus) $gameStatus.textContent = `Vòng kết thúc! Từ khóa: ${word}`;
+        if ($wordHint) $wordHint.classList.add('hidden'); 
+        if (guessed) renderChatMessage('Hệ thống', `Từ khóa đã được đoán.`, 'msg-system');
+        else renderChatMessage('Hệ thống', `Hết giờ! Không ai đoán được.`, 'msg-system');
+        
+        renderScores(scores, null, roomPlayers);
+        disableGuessInput(true);
+        
+        setTimeout(() => {
+            const startBtn = document.getElementById('startGameBtn');
+            if (startBtn && currentHost === playerName) {
+                 if ($gameStatus) $gameStatus.textContent = '';
+                 if ($gameStatus) $gameStatus.appendChild(startBtn); 
+                 startBtn.style.display = 'inline-block';
+            } else if (currentHost !== playerName && $gameStatus) {
+                $gameStatus.textContent = `Đang chờ chủ phòng bắt đầu...`;
+            }
+        }, 5000); 
+    });
+    
+    socket.on(`${GAME_ID}-game-over`, ({ finalScores }) => {
+        if ($gameStatus) $gameStatus.textContent = '🏆 TRÒ CHƠI KẾT THÚC!';
+        disableGuessInput(true);
+        if ($drawingTools) $drawingTools.classList.add('hidden');
+        showRankingPopup(finalScores, true); 
+    });
+    
+    socket.on(`${GAME_ID}-game-restarted`, () => {
+        hidePopup(); 
+        if ($gameStatus && currentHost !== playerName) {
+            $gameStatus.textContent = `Đang chờ chủ phòng bắt đầu...`;
+        }
+    });
+
+    // --- RENDER ĐIỂM (GIAO DIỆN GIỐNG ToD) ---
+    function renderScores(scores, drawerName, playerList = []) {
+        if (!$scoreGrid) return;
+        $scoreGrid.innerHTML = '';
+        
+        const safePlayerList = Array.isArray(playerList) ? playerList : [];
+        const playerNames = safePlayerList.map(p => p.name); 
+        const currentScores = scores || {}; 
+        
+        const mergedScores = playerNames.reduce((acc, name) => ({ ...acc, [name]: currentScores[name] || 0 }), { ...currentScores });
+        const sortedPlayers = playerNames.sort((a, b) => mergedScores[b] - mergedScores[a]);
+
+        sortedPlayers.forEach(name => {
+            const isDrawer = name === drawerName;
+            const isHost = name === currentHost;
+            const isYou = name === playerName;
+            const playerObj = safePlayerList.find(p => p.name === name);
+            const displayName = playerObj ? playerObj.displayName || name : name; 
+
+            const row = document.createElement('div');
+            row.className = `score-row ${isDrawer ? 'drawer-turn' : ''} ${isYou ? 'you' : ''}`;
+            
+            // SỬA: Bỏ tag chữ, dùng icon Overlay giống ToD
+            const crownHtml = isHost ? `<div class="crown-overlay">👑</div>` : '';
+            const penHtml = isDrawer ? `<div class="pen-overlay">✏️</div>` : '';
+
+            row.innerHTML = `
+                <div class="score-avatar-container">
+                    ${crownHtml}
+                    ${penHtml}
+                    <img src="${pickAvatarFor(name)}" alt="${name}">
+                </div>
+                <div class="score-name-tags">
+                    <span class="player-name">${displayName}</span> 
+                </div>
+                <div class="score-right">
+                    <div class="score-value">${mergedScores[name] || 0}</div>
+                </div>
+            `;
+            $scoreGrid.appendChild(row);
+        });
+    }
+    
+    // (Các hàm popup giữ nguyên, chỉ sửa text thành Tiếng Việt)
+    function getSortedScores(scores) {
+        if (!scores || typeof scores !== 'object') return [];
+        return Object.entries(scores).sort(([, a], [, b]) => b - a);
+    }
+    function showRankingPopup(scores, isFinal) {
+        hidePopup(); 
+        const sortedScores = getSortedScores(scores);
+        const title = isFinal ? '🏆 KẾT QUẢ CHUNG CUỘC' : '✨ KẾT QUẢ VÒNG ĐẤU';
+        let content = `<h2 style="color:var(--accent-yellow); margin-bottom: 20px;">${title}</h2>`;
+        content += '<ol style="padding: 0; list-style-position: inside; text-align: left; font-size: 1.1em; max-height: 250px; overflow-y: auto;">';
+        sortedScores.forEach(([player, score], index) => {
+            const isWinner = index === 0 && isFinal;
+            const rankStyle = isWinner ? 'color: var(--accent-green); font-weight: bold;' : '';
+            const playerObj = roomPlayers.find(p => p.name === player);
+            const displayName = playerObj ? playerObj.displayName || player : player; 
+            content += `<li style="${rankStyle}"><strong>${displayName}</strong>: ${score} điểm</li>`;
+        });
+        content += '</ol>';
+        content += '<div id="popup-actions" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">';
+        
+        if (isFinal) {
+            if (currentHost === playerName) {
+                content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
+            } else {
+                content += `<p style="color:#bbb;font-style:italic;">Đang chờ chủ phòng...</p>`;
+            }
+            content += `<button id="popup-exit" class="btn btn-danger">Thoát</button>`;
+        } else {
+            content += `<p>Vòng mới sau 5 giây...</p>`;
+        }
+        content += '</div>';
+
+        const modal = document.createElement('div');
+        modal.id = 'rankingModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `<div class="modal-content">${content}</div>`;
+        document.body.appendChild(modal);
+        // ... (style modal giữ nguyên)
+        const styleId = 'modal-styles';
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.innerHTML = `.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); } .modal-content { background: var(--card-bg); padding: 30px; border-radius: var(--border-radius); box-shadow: var(--shadow-base); text-align: center; max-width: 90%; } .btn-danger { background-color: var(--text-accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; } .btn-primary { background-color: var(--accent-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }`;
+            document.head.appendChild(style);
+        }
+        if (isFinal) {
+            const continueBtn = document.getElementById('popup-continue');
+            if (continueBtn) {
+                continueBtn.addEventListener('click', () => {
+                    hidePopup();
+                    socket.emit(`${GAME_ID}-restart-game`, { roomCode }); 
+                });
+            }
+            const exitBtn = document.getElementById('popup-exit');
+            if (exitBtn) {
+                exitBtn.addEventListener('click', () => { window.location.href = '/'; });
+            }
+        }
+    }
+    function hidePopup() { const modal = document.getElementById('rankingModal'); if (modal) modal.remove(); }
+})();

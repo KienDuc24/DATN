@@ -1,189 +1,160 @@
-// public/chatbot.js
-// Logic AI Chatbot dùng chung cho index.html và room.html
+// public/chatbot.js (ĐÃ ĐỒNG BỘ: Ngôn ngữ & Avatar DiceBear)
 
-(function() {
-  // Lấy API_BASE_URL từ biến toàn cục (do script.js hoặc room.js định nghĩa)
-  const API_BASE_URL = window.BASE_API || window.SOCKET_URL || 'https://datn-socket.up.railway.app';
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Tạo HTML cho Chatbot
+    const chatbotContainer = document.createElement("div");
+    chatbotContainer.id = "chatbot-container";
+    chatbotContainer.innerHTML = `
+        <div id="chatbot-icon">
+            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Assistant" alt="AI">
+        </div>
+        <div id="chatbot-window" class="hidden">
+            <div id="chatbot-header">
+                <div class="header-info">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Assistant" alt="Bot Avatar">
+                    <span id="chat-title-text">Trợ lý AI</span>
+                </div>
+                <button id="chatbot-close">&times;</button>
+            </div>
+            <div id="chatbot-messages"></div>
+            <div id="chatbot-input-area">
+                <input type="text" id="chatbot-input" placeholder="Hỏi gì đó...">
+                <button id="chatbot-send">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(chatbotContainer);
 
-  const aiToolsIcon = document.getElementById('ai-tools-icon');
-  const aichatbot = document.getElementById('ai-chatbot');
-  const chatInput = document.getElementById('chatInput');
-  const sendChat = document.getElementById('sendChat');
-  const chatMessages = document.getElementById('chatMessages');
-  const closechatbot = document.getElementById('closechatbot');
+    // 2. Các biến DOM
+    const chatIcon = document.getElementById("chatbot-icon");
+    const chatWindow = document.getElementById("chatbot-window");
+    const closeBtn = document.getElementById("chatbot-close");
+    const sendBtn = document.getElementById("chatbot-send");
+    const inputField = document.getElementById("chatbot-input");
+    const messagesArea = document.getElementById("chatbot-messages");
+    const titleText = document.getElementById("chat-title-text");
 
-  if (!aiToolsIcon || !aichatbot || !chatInput || !sendChat || !chatMessages || !closechatbot) {
-      console.warn('AI chatbot elements not found. Skipping AI chat logic.');
-      return;
-  }
+    // 3. Xử lý Đa ngôn ngữ
+    let LANGS = {};
+    const currentLang = localStorage.getItem('lang') || 'vi';
 
-  // --- HÀM MỚI: Tự động phát hiện bối cảnh (Context) ---
-  function getChatbotContext() {
-    const pathname = window.location.pathname;
-    
-    if (pathname.endsWith('/room.html')) {
-        // Chúng ta đang ở phòng chờ
-        const gameId = new URLSearchParams(window.location.search).get('gameId');
-        return {
-            page: 'room',
-            gameId: gameId || null, // Ví dụ: 'ToD', 'Draw'
-        };
-    } else {
-        // Chúng ta đang ở trang chủ
-        return {
-            page: 'index',
-            gameId: 'all', // Gửi 'all' để AI biết đây là trang chủ
-        };
+    async function loadChatLanguage() {
+        try {
+            const res = await fetch('/lang.json');
+            LANGS = await res.json();
+            applyLanguage();
+        } catch (e) {
+            console.error("Chatbot: Không tải được ngôn ngữ", e);
+        }
     }
-  }
 
-  const context = getChatbotContext();
-  if (!context.gameId) {
-      console.warn('Chatbot không thể xác định gameId (trang room.html).');
-  }
-
-  // --- HÀM MỚI: Thêm nút gợi ý dựa trên bối cảnh ---
-  function addSuggestionButtons() {
-    if (document.getElementById('chat-suggestions')) return;
-
-    const suggestionsEl = document.createElement('div');
-    suggestionsEl.id = 'chat-suggestions';
-    suggestionsEl.className = 'chat-suggestions';
-    
-    if (context.page === 'room') {
-        // Gợi ý cho phòng chờ
-        suggestionsEl.innerHTML = `
-            <button class="suggestion-btn" data-question="Mô tả game này">Mô tả game <i class="fas fa-info-circle"></i></button>
-            <button class="suggestion-btn" data-question="Cách chơi game này thế nào?">Giải thích luật chơi <i class="fas fa-book"></i></button>
-        `;
-    } else {
-        // Gợi ý cho trang chủ
-        suggestionsEl.innerHTML = `
-            <button class="suggestion-btn" data-question="Bạn có những game gì?">Giới thiệu các game <i class="fas fa-gamepad"></i></button>
-            <button class="suggestion-btn" data-action="login">Đăng nhập / Đăng ký <i class="fas fa-user-circle"></i></button>
-        `;
+    function t(key, defaultText) {
+        return LANGS[currentLang]?.[key] || defaultText || key;
     }
-    
-    chatMessages.appendChild(suggestionsEl);
 
-    // Thêm sự kiện click
-    suggestionsEl.querySelectorAll('.suggestion-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const question = btn.getAttribute('data-question');
-            const action = btn.getAttribute('data-action');
+    function applyLanguage() {
+        titleText.innerText = t('chat_title', 'Trợ lý AI');
+        inputField.placeholder = t('chat_placeholder', 'Hỏi gì đó...');
+        // Nếu chưa có tin nhắn nào, hiện tin chào mừng
+        if (messagesArea.children.length === 0) {
+            addMessage('bot', t('chat_welcome', 'Xin chào! Tôi là AI. Tôi có thể giúp gì cho bạn hôm nay?'));
+        }
+    }
 
-            if (question) {
-                // Nếu là câu hỏi, gửi đi
-                handleSendChat(question); 
-            } else if (action === 'login') {
-                // Nếu là hành động, thực thi hàm (hàm này đã có sẵn trong script.js)
-                if (typeof openAuthModal === 'function') {
-                    openAuthModal('login');
-                    aichatbot.classList.add('hidden'); // Ẩn bot đi
-                } else {
-                    console.error('Lỗi: Không tìm thấy hàm openAuthModal() trên trang này.');
-                }
-                removeSuggestionButtons();
-            }
-        });
+    loadChatLanguage(); // Tải ngôn ngữ ngay
+
+    // 4. Xử lý Avatar
+    function getAvatarUrl(type, username) {
+        if (type === 'bot') {
+            // Avatar Bot đồng bộ phong cách
+            return `https://api.dicebear.com/7.x/bottts/svg?seed=Assistant`; 
+        }
+        // Avatar User DiceBear (giống các phần khác)
+        const safeName = username || 'guest';
+        return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
+    }
+
+    function getUserName() {
+        try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            return user.username || 'guest';
+        } catch { return 'guest'; }
+    }
+
+    // 5. Logic Chat
+    chatIcon.addEventListener("click", () => {
+        chatWindow.classList.remove("hidden");
+        chatIcon.classList.add("hidden");
+        inputField.focus();
     });
-  }
 
-  // Hàm xóa nút lựa chọn
-  function removeSuggestionButtons() {
-    const suggestionsEl = document.getElementById('chat-suggestions');
-    if (suggestionsEl) {
-        suggestionsEl.remove();
-    }
-  }
+    closeBtn.addEventListener("click", () => {
+        chatWindow.classList.add("hidden");
+        chatIcon.classList.remove("hidden");
+    });
 
-  aiToolsIcon.addEventListener('click', () => {
-    aichatbot.classList.toggle('hidden');
-    if (!aichatbot.classList.contains('hidden') && !chatMessages.querySelector('.chat-message')) {
-        const welcomeMsg = context.page === 'room' 
-            ? '🤖 Chào bạn. Tôi có thể giúp gì về game này?'
-            : '🤖 Chào bạn. Tôi là trợ lý AI của Camping Game.';
-        addMessageToChat(welcomeMsg, 'ai');
-        addSuggestionButtons(); // Thêm nút
-    }
-  });
-
-  closechatbot.addEventListener('click', () => {
-    aichatbot.classList.add('hidden');
-  });
-  
-  function addMessageToChat(text, sender) {
-    if (!chatMessages) return;
-    if (sender === 'user') {
-        removeSuggestionButtons();
-    }
-    const messageEl = document.createElement('div');
-    messageEl.className = `chat-message ${sender}`; 
-    messageEl.textContent = text;
-    chatMessages.appendChild(messageEl);
-    chatMessages.scrollTop = chatMessages.scrollHeight; 
-    return messageEl;
-  }
-
-  async function getInstructionsFromAI(question) {
-    const normalizedQuestion = String(question || '').trim();
-    if (!normalizedQuestion) return '❌ Vui lòng nhập câu hỏi hợp lệ.';
-    
-    if (!context.gameId) {
-        return '❌ Lỗi: Không thể xác định mã game (gameId) để hỏi AI.';
+    function addMessage(sender, text) {
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("message", sender);
+        
+        const avatarUrl = getAvatarUrl(sender, getUserName());
+        
+        // Cấu trúc tin nhắn: Avatar + Nội dung
+        msgDiv.innerHTML = `
+            <img src="${avatarUrl}" class="chat-avatar" alt="${sender}">
+            <div class="bubble">${text}</div>
+        `;
+        
+        messagesArea.appendChild(msgDiv);
+        messagesArea.scrollTop = messagesArea.scrollHeight;
     }
 
-    const endpoint = `${API_BASE_URL}/api/ai/ask`; 
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            question: normalizedQuestion,
-            gameId: context.gameId // Gửi gameId (ví dụ: 'all' hoặc 'ToD')
-        })
-      });
-      const payload = await response.json();
-      if (!response.ok) {
-        return payload?.error || `❌ API trả về lỗi (${response.status}).`;
-      }
-      if (typeof payload?.answer === 'string' && payload.answer.trim()) {
-        return payload.answer.trim();
-      }
-      return '❌ Server không trả về câu trả lời hợp lệ.';
-    } catch (error) {
-      console.error('[AI Chatbot] Request failed', endpoint, error);
-      return '❌ Lỗi kết nối đến máy chủ AI.';
+    async function handleChat() {
+        const text = inputField.value.trim();
+        if (!text) return;
+
+        // Hiện tin nhắn người dùng
+        addMessage("user", text);
+        inputField.value = "";
+        inputField.disabled = true;
+
+        // Hiện trạng thái đang gõ...
+        const loadingDiv = document.createElement("div");
+        loadingDiv.className = "message bot loading";
+        loadingDiv.innerHTML = `<img src="${getAvatarUrl('bot')}" class="chat-avatar"><div class="bubble">...</div>`;
+        messagesArea.appendChild(loadingDiv);
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+
+        try {
+            // Gọi API Chatbot (Backend của bạn)
+            const response = await fetch("/api/chatbot", { 
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: text })
+            });
+
+            const data = await response.json();
+            
+            // Xóa loading
+            messagesArea.removeChild(loadingDiv);
+            
+            // Hiện tin nhắn Bot
+            addMessage("bot", data.reply || "Xin lỗi, tôi đang gặp sự cố kết nối.");
+
+        } catch (error) {
+            console.error("Chat error:", error);
+            messagesArea.removeChild(loadingDiv);
+            addMessage("bot", "Không thể kết nối tới máy chủ.");
+        } finally {
+            inputField.disabled = false;
+            inputField.focus();
+        }
     }
-  }
 
-  async function handleSendChat(predefinedQuestion = null) {
-    const question = predefinedQuestion || chatInput.value.trim();
-    if (!question) return;
-    
-    chatInput.disabled = true;
-    sendChat.disabled = true;
-    removeSuggestionButtons();
-    
-    addMessageToChat(question, 'user');
-    chatInput.value = ''; 
-
-    const loaderMessage = addMessageToChat('🤖 Đang suy nghĩ...', 'ai loader');
-    const aiResponse = await getInstructionsFromAI(question);
-    loaderMessage.remove(); 
-    addMessageToChat(aiResponse, 'ai'); 
-
-    chatInput.disabled = false;
-    sendChat.disabled = false;
-    chatInput.focus();
-  }
-  
-  sendChat.addEventListener('click', () => handleSendChat(null)); 
-  chatInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { // Thêm: Chặn gửi bằng Shift+Enter
-      e.preventDefault(); // Ngăn xuống dòng
-      handleSendChat(null);
-    }
-  });
-
-})();
+    sendBtn.addEventListener("click", handleChat);
+    inputField.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") handleChat();
+    });
+});

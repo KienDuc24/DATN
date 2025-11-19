@@ -1,4 +1,4 @@
-// public/game/Draw/script.js
+// public/game/Draw/script.js (FINAL FIX: Hiển thị trạng thái chờ cho người chơi)
 
 (() => {
     const GAME_ID = 'DG';
@@ -179,7 +179,6 @@
         }
     });
     
-    // Palette
     const colors = ['#FFFFFF', '#000000', '#C1C1C1', '#4D4D4D', '#EF130B', '#740B07', '#FF7100', '#C23800', '#FFE400', '#E8A200', '#00CC00', '#005510', '#00B2FF', '#00569E', '#231FD3', '#0E0865', '#A300BA', '#550069', '#D37CAA', '#A75574', '#A0522D', '#63300D'];
     if ($colorPalette) {
         colors.forEach((color, index) => {
@@ -392,7 +391,6 @@
         }
     });
 
-    // --- RENDER ĐIỂM (Đã xóa nút chuyển chủ) ---
     function renderScores(scores, drawerName, playerList = []) {
         if (!$scoreGrid) return;
         $scoreGrid.innerHTML = '';
@@ -403,6 +401,8 @@
         
         const mergedScores = playerNames.reduce((acc, name) => ({ ...acc, [name]: currentScores[name] || 0 }), { ...currentScores });
         const sortedPlayers = playerNames.sort((a, b) => mergedScores[b] - mergedScores[a]);
+        
+        const iamHost = (currentHost === playerName);
 
         sortedPlayers.forEach(name => {
             const isDrawer = name === drawerName;
@@ -421,6 +421,12 @@
             
             const crownIcon = isHost ? '<span class="crown-icon">👑</span>' : '';
 
+            // Nút chuyển chủ
+            let transferBtn = '';
+            if (iamHost && !isYou) {
+                transferBtn = `<button class="btn-transfer-host" onclick="transferHost('${name}')" title="Chuyển chủ phòng">👑➡️</button>`;
+            }
+
             row.innerHTML = `
                 ${crownIcon}
                 <div><img src="${pickAvatarFor(name)}" alt="${name}"></div>
@@ -429,12 +435,19 @@
                     <div class="tags-container">${tags.join(' ')}</div>
                 </div>
                 <div class="score-right">
+                     ${transferBtn}
                     <div class="score-value">${mergedScores[name] || 0}</div>
                 </div>
             `;
             $scoreGrid.appendChild(row);
         });
     }
+    
+    window.transferHost = function(targetName) {
+        if (confirm(`Bạn có chắc muốn chuyển quyền chủ phòng cho ${targetName}?`)) {
+            socket.emit(`${GAME_ID}-assign-host`, { roomCode, newHostName: targetName });
+        }
+    };
     
     function getSortedScores(scores) {
         if (!scores || typeof scores !== 'object') return [];
@@ -458,8 +471,13 @@
         content += '</ol>';
         content += '<div id="popup-actions" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">';
         
+        // --- SỬA: HIỂN THỊ TRẠNG THÁI CHỜ CHO NGƯỜI CHƠI KHÁC ---
         if (isFinal) {
-            content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
+            if (currentHost === playerName) {
+                content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
+            } else {
+                content += `<p style="color:#bbb;font-style:italic;">Đang chờ chủ phòng...</p>`;
+            }
             content += `<button id="popup-exit" class="btn btn-danger">Thoát</button>`;
         } else {
             content += `<p>Vòng tiếp theo sẽ bắt đầu sau 5 giây...</p>`;
