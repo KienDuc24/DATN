@@ -1,4 +1,4 @@
-// index.js (FULL VERSION: Google Login + Chatbot + Admin + Watcher)
+// index.js (FIXED: Cast to ObjectId failed)
 
 require('dotenv').config();
 const mongoose = require('mongoose');
@@ -20,7 +20,6 @@ const app = express();
 const server = http.createServer(app);
 
 // --- 1. Cấu hình Middleware ---
-// Cho phép Frontend (Vercel) gọi API
 const frontendURL = process.env.FRONTEND_URL || 'https://datn-smoky.vercel.app';
 app.use(cors({
   origin: frontendURL,
@@ -33,7 +32,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- 2. Cấu hình Session & Passport (Quan trọng cho Login) ---
+// --- 2.A. Cấu hình Express Session ---
 app.use(session({
   secret: process.env.SESSION_SECRET || 'datn_secret_key',
   resave: false,
@@ -50,23 +49,20 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// --- 3. Cấu hình Google Strategy ---
+// --- 2.C. Cấu hình Google Strategy ---
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    // 👇 Dẫn về Server Railway để xử lý logic đăng nhập
     callbackURL: "https://datn-socket.up.railway.app/auth/google/callback"
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
         const userEmail = profile.emails?.[0]?.value;
-        if (!userEmail) return done(new Error("Không tìm thấy email."), null);
+        if (!userEmail) return done(new Error("Không thể lấy email từ Google."), null);
 
-        // Tìm user theo Google ID
         let user = await User.findOne({ googleId: profile.id });
         if (user) return done(null, user);
 
-        // Tìm user theo Email (trường hợp đã đăng ký trước đó)
         user = await User.findOne({ email: userEmail });
         if (user) {
             user.googleId = profile.id;
@@ -75,64 +71,74 @@ passport.use(new GoogleStrategy({
             return done(null, user);
         }
 
-        // Tạo user mới
+        const newUsername = userEmail;
+        const newDisplayName = profile.displayName;
+
         let newUser = new User({
             googleId: profile.id,
             email: userEmail,
-            username: userEmail, // Dùng email làm username
-            displayName: profile.displayName
+            username: newUsername,
+            displayName: newDisplayName,
+            isVerified: true // Google auto verified
         });
         
         try {
             await newUser.save();
             return done(null, newUser);
         } catch (err) {
-            // Xử lý trùng username
             if (err.code === 11000) { 
                  const fallbackUsername = userEmail.split('@')[0] + '_' + Math.random().toString(36).substring(2, 6);
                  newUser = new User({
                     googleId: profile.id,
                     email: userEmail,
                     username: fallbackUsername,
-                    displayName: profile.displayName
+                    displayName: newDisplayName,
+                    isVerified: true
                 });
                 await newUser.save();
                 return done(null, newUser);
             }
             return done(err, null);
         }
-    } catch (err) { return done(err, null); }
+    } catch (err) {
+      return done(err, null);
+    }
   }
 ));
 
-passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser(async (id, done) => {
-  try {
-    const user = await User.findById(id);
-    done(null, user);
-  } catch (err) { done(err, null); }
+// --- 2.D. Serialize/Deserialize User (ĐÃ SỬA LỖI TẠI ĐÂY) ---
+passport.serializeUser((user, done) => {
+  // SỬA: Dùng user._id (ObjectId) thay vì user.id (UUID) để tương thích với findById
+  done(null, user._id); 
 });
 
-// --- 4. Khởi tạo Socket & Routes ---
+passport.deserializeUser(async (id, done) => {
+  try {
+    // findById hoạt động với _id (ObjectId)
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err, null);
+  }
+});
+
+// --- Khởi tạo Socket.IO ---
 const io = attachSocket(server); 
 
 try {
-  // Đăng ký các Route API
   app.use('/api/room', require('./routes/roomRoutes'));
   app.use('/api/auth', require('./routes/authRoutes'));
+  app.use('/admin', require('./routes/adminAuthRoutes')); 
   app.use('/api/admin', adminAuth, require('./routes/adminRoutes')(io)); 
   app.use('/api', require('./routes/publicRoutes'));
-  app.use('/api/ai', require('./routes/chatbotRoutes')); // Route Chatbot
+  app.use('/api/ai', require('./routes/chatbotRoutes'));
   
-  // Route Admin Web (Giao diện quản lý)
-  app.use('/admin', require('./routes/adminAuthRoutes')); 
-  
-  console.log('[index] Routes mounted successfully.');
+  console.log('[index] All routes mounted successfully.');
 } catch (e) {
   console.error('[index] Error mounting routes:', e.message);
 }
 
-// --- 5. Phục vụ File Tĩnh cho Admin ---
+// --- Routes ---
 app.get('/admin-login', (req, res) => { res.sendFile(path.join(__dirname, 'public/admin-login.html')); });
 app.get('/admin', adminAuth, (req, res) => { res.sendFile(path.join(__dirname, 'public/admin.html')); });
 app.get('/admin.html', adminAuth, (req, res) => { res.sendFile(path.join(__dirname, 'public/admin.html')); });
@@ -141,34 +147,34 @@ app.get('/css/admin.css', (req, res) => { res.sendFile(path.join(__dirname, 'pub
 app.get('/admin-login.css', (req, res) => { res.sendFile(path.join(__dirname, 'public/admin-login.css')); });
 app.get('/admin-login.js', (req, res) => { res.sendFile(path.join(__dirname, 'public/admin-login.js')); });
 
-// --- 6. Google Auth Endpoints ---
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+// --- Google Auth Routes ---
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
 
 app.get('/auth/google/callback', 
   passport.authenticate('google', { failureRedirect: '/' }), 
   (req, res) => {
-    // Đăng nhập thành công -> Chuyển hướng về Frontend Vercel
-    const targetUrl = process.env.FRONTEND_URL || 'https://datn-smoky.vercel.app';
+    const targetUrl = 'https://datn-smoky.vercel.app';
     const userQuery = encodeURIComponent(JSON.stringify(req.user));
     res.redirect(`${targetUrl}/?user=${userQuery}`);
   }
 );
 
-// --- 7. Khởi động Server ---
+// --- Khởi động Server ---
 const PORT = process.env.PORT || 3000;
 async function start() {
   try {
     if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI not set');
     
-    // Kết nối Database
-    await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000
+    });
     console.log('[index] Connected to MongoDB.');
 
-    // Chạy Game Watcher (Quét game)
     const updateGamesFunction = setupGameWatcher();
     await updateGamesFunction();
 
-    // Socket Events (Trạng thái Online)
     io.on('connection', (socket) => {
         socket.on('registerSocket', async (username) => {
           if (!username || username.startsWith('guest_')) return;
@@ -184,14 +190,15 @@ async function start() {
     });
     
   } catch (err) {
-    console.error('[index] STARTUP ERROR:', err.message);
+    console.error('[index] FATAL STARTUP ERROR:', err.message);
     process.exit(1);
   }
 }
 start();
 
-// Error Handler
 app.use((err, req, res, next) => {
-  console.error('[server][ERROR]', err.message);
-  res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
+  console.error('[server][ERROR]', err && (err.stack || err.message));
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
+  });
 });
