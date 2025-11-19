@@ -17,14 +17,10 @@
     }
     window.playerName = playerName;
     
-    // --- KHAI BÁO BIẾN DOM ---
-    // SỬA LỖI: Thay đổi cách lấy các nút công cụ từ getElementById sang querySelector với data-tool
     const $room = document.getElementById('roomCode');
     const $playersCount = document.getElementById('playersCount');
     const $gameStatus = document.getElementById('game-status');
     const $wordHint = document.getElementById('word-hint');
-    // NOTE: $hintText không tồn tại trong index.html của bạn, giữ lại để tránh lỗi nếu có trong HTML cũ
-    // const $hintText = document.getElementById('hint-text'); 
     const $timer = document.getElementById('timer');
     const $scoreGrid = document.getElementById('scoreGrid');
     const $chatMessages = document.getElementById('chatMessages');
@@ -34,7 +30,6 @@
     const $canvas = document.getElementById('drawingCanvas');
     const $clearBtn = document.getElementById('clearBtn');
     const $sizeSlider = document.getElementById('sizeSlider');
-    // SỬA LỖI: Sử dụng querySelector với data-tool thay vì ID
     const $eraseBtn = document.querySelector('.tool-btn[data-tool="eraser"]');
     const $penTool = document.querySelector('.tool-btn[data-tool="pen"]');
     const $fillTool = document.querySelector('.tool-btn[data-tool="fill"]');
@@ -50,7 +45,6 @@
     let lastX = 0;
     let lastY = 0;
     
-    // SỬA LỖI: Thêm khai báo 'isEraser'
     let isEraser = false;
     
     const ctx = $canvas ? $canvas.getContext('2d') : null;
@@ -68,7 +62,7 @@
     }
     clearCanvas();
 
-    // --- LOGIC VẼ (KHAI BÁO HÀM LÊN TRÊN CÙNG) ---
+    // --- LOGIC VẼ ---
     
     function getMousePos(e) {
         if (!$canvas) return { x: 0, y: 0 };
@@ -132,13 +126,10 @@
                 $canvas.style.cursor = 'crosshair';
             }
         }
-        console.log('Công cụ hiện tại:', currentTool, 'isEraser:', isEraser);
     }
 
-    // Xử lý ĐỔ MÀU
     function handleFillCanvas(e) {
         if (currentDrawer !== playerName || currentTool !== 'fill' || !ctx) {
-            console.log('Không thể đổ màu: drawer:', currentDrawer, 'tool:', currentTool, 'ctx:', !!ctx);
             return;
         }
         
@@ -148,30 +139,25 @@
         socket.emit(`${GAME_ID}-fill`, { roomCode, color: currentColor }); 
         
         setActiveTool('pen'); 
-        console.log('Đã đổ màu với màu:', currentColor);
     }
 
-    // Xử lý sự kiện Canvas chính
     function handleCanvasClick(e) {
         if (currentTool === 'fill') {
             handleFillCanvas(e);
         }
     }
     
-    // HÀM XỬ LÝ SỰ KIỆN VẼ CHÍNH
     function handleDrawStart(e) {
         if (currentDrawer !== playerName || !$canvas) {
-            console.log('Không thể bắt đầu vẽ: drawer:', currentDrawer, 'canvas:', !!$canvas);
             return;
         }
 
         if (currentTool === 'fill') {
-            handleFillCanvas(e); // Gọi hàm xử lý đổ màu
+            handleFillCanvas(e); 
             return;
         }
 
         if (currentTool !== 'pen' && currentTool !== 'eraser') {
-            console.log('Công cụ không hợp lệ:', currentTool);
             return;
         }
 
@@ -182,7 +168,6 @@
 
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('start', lastX, lastY, drawColor, currentSize);
-        console.log('Bắt đầu vẽ với công cụ:', currentTool, 'màu:', drawColor);
         e.preventDefault();
     }
 
@@ -190,7 +175,6 @@
         if (!isDrawing || currentDrawer !== playerName || !$canvas || (currentTool !== 'pen' && currentTool !== 'eraser')) return;
         
         const pos = getMousePos(e);
-        // Dòng này sử dụng 'isEraser'
         const drawColor = isEraser ? 'white' : currentColor;
         emitDraw('move', pos.x, pos.y, drawColor, currentSize);
         lastX = pos.x;
@@ -203,7 +187,6 @@
         isDrawing = false;
     }
 
-    // GẮN EVENT LISTENERS
     if ($canvas) {
         $canvas.addEventListener('click', handleCanvasClick); 
         $canvas.addEventListener('mousedown', handleDrawStart);
@@ -215,33 +198,16 @@
         $canvas.addEventListener('touchend', handleDrawEnd);
     }
     
-    // Gắn Event Listeners cho các nút công cụ
-    // SỬA LỖI: Thêm kiểm tra console.log để debug
     if ($penTool) {
-        $penTool.addEventListener('click', () => {
-            setActiveTool('pen');
-            console.log('Nút bút vẽ được nhấn');
-        });
-    } else {
-        console.error('Không tìm thấy nút bút vẽ');
+        $penTool.addEventListener('click', () => setActiveTool('pen'));
     }
 
     if ($eraseBtn) {
-        $eraseBtn.addEventListener('click', () => {
-            setActiveTool('eraser');
-            console.log('Nút tẩy được nhấn');
-        });
-    } else {
-        console.error('Không tìm thấy nút tẩy');
+        $eraseBtn.addEventListener('click', () => setActiveTool('eraser'));
     }
 
     if ($fillTool) {
-        $fillTool.addEventListener('click', () => {
-            setActiveTool('fill');
-            console.log('Nút đổ màu được nhấn');
-        });
-    } else {
-        console.error('Không tìm thấy nút đổ màu');
+        $fillTool.addEventListener('click', () => setActiveTool('fill'));
     }
 
     if ($sizeSlider) $sizeSlider.addEventListener('input', (e) => currentSize = parseInt(e.target.value));
@@ -253,7 +219,6 @@
         }
     });
     
-    // KHỞI TẠO BẢNG MÀU MỚI
     const colors = [
         '#FFFFFF', '#000000', '#C1C1C1', '#4D4D4D', '#EF130B', '#740B07', 
         '#FF7100', '#C23800', '#FFE400', '#E8A200', '#00CC00', '#005510',
@@ -286,7 +251,6 @@
         });
     }
 
-    // --- 2. LOGIC CHAT & ĐOÁN ---
     function renderChatMessage(player, message, type = 'msg-guess') { 
         if (!$chatMessages) return; 
         const el = document.createElement('div');
@@ -304,11 +268,10 @@
         
         if (currentDrawer === playerName) {
              $guessInput.placeholder = 'Bạn là Họa sĩ. Chỉ có thể chat.';
-             $guessInput.disabled = false; // Họa sĩ luôn được chat
+             $guessInput.disabled = false; 
              $sendGuess.disabled = false;
         } else {
              $guessInput.placeholder = 'Nhập từ khóa đoán hoặc chat...';
-             // Nếu người chơi đã đoán đúng, logic 'correct-guess' sẽ tắt input
         }
 
         if (disabled) {
@@ -337,17 +300,14 @@
         if (e.key === 'Enter') handleSendGuess();
     });
 
-    // --- 3. LOGIC SOCKET GAME ---
     socket.on('connect', () => {
         const playerObj = { name: playerName };
         socket.emit(`${GAME_ID}-join`, { roomCode, player: playerObj });
     });
 
+    // --- ĐÃ SỬA: Luôn dùng DiceBear ---
     function pickAvatarFor(name) {
         const safeName = name || 'guest';
-        // Tìm player object trong danh sách roomPlayers
-        const player = roomPlayers.find(p => p.name === safeName);
-        if (player?.avatar) return player.avatar;
         return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
     }
 
@@ -409,8 +369,6 @@
 
         if ($gameStatus) $gameStatus.textContent = `Vòng ${round}: ${drawer} đang vẽ...`;
         
-        // Cần có element $hintText trong index.html
-        // if ($hintText) $hintText.textContent = '_ '.repeat(wordHint).trim(); 
         if ($wordHint) $wordHint.classList.remove('hidden');
         
         renderScores(scores, drawer, roomPlayers);
@@ -422,7 +380,6 @@
     socket.on(`${GAME_ID}-secret-word`, ({ word }) => {
         if ($gameStatus) $gameStatus.textContent = `BẠN ĐANG VẼ: ${word}`;
         if ($wordHint) $wordHint.classList.remove('hidden');
-        // if ($hintText) $hintText.textContent = word; // Cần có element $hintText
     });
 
     socket.on(`${GAME_ID}-drawing`, (data) => {
@@ -435,7 +392,6 @@
         if (ctx) {
             ctx.fillStyle = color;
             ctx.fillRect(0, 0, $canvas.width, $canvas.height);
-            console.log('Nhận fill từ server với màu:', color);
         }
     });
     
@@ -470,7 +426,6 @@
         }
     });
 
-    // SỬA LỖI: LOGIC POPUP KẾT THÚC VÒNG (Bỏ popup)
     socket.on(`${GAME_ID}-end-round`, ({ word, scores, drawer, guessed }) => {
         currentDrawer = null;
         if ($drawingTools) $drawingTools.classList.add('hidden'); 
@@ -485,12 +440,8 @@
         
         renderScores(scores, null, roomPlayers);
         disableGuessInput(true);
-
-        // BỎ HIỂN THỊ POPUP KHI KẾT THÚC VÒNG
-        // showRankingPopup(scores, false); 
         
         setTimeout(() => {
-            // hidePopup(); // Không cần nữa
             
             const startBtn = document.getElementById('startGameBtn');
             if (startBtn && currentHost === playerName) {
@@ -500,7 +451,7 @@
             } else if (currentHost !== playerName && $gameStatus) {
                 $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
             }
-        }, 5000); // Đợi 5 giây
+        }, 5000); 
     });
     
     socket.on(`${GAME_ID}-game-over`, ({ finalScores }) => {
@@ -512,24 +463,20 @@
         showRankingPopup(finalScores, true); 
     });
     
-    // BỔ SUNG: LẮNG NGHE SỰ KIỆN RESET GAME
     socket.on(`${GAME_ID}-game-restarted`, () => {
-        hidePopup(); // Đóng popup cho tất cả mọi người
+        hidePopup(); 
         
-        // Cập nhật giao diện chờ (logic 'room-update' sẽ xử lý nút Bắt đầu)
         if ($gameStatus && currentHost !== playerName) {
             $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
         }
     });
 
-    // --- 4. HÀM RENDER ĐIỂM SỐ (ĐÃ SỬA ĐỔI ĐỂ DÙNG DISPLAY NAME) ---
     function renderScores(scores, drawerName, playerList = []) {
         if (!$scoreGrid) return;
         $scoreGrid.innerHTML = '';
         
         const safePlayerList = Array.isArray(playerList) ? playerList : [];
         
-        // Lấy danh sách tên (username) để tính toán điểm và sắp xếp
         const playerNames = safePlayerList.map(p => p.name); 
         const currentScores = scores || {}; 
         
@@ -541,9 +488,8 @@
             const isHost = name === currentHost;
             const isYou = name === playerName;
             
-            // THÊM: Tìm đối tượng người chơi và lấy displayName
             const playerObj = safePlayerList.find(p => p.name === name);
-            const displayName = playerObj ? playerObj.displayName || name : name; // SỬ DỤNG displayName, fallback về name
+            const displayName = playerObj ? playerObj.displayName || name : name; 
 
             const row = document.createElement('div');
             row.className = `score-row ${isDrawer ? 'drawer-turn' : ''} ${isYou ? 'you' : ''}`;
@@ -567,7 +513,6 @@
         });
     }
     
-    // --- 5. HÀM POP-UP XẾP HẠNG ---
     function getSortedScores(scores) {
         if (!scores || typeof scores !== 'object') return [];
         return Object.entries(scores)
@@ -587,7 +532,6 @@
             const isWinner = index === 0 && isFinal;
             const rankStyle = isWinner ? 'color: var(--accent-green); font-weight: bold;' : '';
             
-            // Tìm displayName cho popup
             const playerObj = roomPlayers.find(p => p.name === player);
             const displayName = playerObj ? playerObj.displayName || player : player; 
             
@@ -598,7 +542,6 @@
         content += '<div id="popup-actions" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">';
         
         if (isFinal) {
-            // SỬA LỖI: Chỉ Host thấy nút Chơi Lại
             content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
             content += `<button id="popup-exit" class="btn btn-danger">Thoát</button>`;
         } else {
@@ -612,7 +555,6 @@
         modal.innerHTML = `<div class="modal-content">${content}</div>`;
         document.body.appendChild(modal);
 
-        // Thêm CSS cho modal
         const styleId = 'modal-styles';
         if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
@@ -635,7 +577,6 @@
         }
 
         if (isFinal) {
-            // SỬA LỖI: Gắn sự kiện cho nút "Chơi Lại" (Tiếp tục)
             const continueBtn = document.getElementById('popup-continue');
             if (continueBtn) {
                 continueBtn.addEventListener('click', () => {

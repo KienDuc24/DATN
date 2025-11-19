@@ -1,8 +1,8 @@
-// public/room.js (Logic phòng chờ + Hiển thị tên đúng)
+// public/room.js (Cập nhật: Hiển thị Avatar DiceBear trong phòng chờ)
 
 (function() {
   const BASE_API_URL = 'https://datn-socket.up.railway.app'; 
-  window.__chatbot_API_BASE__ = BASE_API_URL; // Để chatbot.js dùng
+  window.__chatbot_API_BASE__ = BASE_API_URL; 
 
   const socket = io(BASE_API_URL, { 
     path: '/socket.io',
@@ -13,7 +13,6 @@
   const roomCode = urlParams.get('code');
   const gameId = urlParams.get('gameId');
   const gameName = urlParams.get('game');
-  // Lấy username từ URL (đã được truyền từ main.js)
   const usernameFromURL = urlParams.get('user');
 
   if (!roomCode || !gameId || !gameName || !usernameFromURL) {
@@ -22,12 +21,9 @@
     return;
   }
   
-  // Luôn dùng username từ URL làm định danh chính
   const playerName = usernameFromURL;
-
   console.log("👤 Username hiện tại:", playerName);
 
-  // Hiển thị thông tin phòng
   if (document.getElementById("roomCode")) document.getElementById("roomCode").innerText = roomCode;
   if (document.getElementById("roomCodeDisplay")) document.getElementById("roomCodeDisplay").innerText = roomCode;
   if (document.getElementById("gameName")) document.getElementById("gameName").innerText = gameName; 
@@ -38,7 +34,6 @@
     $gameIcon.onerror = () => { $gameIcon.src = 'img/fav.svg'; }; 
   }
 
-  // Gửi yêu cầu tham gia phòng
   socket.emit("joinRoom", { code: roomCode, gameId: gameId, user: playerName });
 
   socket.on("room-error", ({ message }) => {
@@ -48,10 +43,13 @@
 
   let currentHost = null;
 
-  // SỬA: Xử lý danh sách người chơi (list là mảng object {username, displayName})
-  // public/room.js (Thay thế toàn bộ listener 'update-players')
+  // --- HÀM HELPER TẠO AVATAR ---
+  function getAvatarUrl(name) {
+    const safeName = name || 'guest';
+    return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
+  }
 
-socket.on("update-players", ({ list = [], host }) => {
+  socket.on("update-players", ({ list = [], host }) => {
     currentHost = host;
     const isHost = (playerName === host); 
     console.log("👥 Danh sách người chơi hiện tại:", list);
@@ -63,32 +61,35 @@ socket.on("update-players", ({ list = [], host }) => {
         return; 
       }
       
-      // 1. Sắp xếp host lên đầu (Sử dụng .name để so sánh)
       const sortedList = list.sort((a, b) => {
           const nameA = a.name; 
           const nameB = b.name;
           return (nameA === host ? -1 : nameB === host ? 1 : 0);
       });
       
-      // 2. Render danh sách
+      // --- CẬP NHẬT RENDER: THÊM AVATAR VÀO HTML ---
       listEl.innerHTML = sortedList.map(player => {
         const p_name = player.name;
-        // Hiển thị displayName, nếu null thì hiển thị name (username)
         const p_displayName = player.displayName || p_name; 
         const isPlayerHost = (p_name === host);
         
+        // Tạo URL Avatar
+        const avatarUrl = getAvatarUrl(p_name);
+
         const kickButton = (isHost && !isPlayerHost) 
-          ? `<button class="kick-btn" onclick="window.kickPlayer('${p_name}')" title="Kick ${p_displayName}">
-               <i class="fas fa-times"></i> Kick
+          ? `<button class="kick-btn" onclick="window.kickPlayer('${p_name}')" title="Kick ${p_displayName}" style="margin-left: auto;">
+               <i class="fas fa-times"></i>
              </button>`
           : "";
 
         const hostTag = isPlayerHost 
-          ? `<span>(👑 Chủ phòng)</span>` 
+          ? `<span style="color:#ff9800; font-size: 0.9em; margin-left:4px;">(👑)</span>` 
           : "";
 
-        return `<li>
-                  <span>${p_displayName} ${hostTag}</span>
+        // Thêm Flexbox để căn chỉnh: Avatar - Tên - Nút Kick
+        return `<li style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 8px 12px;">
+                  <img src="${avatarUrl}" alt="${p_name}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #eee; object-fit: cover;">
+                  <span style="font-weight: 600; color: #333;">${p_displayName} ${hostTag}</span>
                   ${kickButton}
                 </li>`;
       }).join("");
@@ -133,7 +134,7 @@ socket.on("update-players", ({ list = [], host }) => {
       code: roomCode,
       gameId: gameId,
       game: gameName,
-      user: playerName // Chuyển tiếp username
+      user: playerName 
     }).toString();
     window.location.href = `game/${data.gameId}/index.html?${params}`;
   });

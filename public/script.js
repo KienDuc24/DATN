@@ -1,6 +1,6 @@
-// public/script.js (ĐÃ SỬA: Đồng bộ Category và Search thành Slider)
+// public/script.js (FULL CODE - FINAL)
 
-// --- Biến cục bộ cho script.js (nếu cần) ---
+// --- Biến cục bộ ---
 let MAX_SHOW = getMaxShow();
 
 // --- 1. Render & Cập nhật Giao diện (UI Rendering) ---
@@ -22,11 +22,8 @@ function renderGameCard(game) {
   `;
 }
 
-/** * Render slider cho 1 nhóm game với nút < > 
- * (Hàm này đã đúng, giữ nguyên)
- */
+/** Render slider cho 1 nhóm game với nút < > */
 function renderSlider(games, sliderId, pageKey) {
-  // 1. Tìm container cha và thanh cuộn
   const sliderContainer = document.getElementById(sliderId)?.parentElement; 
   if (!sliderContainer) return;
   
@@ -36,89 +33,73 @@ function renderSlider(games, sliderId, pageKey) {
       return;
   }
 
-  // 2. Render game
   slider.innerHTML = games.map(renderGameCard).join('');
 
-  // 3. Xóa các nút < > cũ (nếu có)
+  // Xóa nút cũ
   sliderContainer.querySelectorAll('.slider-btn').forEach(btn => btn.remove());
 
-  // 4. Dùng setTimeout để đợi trình duyệt render và tính toán
   setTimeout(() => {
-    // 5. Kiểm tra xem nội dung có thực sự bị tràn không
-    const hasOverflow = slider.scrollWidth > slider.clientWidth + 5; // +5px cho chắc chắn
+    const hasOverflow = slider.scrollWidth > slider.clientWidth + 5; 
     
     if (hasOverflow) {
-      // 6. Tạo nút Trái (<)
       const btnLeft = document.createElement('button');
       btnLeft.className = 'slider-btn left';
       btnLeft.innerHTML = '‹'; 
       
-      // 7. Tạo nút Phải (>)
       const btnRight = document.createElement('button');
       btnRight.className = 'slider-btn right';
       btnRight.innerHTML = '›'; 
       
       btnLeft.onclick = (e) => {
         e.stopPropagation(); 
-        slider.scrollBy({ left: -slider.clientWidth * 0.8, behavior: 'smooth' }); // Cuộn 80%
+        slider.scrollBy({ left: -slider.clientWidth * 0.8, behavior: 'smooth' }); 
       };
       
       btnRight.onclick = (e) => {
         e.stopPropagation(); 
-        slider.scrollBy({ left: slider.clientWidth * 0.8, behavior: 'smooth' }); // Cuộn 80%
+        slider.scrollBy({ left: slider.clientWidth * 0.8, behavior: 'smooth' }); 
       };
 
       sliderContainer.appendChild(btnLeft);
       sliderContainer.appendChild(btnRight);
 
-      // --- 8. HÀM KIỂM TRA VỊ TRÍ CUỘN (LOGIC MỚI) ---
       const updateButtonVisibility = () => {
         const scrollLeft = slider.scrollLeft;
         const scrollWidth = slider.scrollWidth;
         const clientWidth = slider.clientWidth;
 
-        // Kiểm tra vị trí đầu (ẩn nút < nếu ở đầu)
-        if (scrollLeft < 10) { // 10px sai số
+        if (scrollLeft < 10) { 
           btnLeft.style.display = 'none';
         } else {
           btnLeft.style.display = 'flex';
         }
 
-        // Kiểm tra vị trí cuối (ẩn nút > nếu ở cuối)
-        if (scrollWidth - scrollLeft - clientWidth < 10) { // 10px sai số
+        if (scrollWidth - scrollLeft - clientWidth < 10) { 
           btnRight.style.display = 'none';
         } else {
           btnRight.style.display = 'flex';
         }
       };
-      // --- KẾT THÚC LOGIC MỚI ---
 
-      // 9. Gắn sự kiện 'scroll' vào thanh cuộn
       slider.addEventListener('scroll', updateButtonVisibility);
-      
-      // 10. Chạy 1 lần khi tải để set trạng thái ban đầu (ẩn nút <)
       updateButtonVisibility();
     }
   }, 100); 
 }
 
-
-/** * Hiển thị các slider theo thể loại 
- * === SỬA: Dùng .games-slider-container thay vì .game-grid ===
- */
+/** Hiển thị các slider theo thể loại */
 function renderGamesByCategory() {
   const categoryList = document.getElementById('category-list');
   if (!categoryList) return;
-  categoryList.innerHTML = ''; // Xóa nội dung cũ
+  categoryList.innerHTML = ''; 
 
   Object.keys(gamesByCategory).forEach(cat => {
     const catKey = cat.replace(/\s+/g, '-');
-    const sliderId = `catSlider-${catKey}`; // ID mới cho thanh cuộn
+    const sliderId = `catSlider-${catKey}`; 
     
     const section = document.createElement('div');
     section.className = 'category-slider-section';
     
-    // --- SỬA LỖI Ở ĐÂY: Dùng cấu trúc slider ---
     section.innerHTML = `
       <div class="section-title-row" id="cat-${catKey}">
         <div class="section-title">${cat}</div>
@@ -127,18 +108,14 @@ function renderGamesByCategory() {
       
       <div class="games-slider-container">
         <div class="games-slider-scroll" id="${sliderId}">
-          </div>
+        </div>
       </div>
     `;
-    // --- KẾT THÚC SỬA ---
     
     categoryList.appendChild(section);
-    
-    // THÊM MỚI: Gọi renderSlider cho slider của thể loại này
     renderSlider(gamesByCategory[cat], sliderId, `cat-${catKey}`);
   });
 }
-
 
 /** Render dropdown sắp xếp */
 function renderSortDropdown(key = '') {
@@ -160,17 +137,14 @@ function renderSortDropdown(key = '') {
 }
 
 /** Hiển thị kết quả tìm kiếm */
-/* === SỬA: Dùng .games-slider-container thay vì .game-grid === */
 function renderSearchResults(filtered, keyword) {
     const main = document.querySelector('.main-content');
     let searchResultDiv = document.getElementById('search-result');
 
-    // Ẩn các mục khác
     Array.from(main.children).forEach(child => {
         if (child.id !== 'search-result') child.style.display = 'none';
     });
 
-    // Tạo vùng kết quả nếu chưa có
     if (!searchResultDiv) {
         searchResultDiv = document.createElement('div');
         searchResultDiv.id = 'search-result';
@@ -178,15 +152,12 @@ function renderSearchResults(filtered, keyword) {
     }
     searchResultDiv.style.display = '';
 
-    // Nếu không có kết quả
     if (filtered.length === 0) {
         searchResultDiv.innerHTML = `<div style="color:#ff9800;font-size:1.2rem;padding:32px 0;">Không tìm thấy trò chơi phù hợp.</div>`;
         return;
     }
 
-    // Hàm làm nổi bật từ khóa (Giữ nguyên)
     function highlight(text) {
-        // ... (code highlight)
         text = (text === undefined || text === null) ? '' : String(text);
         if (!text) return '';
         return text.replace(
@@ -195,7 +166,6 @@ function renderSearchResults(filtered, keyword) {
         );
     }
 
-    // Hiển thị kết quả (SỬA: Dùng .games-slider-container)
     const sliderId = "searchSlider";
     searchResultDiv.innerHTML = `
         <div class="section-title-row">
@@ -223,11 +193,9 @@ function renderSearchResults(filtered, keyword) {
         </div>
     `;
     
-    // THÊM MỚI: Gọi renderSlider cho slider của kết quả tìm kiếm
     renderSlider(filtered, sliderId, 'search');
 }
 
-/** Ẩn kết quả tìm kiếm và hiện lại các slider */
 function hideSearchResults() {
     const main = document.querySelector('.main-content');
     const searchResultDiv = document.getElementById('search-result');
@@ -237,12 +205,10 @@ function hideSearchResults() {
     if (searchResultDiv) searchResultDiv.style.display = 'none';
 }
 
-
-/** Hiển thị modal */
+// --- Modal Auth ---
 function openAuthModal(tab = 'login') {
   document.getElementById('auth-modal').style.display = 'flex';
   showAuthTab(tab);
-  // Gán lại sự kiện mỗi lần mở modal
   document.getElementById('loginTab').onclick = function() {
     showAuthTab('login');
   };
@@ -251,7 +217,6 @@ function openAuthModal(tab = 'login') {
   };
 }
 
-/** Chuyển tab trong modal Auth */
 function showAuthTab(tab) {
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
@@ -270,13 +235,18 @@ function showAuthTab(tab) {
   }
 }
 
-/** Đóng modal Auth */
 function closeAuthModal() {
   const modal = document.querySelector('.auth-form-modal, .auth-modal, .modal');
   if (modal) modal.style.display = 'none';
 }
 
-/** Cập nhật UI header khi đăng nhập */
+// --- HÀM HELPER TẠO AVATAR ---
+function getAvatarUrl(name) {
+    const safeName = name || 'guest';
+    return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
+}
+
+// --- CẬP NHẬT: Hiển thị Avatar trên Header ---
 function showUserInfo(user) {
   const headerAuthBtns = document.getElementById('headerAuthBtns');
   if (headerAuthBtns) headerAuthBtns.style.display = 'none';
@@ -284,41 +254,44 @@ function showUserInfo(user) {
   if (sidebarAuthBtns) sidebarAuthBtns.style.display = 'none';
 
   const userInfo = document.getElementById('userInfo');
-  const userAvatar = document.getElementById('userAvatar'); // Vẫn lấy để ẩn
+  const userAvatar = document.getElementById('userAvatar'); 
   
   if (userInfo) {
     userInfo.style.display = 'flex';
   }
   
-  // --- SỬA: ẨN avatar ---
+  // TẠO URL DICEBEAR
+  const avatarUrl = getAvatarUrl(user.username);
+
   if (userAvatar) {
-    userAvatar.style.display = 'none'; 
+    // HIỆN LẠI AVATAR
+    userAvatar.style.display = 'block'; 
+    userAvatar.src = avatarUrl; 
   }
 
-  // --- SỬA: Thêm text username vào header ---
   let usernameText = document.getElementById('header-username-text');
   if (!usernameText) {
       usernameText = document.createElement('span');
       usernameText.id = 'header-username-text';
-      // Thêm style để user có thể bấm vào dropdown
       usernameText.style.cssText = 'color: #ff9800; font-weight: 700; margin-right: 10px; cursor: pointer;'; 
-      userInfo.prepend(usernameText); // Thêm vào trước dropdown (hoặc avatar đã ẩn)
+      userInfo.prepend(usernameText); 
   }
-  usernameText.textContent = user.displayName || user.username || 'User'; // Ưu tiên displayName
+  usernameText.textContent = user.displayName || user.username || 'User'; 
 
-
-  // Cập nhật dropdown (nếu vẫn muốn giữ nút Đăng xuất)
   const dropdownAvatar = document.getElementById('dropdownAvatar');
   const dropdownUsername = document.getElementById('dropdownUsername');
-  const dropdownEmail = document.getElementById('dropdownEmail'); // Lấy phần tử email
+  const dropdownEmail = document.getElementById('dropdownEmail'); 
   
-  if (dropdownAvatar) dropdownAvatar.style.display = 'none'; // Ẩn avatar trong dropdown
+  if (dropdownAvatar) {
+      // HIỆN LẠI AVATAR DROPDOWN
+      dropdownAvatar.style.display = 'block'; 
+      dropdownAvatar.src = avatarUrl;
+  }
   if (dropdownUsername) dropdownUsername.innerText = user.displayName || user.username || 'User';
-  if (dropdownEmail) dropdownEmail.innerText = user.email || ''; // Hiển thị email
+  if (dropdownEmail) dropdownEmail.innerText = user.email || ''; 
 }
 
 
-/** Ẩn UI user khi đăng xuất */
 function hideUserInfo() {
     const headerAuthBtns = document.getElementById('headerAuthBtns');
     if (headerAuthBtns) headerAuthBtns.style.display = '';
@@ -327,28 +300,27 @@ function hideUserInfo() {
     const userInfo = document.getElementById('userInfo');
     if (userInfo) userInfo.style.display = 'none';
     
-    // --- SỬA: Ẩn text username ---
     const usernameText = document.getElementById('header-username-text');
     if(usernameText) usernameText.textContent = '';
     
-    // --- SỬA: Hiện lại avatar (nếu có) ---
     const userAvatar = document.getElementById('userAvatar');
-    if (userAvatar) userAvatar.style.display = 'block';
+    if (userAvatar) {
+        userAvatar.style.display = 'block';
+        userAvatar.src = 'img/guestlogo.png'; // Trả về ảnh mặc định
+    }
 
     const userDropdown = document.getElementById('userDropdown');
     if (userDropdown) userDropdown.style.display = 'none';
 }
 
-/** Hiển thị loading spinner */
+
 function showLoading(show = true) {
   const spinner = document.getElementById('loadingSpinner');
   if(spinner) spinner.style.display = show ? 'flex' : 'none';
 }
 
-
 // --- 2. Chức năng Phụ & Hiệu ứng (Auxiliary UI) ---
 
-/** Bật/tắt sidebar */
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebarOverlay');
@@ -362,7 +334,6 @@ function toggleSidebar() {
   }
 }
 
-/** Mở rộng/thu gọn category (dùng ở đâu đó?) */
 function toggleCategory(catId) {
   const content = document.getElementById(`${catId}-content`);
   const arrow = document.getElementById(`${catId}-arrow`);
@@ -376,7 +347,6 @@ function toggleCategory(catId) {
   }
 }
 
-/** Hiển thị ô tìm kiếm trên mobile */
 function showMobileSearch() {
   const header = document.querySelector('.header-main');
   if(header) header.classList.add('mobile-searching');
@@ -386,34 +356,27 @@ function showMobileSearch() {
   }, 100);
 }
 
-/** Cuộn lên đầu trang */
 function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/** Lấy số lượng card tối đa dựa trên kích thước cửa sổ */
 function getMaxShow() {
-  // Con số này chỉ còn ý nghĩa cho thanh cuộn ngang
   if (window.innerWidth <= 600) return 2;
   if (window.innerWidth <= 900) return 3;
   if (window.innerWidth <= 1200) return 4;
   return 5;
 }
 
-/** Render lại tất cả slider (dùng khi resize hoặc đổi ngôn ngữ) */
 function rerenderAllSliders() {
   MAX_SHOW = getMaxShow();
-  // Render lại slider (cuộn ngang)
   renderSlider(allGames, 'allSlider', 'all');
   renderSlider(featuredGames, 'featuredSlider', 'featured');
-  // Render lại grid (thể loại)
   renderGamesByCategory();
   updateLangUI();
 }
 
 // --- 3. Helper đa ngôn ngữ (i18n) ---
 
-/** Cập nhật toàn bộ UI theo ngôn ngữ */
 function updateLangUI() {
   if (!LANGS || !LANGS[currentLang]) return;
   const langData = LANGS[currentLang];
@@ -459,29 +422,26 @@ function updateLangUI() {
   if (authOr && langData.or) authOr.innerText = langData.or;
 }
 
-/** Helper lấy tên game theo ngôn ngữ */
 function getGameName(game, lang = currentLang) {
   if (typeof game.name === 'string') return game.name;
   return game.name?.[lang] || game.name?.vi || game.name?.en || '';
 }
 
-/** Helper lấy mô tả game theo ngôn ngữ */
 function getGameDesc(game, lang = currentLang) {
   if (typeof game.desc === 'string') return game.desc;
   return game.desc?.[lang] || game.desc?.vi || game.desc?.en || '';
 }
 
-/** Helper lấy thể loại game theo ngôn ngữ */
 function getGameCategory(game, lang = currentLang) {
   if (typeof game.category === 'string') return game.category;
   return game.category?.[lang] || game.category?.vi || game.category?.en || '';
 }
 
 
-// --- 4. Gắn các sự kiện UI (Không phải logic chính) ---
+// --- 4. Gắn sự kiện DOM ---
+
 document.addEventListener('DOMContentLoaded', function() {
     
-    // Nút Back-to-top
     window.addEventListener('scroll', function() {
         const btn = document.getElementById('backToTopBtn');
         if(!btn) return;
@@ -492,7 +452,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Resize window
     window.addEventListener('resize', function() {
         const newMax = getMaxShow();
         if (newMax !== MAX_SHOW) {
@@ -500,9 +459,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- SỬA LỖI: LOGIC HIỆN/ẨN MẬT KHẨU (Đã đồng bộ) ---
-
-    // 1. Ẩn/hiện mật khẩu ĐĂNG NHẬP
     const loginPwdInput = document.getElementById('login-password');
     const loginToggleBtn = document.getElementById('togglePassword');
     
@@ -512,16 +468,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const isHidden = loginPwdInput.type === 'password';
             loginPwdInput.type = isHidden ? 'text' : 'password';
             
-            // Lấy icon và text mới
             const icon = isHidden ? '🙈' : '👁';
             const text = isHidden ? ' Ẩn mật khẩu' : ' Hiện mật khẩu';
             
-            // Cập nhật HTML để giữ nguyên cấu trúc (giả sử HTML có <span class="eye-icon">)
             this.innerHTML = `<span class="eye-icon">${icon}</span>${text}`;
         };
     }
 
-    // 2. Ẩn/hiện mật khẩu ĐĂNG KÝ (Logic này đã đúng, giữ nguyên)
     const toggleRegisterBtn = document.getElementById('toggleRegisterPassword');
     const pw1 = document.getElementById('register-password');
     const pw2 = document.getElementById('register-password2');
@@ -536,15 +489,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const icon = isHidden ? '🙈' : '👁️';
             const text = isHidden ? ' Ẩn mật khẩu' : ' Hiện mật khẩu';
             
-            // Cập nhật HTML để giữ nguyên cấu trúc
             this.innerHTML = `<span class="eye-icon">${icon}</span>${text}`;
         };
     }
     
-    // --- KẾT THÚC SỬA LỖI ---
-
-
-    // Quên mật khẩu
     const forgotBtn = document.getElementById('forgotPasswordBtn');
     if (forgotBtn) {
         forgotBtn.onclick = function() {
@@ -552,19 +500,15 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    // Nút toggle sidebar
     const sidebarToggle = document.querySelector('.sidebar-toggle');
     if(sidebarToggle) sidebarToggle.onclick = toggleSidebar;
     
-    // Overlay sidebar
     const sidebarOverlay = document.getElementById('sidebarOverlay');
     if(sidebarOverlay) sidebarOverlay.onclick = toggleSidebar;
 
-    // Nút tìm kiếm mobile
     const searchToggleBtn = document.getElementById('searchToggleBtn');
     if(searchToggleBtn) searchToggleBtn.onclick = showMobileSearch;
 
-    // Ẩn tìm kiếm mobile khi blur
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('blur', function() {
@@ -582,21 +526,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Nút cuộn lên top
     const backToTopBtn = document.getElementById('backToTopBtn');
     if(backToTopBtn) backToTopBtn.onclick = scrollToTop;
     
-    // Nút đóng modal auth
     const authModalClose = document.querySelector('.auth-modal-close');
     if(authModalClose) authModalClose.onclick = () => document.getElementById('auth-modal').style.display = 'none';
 
-    // Dropdown user
     const userInfo = document.getElementById('userInfo');
     const userDropdown = document.getElementById('userDropdown');
     let dropdownVisible = false;
 
     if (userInfo && userDropdown) {
-        // --- SỬA: Gán sự kiện click cho toàn bộ userInfo (vì avatar ẩn) ---
         userInfo.onclick = function(e) {
             e.stopPropagation();
             dropdownVisible = !dropdownVisible;
@@ -612,68 +552,66 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    // --- KHÔI PHỤC LOGIC NÀY ---
+    // Khởi tạo UI Profile
     profileAndSettingsUI();
 });
 
 /**
  * Tạo và quản lý UI cho modal Profile (Hồ sơ) và Settings (Cài đặt)
- * Đây là chức năng UI phụ
  */
 function profileAndSettingsUI() {
     function getUserSafe() {
         try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
     }
 
-    // Cập nhật avatar/tên trên header
+    // Hàm cập nhật Avatar lên Header (dùng cho các nơi khác gọi)
     function applyHeaderUser(updated) {
         const ua = document.getElementById('userAvatar');
         const da = document.getElementById('dropdownAvatar');
         const du = document.getElementById('dropdownUsername');
         
-        // --- SỬA: Ẩn avatar, hiện tên ---
-        if (ua) ua.style.display = 'none'; // Ẩn avatar header
-        if (da) da.style.display = 'none'; // Ẩn avatar dropdown
+        // URL DiceBear mới
+        const avatarUrl = getAvatarUrl(updated.username);
+
+        if (ua) {
+            ua.style.display = 'block'; 
+            ua.src = avatarUrl; 
+        }
+        if (da) {
+            da.style.display = 'block';
+            da.src = avatarUrl;
+        }
         
         const usernameText = document.getElementById('header-username-text');
         if (usernameText) usernameText.textContent = updated.displayName || updated.username || 'User';
-        // ---
         
         if (du && (updated.displayName || updated.username)) du.innerText = updated.displayName || updated.username;
         
-        // Cập nhật email trong dropdown
         const de = document.getElementById('dropdownEmail');
         if (de) de.innerText = updated.email || '';
     }
-    // Gán vào window để main.js có thể gọi
     window.applyHeaderUser = applyHeaderUser;
 
-
-    // Hàm này không còn tạo modal, chỉ gán sự kiện
     function setupSettingsModal() {
         let modal = document.getElementById('profile-modal');
-        if (!modal) return; // Modal không tồn tại
+        if (!modal) return; 
         
-        // Gán sự kiện (được gọi bởi main.js)
         modal.querySelector('#closeProfileModal').onclick = () => modal.style.display = 'none';
-        
-        // Nút submit được gán trong main.js
     }
 
-    // Tạo popup profile (xem thông tin)
     function createProfileCenterPopup() {
         let pop = document.getElementById('profile-center-popup');
         if (pop) return pop;
 
         pop = document.createElement('div');
         pop.id = 'profile-center-popup';
-        // ... (style như cũ) ...
         pop.style.cssText = 'position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 1500; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.35);';
-        // --- SỬA: Thêm Email vào popup hồ sơ ---
+        
+        // HTML Popup Hồ sơ
         pop.innerHTML = `
         <div id="profile-center-box" style="min-width:260px;max-width:420px;background:#23272f; color: #fff; border-radius:12px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.32);text-align:center; position: relative; border: 1px solid #ff980033;">
             <button id="profile-center-close" style="position:absolute;right:10px;top:10px;background:none;border:none;font-size:1.2rem;cursor:pointer; color: #ff9800;">×</button>
-            <img id="profile-center-avatar" src="img/guestlogo.png" style="width:86px;height:86px;border-radius:50%;object-fit:cover;border:2px solid #ff9800;margin-bottom:10px; display:none;">
+            <img id="profile-center-avatar" src="" style="width:86px;height:86px;border-radius:50%;object-fit:cover;border:2px solid #ff9800;margin-bottom:10px; display:block; margin-left: auto; margin-right: auto;">
             <div id="profile-center-name" style="font-weight:700;font-size:1.25rem;margin-bottom:4px; color: #ff9800;"></div>
             <div id="profile-center-email" style="color:#bbb;margin-bottom:12px; font-size: 0.95rem;"></div>
         </div>
@@ -687,38 +625,41 @@ function profileAndSettingsUI() {
         return pop;
     }
 
-    // Hiển thị popup profile
     function showProfileCenter(show = true) {
         const pop = createProfileCenterPopup();
         const user = getUserSafe();
-        // const avatar = user.avatar || user.picture || 'img/guestlogo.png'; // Avatar bị ẩn
         const name = user.displayName || user.username || 'Khách';
         const email = user.email || '(Chưa có email)';
         
-        // const aEl = document.getElementById('profile-center-avatar'); // Bị ẩn
+        // URL DiceBear
+        const avatarUrl = getAvatarUrl(user.username);
+
+        const aEl = document.getElementById('profile-center-avatar');
         const nEl = document.getElementById('profile-center-name');
         const eEl = document.getElementById('profile-center-email');
         
-        // if (aEl) aEl.src = avatar;
+        // HIỆN AVATAR TRONG POPUP
+        if (aEl) {
+            aEl.src = avatarUrl;
+            aEl.style.display = 'block';
+        }
         if (nEl) nEl.innerText = name;
         if (eEl) eEl.innerText = email;
         pop.style.display = show ? 'flex' : 'none';
     }
 
-    // Gắn sự kiện cho các nút
     const settingsBtn = document.getElementById('settingsBtn');
     if (settingsBtn) {
         settingsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if(typeof openSettingsModal === 'function') {
-                openSettingsModal(); // Gọi hàm logic từ main.js
+                openSettingsModal(); 
             } else {
                 alert("Lỗi: Không tìm thấy hàm openSettingsModal()");
             }
         });
     }
 
-    // --- KHÔI PHỤC NÚT HỒ SƠ ---
     const profileBtn = document.getElementById('profileBtn');
     if (profileBtn) {
         profileBtn.addEventListener('click', (e) => {
@@ -726,13 +667,11 @@ function profileAndSettingsUI() {
             showProfileCenter(true);
         });
     }
-    // -------------------------
 
     document.addEventListener('click', () => {
         const pc = document.getElementById('profile-center-popup');
         if (pc) pc.style.display = 'none';
     });
     
-    // Khởi tạo modal (gán sự kiện)
     setupSettingsModal();
 }

@@ -23,7 +23,7 @@ try {
   QUESTIONS = { truth: ["Bạn có bí mật nào chưa kể với mọi người không?"], dare: ["Hát một đoạn bài hát trước mọi người."] };
 }
 
-// (Các hàm helper: getRoomState, getRandomQuestion, normalizePlayerInput, attachAvatarsToPlayers, getPlayersFromRoom)
+// (Các hàm helper)
 const ROOM_STATE = {}; 
 function getRoomState(code) {
   if (!ROOM_STATE[code]) ROOM_STATE[code] = { currentIndex: 0, lastQuestion: null, lastChoice: null, votes: [] };
@@ -52,25 +52,32 @@ function normalizePlayerInput(input) {
   }
   return null;
 }
+
+// --- ĐÃ SỬA: Loại bỏ logic lấy avatar từ DB ---
 async function attachAvatarsToPlayers(players) {
   const normalized = (players || []).map(p => normalizePlayerInput(p)).filter(Boolean);
   const names = normalized.map(p => p.name).filter(Boolean);
   const displayNames = normalized.map(p => p.displayName).filter(Boolean);
   const emails = normalized.map(p => p.email).filter(Boolean);
+  
   if (!names.length && !displayNames.length && !emails.length) {
-    return normalized.map(p => ({ name: p.name, displayName: p.displayName || null, avatar: p.avatar || null }));
+    return normalized.map(p => ({ name: p.name, displayName: p.displayName || null, avatar: null }));
   }
+  
   const ors = [];
   if (names.length) ors.push({ username: { $in: names } });
   if (displayNames.length) ors.push({ displayName: { $in: displayNames } });
   if (emails.length) ors.push({ email: { $in: emails } });
+  
   let users = [];
   try {
-    users = await User.find({ $or: ors }).lean();
+    // Chỉ lấy tên, bỏ qua avatar
+    users = await User.find({ $or: ors }).lean().select('username displayName email name');
   } catch (e) {
     console.warn('[ToD] attachAvatarsToPlayers user lookup failed', e && e.message);
     users = [];
   }
+  
   const map = {};
   users.forEach(u => {
     if (u.username) map[u.username] = u;
@@ -78,13 +85,18 @@ async function attachAvatarsToPlayers(players) {
     if (u.email) map[u.email] = u;
     if (u.name) map[u.name] = u;
   });
+  
   return normalized.map(p => {
     const user = map[p.name] || map[p.displayName] || (p.email ? map[p.email] : null);
-    const avatar = p.avatar || (user ? (user.avatarUrl || user.avatar || null) : null);
-    const outDisplayName = p.displayName || (user ? (user.displayName || user.name || null) : null);
-    return { name: p.name, displayName: outDisplayName || null, avatar: avatar || null };
+    
+    // LUÔN TRẢ VỀ NULL CHO AVATAR
+    const avatar = null;
+    
+    const outDisplayName = p.displayName || (user ? (user.displayName || user.name) : p.name);
+    return { name: p.name, displayName: outDisplayName || null, avatar: avatar };
   });
 }
+
 function getPlayersFromRoom(room) {
   if (!room) return [];
   let raw = [];
@@ -93,55 +105,13 @@ function getPlayersFromRoom(room) {
   else if (Array.isArray(room.playersList) && room.playersList.length) raw = room.playersList;
   else if (room.players && typeof room.players === 'object' && !Array.isArray(room.players)) raw = Object.values(room.players).filter(Boolean);
   else return [];
+  
   return raw.map(p => {
     const np = normalizePlayerInput(p);
     if (!np) return null;
-    return { name: np.name, displayName: np.displayName || null, avatar: np.avatar || null };
+    // Avatar luôn là null ở đây
+    return { name: np.name, displayName: np.displayName || null, avatar: null };
   }).filter(Boolean);
-}
-
-// Hàm gọi OpenAI API để tạo câu hỏi
-async function generateQuestion(prompt) {
-  try {
-    const response = await axios.post('https://api.openai.com/v1/completions', {
-      model: 'text-davinci-003',
-      prompt: `Hãy tạo một câu hỏi cho trò chơi "Truth or Dare" dựa trên gợi ý sau: "${prompt}"`,
-      max_tokens: 100,
-      temperature: 0.7,
-    }, {
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    return response.data.choices[0].text.trim();
-  } catch (error) {
-    console.error('Lỗi khi tạo câu hỏi:', error);
-    return 'Không thể tạo câu hỏi. Vui lòng thử lại sau.';
-  }
-}
-
-// Hàm gọi OpenAI API để hướng dẫn luật chơi
-async function getGameInstructions(gameName) {
-  try {
-    const response = await axios.post('https://api.openai.com/v1/completions', {
-      model: 'text-davinci-003',
-      prompt: `Hãy hướng dẫn cách chơi trò chơi "${gameName}" một cách chi tiết.`,
-      max_tokens: 200,
-      temperature: 0.7,
-    }, {
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    return response.data.choices[0].text.trim();
-  } catch (error) {
-    console.error('Lỗi khi lấy hướng dẫn:', error);
-    return 'Không thể lấy hướng dẫn. Vui lòng thử lại sau.';
-  }
 }
 
 // --- MODULE EXPORT ---
@@ -182,9 +152,7 @@ module.exports = (socket, io) => {
 
   socket.on('tod-join', async ({ roomCode, player }) => {
     try {
-      console.log('[ToD] tod-join received', { socketId: socket.id, roomCode, player });
-      
-      const room = await Room.findOne({ code: roomCode }).lean(); // Bỏ .status('playing')
+      const room = await Room.findOne({ code: roomCode }).lean(); 
 
       if (!room) {
         return socket.emit('tod-join-failed', { reason: 'Phòng không tồn tại, đã kết thúc, hoặc chưa bắt đầu.' });
@@ -204,12 +172,6 @@ module.exports = (socket, io) => {
       gameSocketMap.set(socket.id, { player: playerName, code: roomCode });
       getRoomState(roomCode);
       
-      // SỬA: Xóa logic cập nhật status. socketServer.js đã xử lý
-      // if (!playerName.startsWith('guest_')) {
-      //     await User.findOneAndUpdate({ username: playerName }, { status: 'playing' });
-      //     io.emit('admin-user-status-changed');
-      // }
-
       const playersWithAvt = await attachAvatarsToPlayers(room.players);
       const state = getRoomState(roomCode);
 
@@ -317,6 +279,7 @@ module.exports = (socket, io) => {
   });
 
   socket.on('profile-updated', async ({ roomCode, oldName, newName, avatar }) => {
+      // Hàm này ít được dùng, nhưng cũng đảm bảo không cập nhật avatar từ client
      try {
       if (!roomCode || !oldName) return;
       const updates = {};
@@ -324,7 +287,7 @@ module.exports = (socket, io) => {
         updates['players.$.name'] = newName;
         updates['players.$.displayName'] = newName;
       }
-      if (typeof avatar !== 'undefined') updates['players.$.avatar'] = avatar;
+      // Bỏ qua cập nhật avatar
       await Room.updateOne({ code: roomCode, 'players.name': oldName }, { $set: updates }).catch(err => { console.warn('[ToD] profile update failed', err && err.message); return null; });
       await Room.updateOne({ code: roomCode, host: oldName }, { $set: { host: newName || oldName } }).catch(() => {});
       const fresh = await Room.findOne({ code: roomCode }).lean();
@@ -348,7 +311,6 @@ module.exports = (socket, io) => {
     try {
       const userInfo = gameSocketMap.get(socket.id);
       if (!userInfo) {
-        console.log(`[ToD] Disconnect: socket ${socket.id} not in gameSocketMap.`);
         return; 
       }
 
@@ -366,13 +328,10 @@ module.exports = (socket, io) => {
       if (wasHost && room.players.length > 0) {
         newHost = room.players[0].name;
         room.host = newHost;
-        console.log(`[ToD] Host ${player} disconnected. New host is ${newHost}.`);
       } else if (room.players.length === 0) {
-        // SỬA: Cập nhật status thành 'closed'
         room.status = 'closed';
         await room.save();
         delete ROOM_STATE[code]; 
-        console.log(`[ToD] Room ${code} is empty and set to 'closed'.`);
         io.emit('admin-rooms-changed'); 
         return; 
       }
@@ -382,15 +341,7 @@ module.exports = (socket, io) => {
       if (!player.startsWith('guest_')) {
                 await User.findOneAndUpdate({ username: player }, { status: 'online' });
                 io.emit('admin-user-status-changed');
-                console.log(`[Draw] User ${player} disconnected, status set to 'online'.`);
-            }
-      
-      // SỬA: Xóa logic cập nhật status. socketServer.js sẽ xử lý
-      // (Khi socket game disconnect, socket chính (nếu có) sẽ tự động registerSocket)
-      // if (!player.startsWith('guest_')) {
-      //     await User.findOneAndUpdate({ username: player }, { status: 'online' });
-      //     io.emit('admin-user-status-changed');
-      // }
+      }
       
       const playersWithAvt = await attachAvatarsToPlayers(room.players);
       const payload = {
