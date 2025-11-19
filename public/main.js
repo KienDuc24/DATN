@@ -384,13 +384,11 @@ async function handleUpdateProfile(e) {
     const email = document.getElementById('settings-email').value;
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     
-    // Nếu user chưa đăng nhập, hoặc là guest, không cho phép cập nhật
     if (!user.username || user.isGuest) return alert('Lỗi: Bạn phải đăng nhập để cập nhật hồ sơ.');
     
-    // SỬA LỖI: Gọi đúng endpoint là /api/user thay vì /api/profile
     try {
-        const res = await fetch(`${API_BASE_URL}/api/user`, {
-            method: 'PUT',
+        const res = await fetch(`${API_BASE_URL}/api/user`, { // Đảm bảo gọi PUT /api/user
+            method: 'PUT', 
             headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -402,20 +400,33 @@ async function handleUpdateProfile(e) {
             })
         });
         
-        const updatedUser = await res.json();
-        
         if (!res.ok) {
-            throw new Error(updatedUser.message || 'Lỗi khi cập nhật');
+            // Xử lý nếu phản hồi không thành công (400, 404, 500)
+            const contentType = res.headers.get("content-type");
+            let errorMsg = `Lỗi ${res.status}: ${res.statusText}.`;
+            
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                // Nếu là JSON, đọc thông báo lỗi từ server
+                const errorData = await res.json();
+                errorMsg = errorData.message || errorMsg;
+            } else {
+                // Nếu là HTML (như lỗi 404/500 mặc định), báo lỗi API không tìm thấy
+                throw new Error(`API ${res.status} Lỗi: Endpoint cập nhật hồ sơ không tìm thấy hoặc Server bị lỗi.`);
+            }
+            throw new Error(errorMsg);
         }
         
-        // Cập nhật LocalStorage và UI
+        // Nếu thành công, phản hồi là JSON
+        const updatedUser = await res.json();
+        
         saveUserToLocal(updatedUser.user); 
         document.getElementById('profile-modal').style.display = 'none';
         alert('Cập nhật thông tin thành công!');
         
     } catch (err) {
         console.error("Update profile failed:", err);
-        alert(`Lỗi: ${err.message}`);
+        // Hiển thị thông báo lỗi rõ ràng hơn
+        alert(`CẬP NHẬT THẤT BẠI: ${err.message}`);
     }
 }
 
