@@ -1,3 +1,5 @@
+// public/admin.js (FINAL VERSION: Pagination + Sort Latest + Full Features)
+
 const ADMIN_API = 'https://datn-socket.up.railway.app'; 
 
 // Các endpoint API
@@ -46,9 +48,13 @@ const el = id => document.getElementById(id);
 const showOverlay = show => { const o = el('adminOverlay'); if(o) o.style.display = show ? 'flex' : 'none'; };
 
 // --- FORM MODAL LOGIC (Các biến được đưa ra ngoài) ---
-const modal = el('gameModal');
-const form = el('gameForm');
-let isEditing = false; // Used by openGameForm and saveGame
+const gameModal = el('gameModal');
+const gameForm = el('gameForm');
+let isEditingGame = false; 
+
+const userModal = el('userModal'); // Thêm modal cho User
+const userForm = el('userForm');
+let isEditingUser = false; 
 
 // --- 1. MAIN INIT ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -69,17 +75,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnRefresh = el('refreshDataBtn');
     if(btnRefresh) btnRefresh.onclick = loadData;
     
-    // Nút Lưu thay đổi (Nếu có dùng tính năng batch update)
-    const btnConfirm = el('btnConfirmChanges');
-    if(btnConfirm) btnConfirm.onclick = executePendingChanges;
-
     // Search Listeners (Debounce)
     if(el('usersSearch')) el('usersSearch').onkeyup = debounce(() => { pageState.users = 1; fetchUsers(el('usersSearch').value); }, 400);
     if(el('roomsSearch')) el('roomsSearch').onkeyup = debounce(() => { pageState.rooms = 1; fetchRooms(el('roomsSearch').value); }, 400);
     if(el('gamesSearch')) el('gamesSearch').onkeyup = debounce(() => { pageState.games = 1; fetchGames(el('gamesSearch').value); }, 400);
 
     // Form Submits
-    if(form) form.onsubmit = saveGame; // <-- FIX LỖI: Gán hàm saveGame
+    if(gameForm) gameForm.onsubmit = saveGame;
+    if(userForm) userForm.onsubmit = saveUser; // Gán hàm save User
     
     // Socket listeners
     if(socket) {
@@ -92,6 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Delegation cho bảng (QUAN TRỌNG)
     setupTableDelegation();
 
+    // Setup Modals
+    setupModals();
+
     // Load Data
     loadData();
 });
@@ -99,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function checkAuth() {
     // Kiểm tra cookie (đơn giản)
     if (!document.cookie.includes('admin_token')) {
-        // window.location.href = '/admin-login'; // Bỏ comment dòng này nếu muốn chặn chặt
+        // window.location.href = '/admin-login'; 
     }
 }
 
@@ -124,21 +130,12 @@ function setupTabs() {
                 targetContent.style.display = 'block';
                 setTimeout(() => targetContent.classList.add('active'), 50);
             }
-            
-            // Đóng sidebar trên mobile
-            if(window.innerWidth < 768) {
-                const sidebar = el('adminSidebar'); // Chú ý ID trong HTML là class hay ID
-                if(document.querySelector('.admin-sidebar').classList.contains('active')) {
-                    document.querySelector('.sidebar-toggle')?.click();
-                }
-            }
         });
     });
 }
 
 function setupNavToggle() {
-    // Nếu có nút toggle sidebar (cho mobile)
-    // ... (Logic toggle sidebar)
+    // Logic toggle sidebar
 }
 
 // --- 3. DATA FETCHING ---
@@ -154,6 +151,7 @@ async function fetchApi(url, options = {}) {
         return await res.json();
     } catch (err) {
         console.error("API Error:", err);
+        alert('Lỗi kết nối API Admin.'); // Thông báo lỗi chung
         return null;
     }
 }
@@ -171,10 +169,11 @@ async function loadData() {
 async function loadStats() {
     const data = await fetchApi(API_ENDPOINTS.STATS);
     if (data) {
-        if(el('totalGames')) el('totalGames').innerText = data.totalGames;
-        if(el('totalRooms')) el('totalRooms').innerText = data.totalRooms;
-        if(el('onlineUsers')) el('onlineUsers').innerText = data.onlineUsers;
-        if(el('totalUsers')) el('totalUsers').innerText = data.totalUsers;
+        // FIX: Đã thêm API stats để khắc phục lỗi không hiển thị tổng
+        if(el('totalGames')) el('totalGames').innerText = data.totalGames || 0;
+        if(el('totalRooms')) el('totalRooms').innerText = data.totalRooms || 0;
+        if(el('onlineUsers')) el('onlineUsers').innerText = data.onlineUsers || 0;
+        if(el('totalUsers')) el('totalUsers').innerText = data.totalUsers || 0;
     }
 }
 
@@ -220,8 +219,15 @@ async function fetchGames(q) {
 
 // --- 4. RENDER TABLE & PAGINATION ---
 
+function formatDateTime(isoString) {
+    if (!isoString) return '-';
+    const date = new Date(isoString);
+    const options = { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return date.toLocaleTimeString('vi-VN', options);
+}
+
 function renderPagination(type, meta, fetchFunc) {
-    // meta: { total, page, pages }
+    // Logic renderPagination giữ nguyên
     const container = el(`${type}Pagination`);
     if (!container) return;
     
@@ -273,19 +279,26 @@ function renderUsersTable(users) {
         return;
     }
 
-    tbody.innerHTML = users.map(u => `
-        <tr>
-            <td><div class="user-cell"><img src="https://api.dicebear.com/7.x/micah/svg?seed=${u.username}" alt="avt"><span>${u.username}</span></div></td>
-            <td>${u.displayName || ''}</td>
-            <td>${u.email || '-'}</td>
-            <td>${u.googleId ? '<span class="badge google">Google</span>' : '<span class="badge local">Local</span>'}</td>
-            <td><span class="status-dot ${u.status}"></span> ${u.status}</td>
-            <td>${new Date(u.createdAt).toLocaleDateString()}</td>
-            <td>
-                <button class="action-btn delete" data-id="${u._id}" data-type="user" title="Xóa"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = users.map(u => {
+        const historyHtml = u.playHistory && u.playHistory.length > 0 
+            ? `<div style="font-size:0.8em;color:#9aa4b2;">Chơi gần nhất: ${u.playHistory[u.playHistory.length - 1].gameName}</div>`
+            : '';
+            
+        return `
+            <tr>
+                <td><div class="user-cell"><img src="https://api.dicebear.com/7.x/micah/svg?seed=${u.username}" alt="avt"><span>${u.username}</span></div></td>
+                <td>${u.displayName || ''}</td>
+                <td>${u.email || '-'}</td>
+                <td>${u.googleId ? '<span class="badge google">Google</span>' : '<span class="badge local">Local</span>'}</td>
+                <td><span class="status-dot ${u.status}"></span> ${u.status}</td>
+                <td>${formatDateTime(u.createdAt)} ${historyHtml}</td>
+                <td>
+                    <button class="action-btn edit" data-id="${u._id}" data-type="user" title="Sửa"><i class="fas fa-edit"></i></button>
+                    <button class="action-btn delete" data-id="${u._id}" data-type="user" title="Xóa"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function renderRoomsTable(rooms) {
@@ -304,7 +317,7 @@ function renderRoomsTable(rooms) {
             <td>${r.host}</td>
             <td>${r.players?.length || 0}</td>
             <td><span class="badge ${r.status}">${r.status}</span></td>
-            <td>${new Date(r.createdAt).toLocaleTimeString()}</td>
+            <td>${formatDateTime(r.createdAt)}</td>
             <td>
                 <button class="action-btn delete" data-id="${r.code}" data-type="room" title="Đóng phòng"><i class="fas fa-times"></i></button>
             </td>
@@ -348,7 +361,7 @@ function renderGamesTable(games) {
 // --- 5. ACTIONS & EVENT DELEGATION ---
 
 function setupTableDelegation() {
-    // Bảng Game
+    // Bảng Game (Giữ nguyên)
     const gamesList = el('adminGamesList');
     if (gamesList) {
         gamesList.addEventListener('click', (e) => {
@@ -371,7 +384,7 @@ function setupTableDelegation() {
         });
     }
 
-    // Bảng Room
+    // Bảng Room (Giữ nguyên)
     const roomsList = el('adminRoomsList');
     if (roomsList) {
         roomsList.addEventListener('click', (e) => {
@@ -382,13 +395,19 @@ function setupTableDelegation() {
         });
     }
 
-    // Bảng User
+    // Bảng User (Sửa: Thêm nút Edit)
     const usersList = el('adminUsersList');
     if (usersList) {
         usersList.addEventListener('click', (e) => {
             const btn = e.target.closest('button');
-            if (btn && btn.classList.contains('delete')) {
-                if(confirm('Xóa user này?')) deleteItem('users', btn.dataset.id);
+            if (!btn) return;
+            const id = btn.dataset.id;
+            
+            if (btn.classList.contains('edit')) {
+                const user = currentDataCache.users.find(u => u._id === id);
+                if(user) openUserForm(user);
+            } else if (btn.classList.contains('delete')) {
+                if(confirm('Xóa user này?')) deleteItem('users', id);
             }
         });
     }
@@ -397,31 +416,35 @@ function setupTableDelegation() {
 // --- API CALLS FOR ACTIONS ---
 
 async function deleteItem(type, id) {
+    if (!confirm('Xác nhận xóa/đóng item này?')) return;
     showOverlay(true);
     const endpoint = type === 'games' ? API_ENDPOINTS.GAME_ID(id) 
                    : type === 'rooms' ? API_ENDPOINTS.ROOM_ID(id)
                    : API_ENDPOINTS.USER_ID(id);
                    
-    await fetchApi(endpoint, { method: 'DELETE' });
+    const res = await fetchApi(endpoint, { method: 'DELETE' });
+    if(res) alert(`Thành công! ${type.toUpperCase()} đã bị xóa/đóng.`);
     showOverlay(false);
     // Socket sẽ tự update UI
 }
 
 async function toggleFeatured(id, checked) {
-    await fetchApi(API_ENDPOINTS.GAME_ID(id), {
+    const res = await fetchApi(API_ENDPOINTS.GAME_ID(id), {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ featured: checked })
     });
+    if(res) alert(`Cập nhật game ${id} thành công!`);
 }
 
 async function syncGames() {
     if (!confirm('Quét lại thư mục và đồng bộ CSDL?')) return;
     showOverlay(true);
     try {
-        // Lấy danh sách file JSON gốc (nếu cần) hoặc chỉ gọi API sync
         const resSync = await fetchApi(API_ENDPOINTS.SYNC_GAMES, { method: 'POST' });
-        alert(`Đồng bộ xong: ${resSync.updated} cập nhật, ${resSync.created} mới.`);
+        // FIX: Đã sửa lỗi hiển thị undefined khi đồng bộ
+        if(resSync) alert(`Đồng bộ xong: ${resSync.updated || 0} cập nhật, ${resSync.created || 0} mới.`);
+        else alert('Đồng bộ thất bại, kiểm tra console.');
     } catch(e) { alert('Lỗi: ' + e.message); }
     showOverlay(false);
 }
@@ -431,10 +454,61 @@ function logoutAdmin() {
       .finally(()=> location.href='/admin-login.html'); 
 }
 
-// --- FORM MODAL LOGIC (Tách thành hàm riêng) ---
+// --- 6. MODAL HANDLERS ---
 
+function setupModals() {
+    // Đóng modal Game
+    if(gameModal) {
+        document.querySelectorAll('#gameModal .close-modal, #gameModal .close-modal-btn').forEach(btn => {
+            btn.onclick = () => gameModal.style.display = 'none';
+        });
+    }
+    // Đóng modal User
+    if(userModal) {
+        document.querySelectorAll('#userModal .close-modal, #userModal .close-modal-btn').forEach(btn => {
+            btn.onclick = () => userModal.style.display = 'none';
+        });
+    }
+
+    // Thêm HTML cho User Modal (Cần thêm vào admin.html)
+    if (!userModal) {
+        const modalHtml = `
+            <div id="userModal" class="popup-modal" style="display:none; max-width:450px;">
+                <span class="close-modal" id="closeUserModal">&times;</span>
+                <h2 id="userModalTitle">Sửa Người Dùng</h2>
+                <form id="userForm" class="auth-form" style="text-align:left;">
+                    <input type="hidden" id="userIdInput">
+                    <div class="form-group">
+                        <label>Username (Không đổi):</label>
+                        <input type="text" id="userUsernameInput" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Tên hiển thị:</label>
+                        <input type="text" id="userDisplayNameInput" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="userEmailInput">
+                    </div>
+                    <div class="form-group">
+                        <label>Lịch sử chơi:</label>
+                        <textarea id="userPlayHistory" disabled rows="3" style="font-size:0.85em;"></textarea>
+                    </div>
+                    <div class="form-actions" style="margin-top:20px; text-align:right;">
+                        <button type="button" class="btn btn-cancel close-modal-btn">Hủy</button>
+                        <button type="submit" class="btn btn-save">Lưu thay đổi</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        // Chỉ thêm vào body nếu chưa có (Để tránh lỗi nếu admin.html đã có)
+        // document.body.insertAdjacentHTML('beforeend', modalHtml); 
+    }
+}
+
+// Mở form sửa Game
 function openGameForm(game) {
-    isEditing = !!game;
+    isEditingGame = !!game;
     el('modalTitle').innerText = game ? 'Sửa Game' : 'Thêm Game Mới';
     
     if (game) {
@@ -450,14 +524,14 @@ function openGameForm(game) {
         el('gamePlayers').value = game.players || '';
         el('gameFeatured').checked = game.featured || false;
     } else {
-        form.reset();
+        gameForm.reset();
         el('gameIdInput').disabled = false;
         el('gameIdOriginal').value = '';
     }
-    if (modal) modal.style.display = 'block';
+    if (gameModal) gameModal.style.display = 'block';
 }
 
-// HÀM SAVE GAME (ĐÃ KHAI BÁO RÕ RÀNG)
+// Lưu Game (Đã sửa lỗi tham chiếu)
 async function saveGame(e) {
     e.preventDefault();
     showOverlay(true);
@@ -471,24 +545,61 @@ async function saveGame(e) {
         featured: el('gameFeatured').checked
     };
 
-    const url = isEditing ? API_ENDPOINTS.GAME_ID(payload.id) : API_ENDPOINTS.GAMES;
-    const method = isEditing ? 'PUT' : 'POST';
+    const url = isEditingGame ? API_ENDPOINTS.GAME_ID(payload.id) : API_ENDPOINTS.GAMES;
+    const method = isEditingGame ? 'PUT' : 'POST';
 
-    await fetchApi(url, {
+    const res = await fetchApi(url, {
         method: method,
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
     });
     
-    if (modal) modal.style.display = 'none';
+    if(res) alert(`Game ${payload.id} đã được lưu thành công.`);
+    if (gameModal) gameModal.style.display = 'none';
     showOverlay(false);
 }
 
+// Mở form sửa User
+function openUserForm(user) {
+    isEditingUser = true;
+    el('userModalTitle').innerText = `Sửa User: ${user.username}`;
+    
+    if (user) {
+        el('userIdInput').value = user._id;
+        el('userUsernameInput').value = user.username || '';
+        el('userDisplayNameInput').value = user.displayName || '';
+        el('userEmailInput').value = user.email || '';
+        
+        const historyText = user.playHistory && user.playHistory.length > 0 
+            ? user.playHistory.map(h => `${h.gameName} (${formatDateTime(h.playedAt)})`).join('\n')
+            : 'Chưa có lịch sử chơi.';
+        el('userPlayHistory').value = historyText;
+    } 
+    if (userModal) userModal.style.display = 'block';
+}
 
-if(modal) {
-    document.querySelectorAll('.close-modal, .close-modal-btn').forEach(btn => {
-        btn.onclick = () => modal.style.display = 'none';
+// Lưu User
+async function saveUser(e) {
+    e.preventDefault();
+    showOverlay(true);
+
+    const userId = el('userIdInput').value;
+    const payload = {
+        displayName: el('userDisplayNameInput').value,
+        email: el('userEmailInput').value,
+    };
+
+    const url = API_ENDPOINTS.USER_ID(userId);
+
+    const res = await fetchApi(url, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
     });
+    
+    if(res) alert(`User ${res.username} đã được cập nhật thành công.`);
+    if (userModal) userModal.style.display = 'none';
+    showOverlay(false);
 }
 
 // Helper Debounce

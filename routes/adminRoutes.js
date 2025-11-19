@@ -4,6 +4,17 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 
 module.exports = function(io) {
+  
+  // --- STATS (Fix lỗi không hiển thị tổng) ---
+  router.get('/stats', async (req, res) => {
+      try {
+          const stats = await adminController.getStats();
+          res.json(stats);
+      } catch (e) {
+          res.status(500).json({ message: e.message });
+      }
+  });
+
 
   // --- USER ---
   router.get('/users', async (req, res) => {
@@ -24,13 +35,15 @@ module.exports = function(io) {
     } catch (e) { res.status(500).json({ message: e.message }); }
   });
 
-  // (Các route PUT, DELETE User giữ nguyên)
+  // Route SỬA USER (PUT)
   router.put('/users/:id', async (req, res) => {
      try {
         const u = await adminController.updateUser(req.params.id, req.body);
-        io.emit('admin-users-changed'); res.json(u);
+        io.emit('admin-users-changed'); 
+        res.json(u);
      } catch(e) { res.status(500).json({message: e.message}); }
   });
+  
   router.delete('/users/:id', async (req, res) => {
      try {
         await adminController.deleteUser(req.params.id);
