@@ -1,4 +1,4 @@
-// public/chatbot.js (FIXED: Đúng API endpoint và Payload)
+// public/chatbot.js (FINAL: Đa ngôn ngữ động + API chuẩn + Avatar DiceBear)
 
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Tạo HTML cho Chatbot
@@ -36,10 +36,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const messagesArea = document.getElementById("chatbot-messages");
     const titleText = document.getElementById("chat-title-text");
     
-    // Lấy API URL từ biến global (được định nghĩa trong index.html/room.html)
     const API_BASE_URL = window.BASE_API || 'https://datn-socket.up.railway.app';
 
-    // 3. Xác định ngữ cảnh (Context: Trang chủ hay Phòng chơi)
+    // 3. Xác định ngữ cảnh (Context)
     function getChatbotContext() {
         const pathname = window.location.pathname;
         if (pathname.endsWith('/room.html') || pathname.includes('/game/')) {
@@ -51,40 +50,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 4. Xử lý Đa ngôn ngữ
     let LANGS = {};
-    const currentLang = localStorage.getItem('lang') || 'vi';
 
     async function loadChatLanguage() {
         try {
             const res = await fetch('/lang.json');
             LANGS = await res.json();
-            applyLanguage();
+            // Không gọi applyLanguage() ngay ở đây để tránh xung đột
         } catch (e) {
             console.error("Chatbot: Không tải được ngôn ngữ", e);
         }
     }
 
+    // Lấy ngôn ngữ hiện tại từ localStorage
+    function getCurrentLang() {
+        return localStorage.getItem('lang') || 'vi';
+    }
+
     function t(key, defaultText) {
-        return LANGS[currentLang]?.[key] || defaultText || key;
+        const lang = getCurrentLang();
+        return LANGS[lang]?.[key] || defaultText || key;
     }
 
     function applyLanguage() {
         titleText.innerText = t('chat_title', 'Trợ lý AI');
         inputField.placeholder = t('chat_placeholder', 'Hỏi gì đó...');
-        // Nếu chưa có tin nhắn nào, hiện tin chào mừng
-        if (messagesArea.children.length === 0) {
-            const welcomeText = t('chat_welcome', 'Xin chào! Tôi là AI. Tôi có thể giúp gì cho bạn hôm nay?');
-            addMessage('bot', welcomeText);
-        }
     }
 
     loadChatLanguage(); 
 
-    // 5. Xử lý Avatar
+    // 5. Xử lý Avatar DiceBear
     function getAvatarUrl(type, username) {
         if (type === 'bot') {
             return `https://api.dicebear.com/7.x/bottts/svg?seed=Assistant`; 
         }
-        // Avatar User DiceBear
         const safeName = username || 'guest';
         return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
     }
@@ -96,11 +94,81 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch { return 'guest'; }
     }
 
-    // 6. Logic Chat
+    // --- 6. LOGIC GỢI Ý (SUGGESTIONS) ---
+    function addSuggestionButtons() {
+        const oldSuggestions = document.getElementById('chat-suggestions');
+        if (oldSuggestions) oldSuggestions.remove();
+
+        const context = getChatbotContext();
+        const suggestionsEl = document.createElement('div');
+        suggestionsEl.id = 'chat-suggestions';
+        suggestionsEl.className = 'chat-suggestions';
+        
+        // Nội dung gợi ý phụ thuộc vào ngôn ngữ hiện tại
+        const lang = getCurrentLang();
+        
+        if (context.page === 'room') {
+            const btn1Text = lang === 'vi' ? 'Mô tả game này' : 'Describe this game';
+            const btn2Text = lang === 'vi' ? 'Luật chơi thế nào?' : 'How to play?';
+            
+            suggestionsEl.innerHTML = `
+                <button class="suggestion-btn" data-question="${btn1Text}">${btn1Text} <i class="fas fa-info-circle"></i></button>
+                <button class="suggestion-btn" data-question="${btn2Text}">${btn2Text} <i class="fas fa-book"></i></button>
+            `;
+        } else {
+            const btn1Text = lang === 'vi' ? 'Giới thiệu các game' : 'Introduce games';
+            const btn2Text = lang === 'vi' ? 'Đăng nhập / Đăng ký' : 'Login / Register';
+
+            suggestionsEl.innerHTML = `
+                <button class="suggestion-btn" data-question="${btn1Text}">${btn1Text} <i class="fas fa-gamepad"></i></button>
+                <button class="suggestion-btn" data-action="login">${btn2Text} <i class="fas fa-user-circle"></i></button>
+            `;
+        }
+        
+        messagesArea.appendChild(suggestionsEl);
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+
+        suggestionsEl.querySelectorAll('.suggestion-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const question = btn.getAttribute('data-question');
+                const action = btn.getAttribute('data-action');
+
+                if (question) {
+                    handleChat(question); 
+                } else if (action === 'login') {
+                    if (typeof openAuthModal === 'function') {
+                        openAuthModal('login');
+                        chatWindow.classList.add('hidden'); 
+                        chatIcon.classList.remove("hidden");
+                    } else {
+                        alert('Chức năng này chưa sẵn sàng ở đây.');
+                    }
+                    removeSuggestionButtons();
+                }
+            });
+        });
+    }
+
+    function removeSuggestionButtons() {
+        const suggestionsEl = document.getElementById('chat-suggestions');
+        if (suggestionsEl) suggestionsEl.remove();
+    }
+
+    // 7. Logic Chat Chính
     chatIcon.addEventListener("click", () => {
+        // Cập nhật ngôn ngữ mỗi khi mở box chat
+        applyLanguage();
+        
         chatWindow.classList.remove("hidden");
         chatIcon.classList.add("hidden");
         inputField.focus();
+
+        // Nếu chưa có tin nhắn, hiện chào mừng và gợi ý THEO NGÔN NGỮ HIỆN TẠI
+        if (messagesArea.querySelectorAll('.message').length === 0) {
+            const welcomeText = t('chat_welcome', 'Xin chào! Tôi là AI. Tôi có thể giúp gì cho bạn hôm nay?');
+            addMessage('bot', welcomeText);
+            setTimeout(addSuggestionButtons, 500); 
+        }
     });
 
     closeBtn.addEventListener("click", () => {
@@ -109,6 +177,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     function addMessage(sender, text) {
+        if (sender === 'user') removeSuggestionButtons();
+
         const msgDiv = document.createElement("div");
         msgDiv.classList.add("message", sender);
         
@@ -124,16 +194,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return msgDiv;
     }
 
-    async function handleChat() {
-        const text = inputField.value.trim();
+    async function handleChat(manualText = null) {
+        const text = manualText || inputField.value.trim();
         if (!text) return;
 
-        // Hiện tin nhắn người dùng
         addMessage("user", text);
         inputField.value = "";
         inputField.disabled = true;
 
-        // Hiện trạng thái đang gõ...
         const loadingDiv = document.createElement("div");
         loadingDiv.className = "message bot loading";
         loadingDiv.innerHTML = `<img src="${getAvatarUrl('bot')}" class="chat-avatar"><div class="bubble">...</div>`;
@@ -143,8 +211,6 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const context = getChatbotContext();
             
-            // --- SỬA LỖI CHÍNH Ở ĐÂY ---
-            // Gọi đúng endpoint /api/ai/ask và gửi đúng payload { question, gameId }
             const response = await fetch(`${API_BASE_URL}/api/ai/ask`, { 
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -155,15 +221,10 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             const data = await response.json();
-            
-            // Xóa loading
             messagesArea.removeChild(loadingDiv);
             
-            if (!response.ok) {
-                 throw new Error(data.error || "Lỗi server");
-            }
+            if (!response.ok) throw new Error(data.error || "Lỗi server");
 
-            // Hiện câu trả lời từ AI
             addMessage("bot", data.answer || "Xin lỗi, tôi không hiểu câu hỏi.");
 
         } catch (error) {
@@ -176,7 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    sendBtn.addEventListener("click", handleChat);
+    sendBtn.addEventListener("click", () => handleChat());
     inputField.addEventListener("keypress", (e) => {
         if (e.key === "Enter") handleChat();
     });
