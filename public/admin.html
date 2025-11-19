@@ -1,382 +1,261 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Panel</title>
-  <link rel="icon" type="image/svg+xml" href="img/fav.svg" />
-  
-  <link rel="stylesheet" href="/css/admin.css"> 
-  
-  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
-  
-  <style>
-    body {
-        background: url('../img/fav.png') no-repeat center center fixed;
-        background-size: cover;
-    }
-    .main-content {
-        position: relative;
-    }
-    /* Lớp phủ mờ cho nội dung chính */
-    .main-content::before {
-        content: "";
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-color: rgba(14, 23, 32, 0.85); /* Màu --panel với 85% opacity */
-        backdrop-filter: blur(4px);
-        z-index: 0;
-    }
-    /* Đẩy nội dung tab lên trên lớp phủ */
-    .admin-tab-content, .header-main, .confirm-bar {
-        position: relative;
-        z-index: 1;
-    }
-    
-    /* (Các style modal từ file admin.css cũ - Rất quan trọng) */
-    .overlay {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-color: rgba(0,0,0,0.5);
-        z-index: 1010;
-        display: none;
-    }
-    .popup-modal {
-        position: fixed;
-        top: 50%; left: 50%;
-        transform: translate(-50%, -50%);
-        background-color: var(--card, #081726); /* Dùng màu --card của bạn */
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: var(--radius, 10px);
-        box-shadow: 0 20px 50px rgba(2,6,23,0.8);
-        padding: 1.5rem;
-        z-index: 1020;
-        display: none;
-        width: 90vw;
-        max-width: 500px;
-        color: #e6eef8; /* Thêm màu chữ cho popup */
-    }
-    .popup-modal.wide { max-width: 700px; }
-    .popup-modal h3, .popup-modal h2 {
-        margin-top: 0;
-        margin-bottom: 1.5rem;
-        font-size: 1.25rem;
-        color: var(--accent, #ff9f43); /* Thêm màu chữ */
-    }
-    .popup-modal label {
-        display: block;
-        font-weight: 500;
-        margin-bottom: 0.25rem;
-        font-size: 13px;
-        color: var(--muted, #9aa4b2); /* Thêm màu chữ */
-    }
-    /* SỬA: Style Input như trong image_998e21.jpg */
-    .popup-modal input[type="text"],
-    .popup-modal input[type="email"],
-    .popup-modal select,
-    .popup-modal textarea {
-        width: 100%;
-        padding: 12px; /* Tăng padding */
-        border: 1px solid rgba(255,255,255,0.08); /* Viền rõ hơn 1 chút */
-        border-radius: 8px;
-        font-size: 14px;
-        margin-bottom: 1rem;
-        background: var(--glass); /* Dùng --glass (trong suốt nhẹ) */
-        color: inherit; /* Màu chữ input */
-    }
-    .popup-modal input:focus,
-    .popup-modal select:focus {
-        outline: none;
-        border-color: var(--accent);
-    }
-    /* HẾT SỬA INPUT */
-    
-    .form-grid-2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
-    .form-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.75rem;
-        margin-top: 1.5rem;
-    }
-    .auth-close {
-        position: absolute;
-        top: 10px;
-        right: 15px;
-        font-size: 1.5rem;
-        color: var(--muted, #9aa4b2);
-        cursor: pointer;
-        line-height: 1;
-    }
-    .auth-close:hover {
-        color: #fff;
-    }
-    .btn-cancel {
-        background: var(--muted, #9aa4b2);
-        color: var(--dark, #0e1720);
-    }
-    .btn-save {
-        background: var(--success, #22c55e);
-        color: #fff;
-    }
-    
-    /* (Xóa style cột mật khẩu vì không cần nữa) */
-    
-    /* Style cho thanh tìm kiếm (Thêm vào đây để đảm bảo hiện đúng) */
-    .search-wrapper {
-        position: relative;
-        display: flex;
-        align-items: center;
-        flex-grow: 1;
-        margin-right: 16px;
-    }
-    .search-icon {
-        position: absolute;
-        left: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--muted, #9aa4b2);
-        pointer-events: none;
-        z-index: 2;
-        width: 20px;
-        height: 20px;
-    }
-    .search-icon svg { width: 100%; height: 100%; }
-    .controls.search-wrapper input {
-        padding-left: 42px !important;
-        width: 100%;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Camping Game</title>
+  <link rel="icon" href="img/fav.svg">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
-  <aside class="sidebar" id="adminSidebar">
-    <div class="sidebar-logo">
-      <img src="img/fav.svg" alt="Logo" />
-      <span>Admin Panel</span>
-    </div>
-    <nav>
-      <button class="icon-btn" id="navToggleBtn" aria-label="Toggle Navigation" style="display:none; color: white; background: none; border: none; font-size: 1.5rem; cursor: pointer;">
-          &#9776;
-      </button>
-      <a href="/" target="_blank"><span class="icon">🏠</span> <span>Trang chủ</span></a>
-      <a href="#" class="tab-btn active" data-tab="gamesTab"><span class="icon">🎮</span> <span>Trò chơi</span></a>
-      <a href="#" class="tab-btn" data-tab="roomsTab"><span class="icon">🚪</span> <span>Phòng chơi</span></a>
-      <a href="#" class="tab-btn" data-tab="usersTab"><span class="icon">👥</span> <span>Người dùng</span></a>
-      <a href="#" class="tab-btn" data-tab="analyticsTab"><span class="icon">📊</span> <span>Quản lý web</span></a>
-      <div class="sidebar-auth">
-        <button id="btnLogout">Đăng xuất</button>
+  <div class="admin-container">
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="sidebar-header">
+        <img src="img/fav.svg" alt="Logo">
+        <span>Admin Panel</span>
       </div>
-    </nav>
-  </aside>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="dashboard">
+          <i class="fas fa-chart-line"></i> Dashboard
+        </button>
+        <button class="nav-item" data-tab="games">
+          <i class="fas fa-gamepad"></i> Quản lý Game
+        </button>
+        <button class="nav-item" data-tab="rooms">
+          <i class="fas fa-users"></i> Phòng Chơi
+        </button>
+        <button class="nav-item" data-tab="users">
+          <i class="fas fa-user-cog"></i> Người Dùng
+        </button>
+        <button class="nav-item" data-tab="analytics">
+          <i class="fas fa-chart-bar"></i> Analytics
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="logoutBtn" class="nav-item logout">
+          <i class="fas fa-sign-out-alt"></i> Đăng xuất
+        </button>
+      </div>
+    </aside>
 
-  <div class="overlay" id="popupOverlay"></div>
+    <main class="admin-main">
+      
+      <section id="dashboardTab" class="admin-tab-content active">
+        <header class="content-header">
+          <h1>Tổng quan</h1>
+          <div class="header-actions">
+            <button id="refreshDataBtn" class="btn btn-secondary"><i class="fas fa-sync-alt"></i> Làm mới</button>
+          </div>
+        </header>
 
-  <main class="main-content">
-    
-    <button class="btn btn-danger" id="btnConfirmChanges" style="display: none; position: fixed; bottom: 20px; left: 240px; z-index: 100;">
-        Lưu thay đổi
-    </button>
-
-
-    <section id="dashboardTab" class="admin-tab-content" style="display:none">
-        <div class="section-title-row">
-            <div class="section-title">Dashboard</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon purple"><i class="fas fa-gamepad"></i></div>
+            <div class="stat-info">
+              <h3>Tổng Game</h3>
+              <p id="totalGames">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon blue"><i class="fas fa-door-open"></i></div>
+            <div class="stat-info">
+              <h3>Phòng Online</h3>
+              <p id="totalRooms">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green"><i class="fas fa-user-check"></i></div>
+            <div class="stat-info">
+              <h3>Người chơi Online</h3>
+              <p id="onlineUsers">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon orange"><i class="fas fa-users"></i></div>
+            <div class="stat-info">
+              <h3>Tổng User</h3>
+              <p id="totalUsers">0</p>
+            </div>
+          </div>
         </div>
-    </section>
+      </section>
 
-    <section id="gamesTab" class="admin-tab-content">
-      <div class="section-title-row">
-        <div class="section-title">Danh sách trò chơi</div>
-        <div class="controls search-wrapper">
-          <span class="search-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
-          </span>
-          <input id="gamesSearch" placeholder="Tìm tên game..." /> 
+      <section id="gamesTab" class="admin-tab-content" style="display:none">
+        <header class="content-header">
+          <h1>Quản lý Game</h1>
+          <div class="header-actions">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="gamesSearch" placeholder="Tìm game...">
+            </div>
+            <button id="syncGamesBtn" class="btn btn-secondary"><i class="fas fa-sync"></i> Đồng bộ File</button>
+            <button id="addGameBtn" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm Game</button>
+          </div>
+        </header>
+        
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Ảnh</th>
+                <th>Tên (VI/EN)</th>
+                <th>Người chơi</th>
+                <th>Nổi bật</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody id="adminGamesList">
+              </tbody>
+          </table>
         </div>
-        <div>
-          <button class="btn" style="margin-right:8px;background:linear-gradient(90deg,#ffd36b,#ff9f43);color:#061022" id="btnSyncGames">Đồng bộ từ games.json</button>
-          <button class="btn" id="btnAddGame">+ Thêm trò chơi</button>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr><th>Tên</th><th>Thể loại</th><th>Số người</th><th>Nổi bật</th><th>Hành động</th></tr>
-          </thead>
-          <tbody id="adminGamesList"></tbody>
-        </table>
-      </div>
-    </section>
+        <div id="gamesPagination" class="pagination-controls"></div>
+      </section>
 
-    <section id="roomsTab" class="admin-tab-content" style="display:none">
-      <div class="section-title-row">
-        <div class="section-title">Danh sách phòng chơi</div>
-        <div class="controls search-wrapper">
-          <span class="search-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
-          </span>
-          <input id="roomsSearch" placeholder="Tìm mã phòng, host..." />
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Tên trò chơi</th>
-              <th>Mã phòng</th>
-              <th>Người tạo</th>
-              <th>Người tham gia</th>
-              <th>Trạng thái</th>
-              <th>Hành động</th>
-            </tr>
-          </thead>
-          <tbody id="adminRoomsList"></tbody>
-        </table>
-      </div>
-    </section>
+      <section id="roomsTab" class="admin-tab-content" style="display:none">
+        <header class="content-header">
+          <h1>Quản lý Phòng</h1>
+          <div class="header-actions">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="roomsSearch" placeholder="Tìm mã phòng...">
+            </div>
+          </div>
+        </header>
 
-    <section id="usersTab" class="admin-tab-content" style="display:none">
-      <div class="section-title-row">
-        <div class="section-title">Người dùng</div>
-        <div class="controls search-wrapper">
-          <span class="search-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
-          </span>
-          <input id="usersSearch" placeholder="Tìm username hoặc email..." />
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Mã Phòng</th>
+                <th>Game</th>
+                <th>Chủ phòng</th>
+                <th>Số người</th>
+                <th>Trạng thái</th>
+                <th>Tạo lúc</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody id="adminRoomsList"></tbody>
+          </table>
         </div>
-        <button class="btn" id="btnAddUser">+ Thêm người dùng</button>
-      </div>
-      <div class="table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Tài khoản</th>
-              <th>Tên hiển thị</th>
-              <th>Email</th>
-              <th>Lịch sử chơi</th>
-              <th>Trạng thái</th>
-              <th>Hành động</th>
-            </tr>
-          </thead>
-          <tbody id="adminUsersList"></tbody>
-        </table>
-      </div>
-    </section>
+        <div id="roomsPagination" class="pagination-controls"></div>
+      </section>
 
-    <section id="analyticsTab" class="admin-tab-content" style="display:none">
-       <div class="section-title-row">
-            <div class="section-title">Quản lý web (Vercel)</div>
-       </div>
-       <div class="vercel-links">
-            <a href="https://vercel.com/kines-projects/datn/analytics" target="_blank" class="vercel-btn">
-                <svg viewBox="0 0 24 24"><path d="M3 12h2v9H3v-9zm4 4h2v5H7v-5zm4-8h2v13h-2V8zm4 3h2v10h-2V11zm4-6h2v16h-2V5z"></path></svg>
+      <section id="usersTab" class="admin-tab-content" style="display:none">
+        <header class="content-header">
+          <h1>Quản lý Người dùng</h1>
+          <div class="header-actions">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="usersSearch" placeholder="Tìm user...">
+            </div>
+          </div>
+        </header>
+
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Tên hiển thị</th>
+                <th>Email</th>
+                <th>Loại</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody id="adminUsersList"></tbody>
+          </table>
+        </div>
+        <div id="usersPagination" class="pagination-controls"></div>
+      </section>
+      
+      <section id="analyticsTab" class="admin-tab-content" style="display:none">
+        <header class="content-header">
+          <h1>Quản lý Web</h1>
+        </header>
+        <div class="vercel-links" style="display:flex; gap:20px; margin-top:20px;">
+            <a href="https://vercel.com/kines-projects/datn/analytics" target="_blank" class="btn btn-primary">
                 Vercel Analytics
             </a>
-            <a href="https://vercel.com/kines-projects/datn/speed-insights" target="_blank" class="vercel-btn">
-                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v5h-2V7zm0 7h2v2h-2v-2z"></path></svg>
+            <a href="https://vercel.com/kines-projects/datn/speed-insights" target="_blank" class="btn btn-secondary">
                 Speed Insights
             </a>
-       </div>
-    </section>
-  </main>
-  
-  
-  <div id="userFormPopup" class="popup-modal"> 
-    <form id="userForm" class="auth-form">
-      <h2 id="userFormTitle">Thêm người dùng</h2>
-      <input type="hidden" id="userId" />
-      
-      <label>Username</label>
-      <input id="userUsername" placeholder="Username" required />
-      
-      <label>Tên hiển thị</label>
-      <input id="userDisplayName" placeholder="Tên hiển thị" />
-      
-      <label>Email</label>
-      <input id="userEmail" placeholder="Email" />
-      
-      <label>Vai trò (Role)</label>
-      <select id="userRole"><option value="user">user</option><option value="admin">admin</option></select>
-      
-      <div class="form-actions">
-        <button type="button" onclick="closeUserForm()" class="btn btn-cancel">Hủy</button>
-        <button type="submit" class="btn btn-save">Lưu</button>
-      </div>
-      <span class="auth-close" onclick="closeUserForm()">×</span>
-    </form>
+        </div>
+      </section>
+
+    </main>
   </div>
 
-  <div id="roomFormPopup" class="popup-modal">
-    <form id="roomForm">
-      <h2 id="roomFormTitle">Chỉnh sửa phòng</h2>
-      <input type="hidden" id="roomId" />
-      <label>Tên phòng</label>
-      <input id="roomName" placeholder="Tên phòng" required />
-      <label>Trò chơi</label>
-      <select id="roomGame" required>
-        <option value="">-- Chọn trò chơi --</option>
-      </select>
-      <label>Người tạo</label>
-      <input id="roomOwner" placeholder="Người tạo" required />
-      <label>Trạng thái</label>
-      <select id="roomStatus"><option>Đang mở</option><option>Đang chơi</option><option>Đã đóng</option></select>
-      <div class="form-actions">
-        <button type="button" onclick="closeRoomForm()" class="btn btn-cancel">Hủy</button>
-        <button type="submit" class="btn btn-save">Lưu</button>
-      </div>
-      <span class="auth-close" onclick="closeRoomForm()">×</span>
-    </form>
-  </div>
+  <div id="gameModal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <h2 id="modalTitle">Thêm/Sửa Game</h2>
+      <form id="gameForm">
+        <input type="hidden" id="gameIdOriginal"> 
+        
+        <div class="form-group">
+          <label>ID Game (Mã thư mục):</label>
+          <input type="text" id="gameIdInput" required>
+          <small>Phải trùng với tên thư mục trong public/game/</small>
+        </div>
 
-  <div id="gameFormPopup" class="popup-modal wide">
-    <form id="gameForm" class="auth-form">
-      <h2 id="gameFormTitle">Thêm trò chơi</h2>
-      <input type="hidden" id="gameIdOrig" />
-      <div class="form-grid-2">
-        <div>
-            <label>Tên (VI)</label>
-            <input id="gameNameVI" placeholder="Tên tiếng Việt" />
+        <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="form-group">
+            <label>Tên (Việt):</label>
+            <input type="text" id="gameNameVi" required>
+          </div>
+          <div class="form-group">
+            <label>Tên (Anh):</label>
+            <input type="text" id="gameNameEn" required>
+          </div>
         </div>
-        <div>
-            <label>Tên (EN)</label>
-            <input id="gameNameEN" placeholder="Name (English)" />
+
+        <div class="form-group">
+            <label>Thể loại (Việt):</label>
+            <input type="text" id="gameCatVi" required>
         </div>
-      </div>
-       <div class="form-grid-2">
-           <div>
-                <label>Mô tả (VI)</label>
-                <input id="gameDescVI" placeholder="Mô tả tiếng Việt" />
-           </div>
-           <div>
-                <label>Mô tả (EN)</label>
-                <input id="gameDescEN" placeholder="Description (English)" />
-           </div>
-       </div>
-       <div class="form-grid-2">
-           <div>
-                <label>Category (VI)</label>
-                <input id="gameCatVI" placeholder="Thể loại (VI)" />
-           </div>
-            <div>
-                <label>Category (EN)</label>
-                <input id="gameCatEN" placeholder="Category (EN)" />
+        <div class="form-group">
+            <label>Thể loại (Anh):</label>
+            <input type="text" id="gameCatEn" required>
+        </div>
+
+        <div class="form-group">
+          <label>Mô tả (Việt):</label>
+          <textarea id="gameDescVi" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+            <label>Mô tả (Anh):</label>
+            <textarea id="gameDescEn" rows="2"></textarea>
+          </div>
+
+        <div class="form-row" style="display:flex; align-items:center; gap:20px;">
+            <div class="form-group" style="flex:1;">
+                <label>Số người chơi (VD: 2-10):</label>
+                <input type="text" id="gamePlayers" required>
             </div>
-       </div>
-      <label>Players (e.g. 3+)</label>
-      <input id="gamePlayers" placeholder="3+" />
-      
-      <label>ID (unique)</label>
-      <input id="gameId" placeholder="Draw" required />
-      
-      <div class="form-actions">
-        <button type="button" onclick="closeGameForm()" class="btn btn-cancel">Hủy</button>
-        <button type="submit" class="btn btn-save">Lưu</button>
-      </div>
-      <span class="auth-close" onclick="closeGameForm()">×</span>
-    </form>
+            <div class="form-group checkbox-group" style="margin-top:20px;">
+                <input type="checkbox" id="gameFeatured" style="width:auto;">
+                <label for="gameFeatured" style="display:inline;">Nổi bật?</label>
+            </div>
+        </div>
+
+        <div class="modal-footer" style="margin-top:20px; text-align:right;">
+          <button type="button" class="btn btn-secondary close-modal-btn">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="adminOverlay" class="admin-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div class="spinner" style="width:40px; height:40px; border:4px solid #fff; border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
   </div>
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>

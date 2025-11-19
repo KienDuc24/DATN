@@ -356,24 +356,30 @@ function showUserInfo(user) {
 
 /** Ẩn UI user khi đăng xuất */
 function hideUserInfo() {
-    const headerAuthBtns = document.getElementById('headerAuthBtns');
-    if (headerAuthBtns) headerAuthBtns.style.display = '';
-    const sidebarAuthBtns = document.getElementById('sidebarAuthBtns');
-    if (sidebarAuthBtns) sidebarAuthBtns.style.display = '';
-    const userInfo = document.getElementById('userInfo');
-    if (userInfo) userInfo.style.display = 'none';
-    
-    const usernameText = document.getElementById('header-username-text');
-    if(usernameText) usernameText.textContent = '';
-    
-    const userAvatar = document.getElementById('userAvatar');
-    if (userAvatar) {
-        userAvatar.style.display = 'block';
-        userAvatar.src = 'img/guestlogo.png'; // Về mặc định
-    }
+  // Sử dụng ?. để truy cập an toàn. Nếu null tự động bỏ qua.
+  const headerAuthBtns = document.getElementById('headerAuthBtns');
+  if (headerAuthBtns) headerAuthBtns.style.display = '';
+  
+  const sidebarAuthBtns = document.getElementById('sidebarAuthBtns');
+  if (sidebarAuthBtns) sidebarAuthBtns.style.display = '';
 
-    const userDropdown = document.getElementById('userDropdown');
-    if (userDropdown) userDropdown.style.display = 'none';
+  const userInfo = document.getElementById('userInfo');
+  if (userInfo) userInfo.style.display = 'none';
+  
+  const usernameText = document.getElementById('header-username-text');
+  if (usernameText) usernameText.textContent = '';
+  
+  const userAvatar = document.getElementById('userAvatar');
+  // Kiểm tra kỹ trước khi style
+  if (userAvatar) {
+      userAvatar.style.display = 'block';
+      userAvatar.src = 'img/guestlogo.png'; 
+  }
+
+  const userDropdown = document.getElementById('userDropdown');
+  if (userDropdown) userDropdown.style.display = 'none';
+  
+  console.log('Đã đăng xuất và ẩn thông tin user thành công.');
 }
 
 /** Hiển thị loading spinner */

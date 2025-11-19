@@ -1,4 +1,4 @@
-// index.js (FIXED: Cast to ObjectId failed)
+// index.js (FINAL FIXED: Auto-logout invalid sessions)
 
 require('dotenv').config();
 const mongoose = require('mongoose');
@@ -106,18 +106,24 @@ passport.use(new GoogleStrategy({
   }
 ));
 
-// --- 2.D. Serialize/Deserialize User (ĐÃ SỬA LỖI TẠI ĐÂY) ---
+// --- 2.D. Serialize/Deserialize User (FIXED) ---
 passport.serializeUser((user, done) => {
-  // SỬA: Dùng user._id (ObjectId) thay vì user.id (UUID) để tương thích với findById
   done(null, user._id); 
 });
 
 passport.deserializeUser(async (id, done) => {
   try {
-    // findById hoạt động với _id (ObjectId)
+    // --- FIX QUAN TRỌNG: Kiểm tra ID hợp lệ trước khi query DB ---
+    // Nếu ID trong cookie là định dạng cũ (UUID) hoặc rác, nó sẽ không phải ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        console.log(`[Auth] Phát hiện ID phiên cũ không hợp lệ: ${id}. Tự động đăng xuất.`);
+        return done(null, null); // Trả về null để logout user này ra
+    }
+
     const user = await User.findById(id);
     done(null, user);
   } catch (err) {
+    console.error('[Auth] Lỗi deserialize:', err);
     done(err, null);
   }
 });

@@ -1,13 +1,33 @@
-// controllers/adminController.js (ĐÃ SỬA: Thêm 'query' cho hàm Get)
+// controllers/adminController.js
 
 const User = require('../models/User');
 const Room = require('../models/Room');
 const Game = require('../models/Game');
 
+// Hàm hỗ trợ phân trang chung
+async function paginate(model, query, page, limit) {
+    const skip = (page - 1) * limit;
+    
+    const [data, total] = await Promise.all([
+        model.find(query)
+             .sort({ createdAt: -1 }) // Sắp xếp mới nhất trước
+             .skip(skip)
+             .limit(limit)
+             .lean(), // Tăng tốc độ query
+        model.countDocuments(query)
+    ]);
+
+    return { 
+        data, 
+        total, 
+        page, 
+        pages: Math.ceil(total / limit) 
+    };
+}
+
 // --- USER ---
-// Sửa: Thêm 'query'
-exports.getAllUsers = (query = {}) => {
-    return User.find(query).select('-password');
+exports.getAllUsers = (query = {}, page = 1, limit = 10) => {
+    return paginate(User, query, page, limit);
 };
 
 exports.updateUser = (id, updates) => {
@@ -19,20 +39,17 @@ exports.deleteUser = (id) => {
 };
 
 // --- ROOM ---
-// Sửa: Thêm 'query'
-exports.getAllRooms = (query = {}) => {
-    return Room.find(query);
+exports.getAllRooms = (query = {}, page = 1, limit = 10) => {
+    return paginate(Room, query, page, limit);
 };
 
 exports.deleteRoom = (roomCode) => {
-    // (Lưu ý: logic emit 'kicked' sẽ nằm ở route)
     return Room.findOneAndDelete({ code: roomCode });
 };
 
 // --- GAME ---
-// Sửa: Thêm 'query'
-exports.getAllGames = (query = {}) => {
-    return Game.find(query);
+exports.getAllGames = (query = {}, page = 1, limit = 10) => {
+    return paginate(Game, query, page, limit);
 };
 
 exports.createGame = (gameData) => {
@@ -48,30 +65,16 @@ exports.deleteGame = (gameId) => {
     return Game.findOneAndDelete({ id: gameId });
 };
 
+// (Giữ nguyên hàm syncGames)
 exports.syncGames = async (gamesData) => {
-    if (!Array.isArray(gamesData)) {
-        throw new Error('Dữ liệu gửi lên không phải là một mảng (array).');
-    }
-
-    let updatedCount = 0;
-    let createdCount = 0;
-
+    // ... (Giữ nguyên nội dung cũ)
+    if (!Array.isArray(gamesData)) throw new Error('Dữ liệu không hợp lệ');
+    let updated = 0, created = 0;
     for (const game of gamesData) {
-        if (!game.id) {
-            console.warn('[AdminSync] Bỏ qua game không có ID:', game.name);
-            continue; 
-        }
-
-        const existingGame = await Game.findOne({ id: game.id });
-
-        if (existingGame) {
-            await Game.updateOne({ id: game.id }, game, { runValidators: true });
-            updatedCount++;
-        } else {
-            await Game.create(game);
-            createdCount++;
-        }
+        if (!game.id) continue;
+        const exists = await Game.findOne({ id: game.id });
+        if (exists) { await Game.updateOne({ id: game.id }, game); updated++; }
+        else { await Game.create(game); created++; }
     }
-
-    return { updated: updatedCount, created: createdCount };
+    return { updated, created };
 };

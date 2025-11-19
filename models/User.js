@@ -32,14 +32,10 @@ const userSchema = new Schema({
     unique: true,
     trim: true
   },
-  
-  // --- KHÔI PHỤC TRƯỜNG NÀY ---
   displayName: {
     type: String,
     required: true
   },
-  // ---------------------------
-
   email: {
     type: String,
     unique: true,
@@ -50,9 +46,6 @@ const userSchema = new Schema({
     unique: true,
     sparse: true 
   },
-  
-  // --- VẪN XÓA avatar ---
-
   password: { 
     type: String
   },
