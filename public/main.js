@@ -356,7 +356,7 @@ function saveUserToLocal(user) {
     }
 }
 
-/** Xử lý Đăng xuất */
+/** Xử lý Đăng xuất (Đảm bảo cleanup và chuyển hướng sạch sẽ) */
 async function handleLogout() {
     showLoading(true);
     try {
@@ -371,20 +371,25 @@ async function handleLogout() {
         localStorage.removeItem('token');
         hideUserInfo(); 
         showLoading(false);
+        // Chuyển hướng về trang chủ chính
+        window.location.href = "/index.html"; 
     }
 }
 
-/** Xử lý Cập nhật Profile */
+
+/** Xử lý Cập nhật Profile (FIX LỖI 404 API) */
 async function handleUpdateProfile(e) {
     e.preventDefault();
     const displayName = document.getElementById('settings-displayName').value;
     const email = document.getElementById('settings-email').value;
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     
-    if (!user.username) return alert('Lỗi: Không tìm thấy thông tin user.');
+    // Nếu user chưa đăng nhập, hoặc là guest, không cho phép cập nhật
+    if (!user.username || user.isGuest) return alert('Lỗi: Bạn phải đăng nhập để cập nhật hồ sơ.');
     
+    // SỬA LỖI: Gọi đúng endpoint là /api/user thay vì /api/profile
     try {
-        const res = await fetch(`${API_BASE_URL}/api/profile`, {
+        const res = await fetch(`${API_BASE_URL}/api/user`, {
             method: 'PUT',
             headers: { 
                 'Content-Type': 'application/json',
@@ -403,7 +408,8 @@ async function handleUpdateProfile(e) {
             throw new Error(updatedUser.message || 'Lỗi khi cập nhật');
         }
         
-        saveUserToLocal(updatedUser);
+        // Cập nhật LocalStorage và UI
+        saveUserToLocal(updatedUser.user); 
         document.getElementById('profile-modal').style.display = 'none';
         alert('Cập nhật thông tin thành công!');
         

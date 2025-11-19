@@ -113,7 +113,7 @@
 
     "all": "All Games",
     "featured": "Featured Games",
-    "by_category": "Games by Category",
+    "category": "Games by Category",
     "players": "players",
     "sort_newest": "Newest",
     "sort_oldest": "Oldest",

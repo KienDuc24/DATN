@@ -1,4 +1,4 @@
-/* public/css/admin.css (ĐÃ SỬA: Áp dụng phong cách Trắng-Cam-Đen/Tối) */
+/* public/css/admin.css (ĐÃ SỬA: Áp dụng phong cách Trắng-Cam-Đen/Tối và thêm Toggle Password) */
 
 :root {
   /* Màu chung */
@@ -35,7 +35,7 @@
 
 body {
   /* Giữ nguyên background image */
-  /* background-color: var(--bg-dark); */
+  background-color: var(--bg-dark);
   color: var(--text-dark); /* Màu chữ mặc định (sẽ bị ghi đè) */
   font-size: 14px;
   line-height: 1.5;
@@ -130,7 +130,8 @@ body {
 
 /* Main Content */
 .admin-main {
-  background: url("../img/fav.png");
+  background: url('../img/fav.png') no-repeat center center fixed;
+  background-size: cover;
   flex: 1;
   margin-left: 260px;
   padding: 30px;
@@ -401,7 +402,7 @@ label {
     color: var(--text-muted);
     font-size: 0.9rem;
 }
-input[type="text"], input[type="email"], textarea, select {
+input[type="text"], input[type="email"], input[type="password"], textarea, select {
     width: 100%;
     background: #181c23; /* Darker bg for inputs */
     border: 1px solid #444;
@@ -413,6 +414,38 @@ input[type="text"], input[type="email"], textarea, select {
 }
 input:focus, textarea:focus { border-color: var(--primary); }
 input:disabled { opacity: 0.6; cursor: not-allowed; }
+
+
+/* BỔ SUNG: Style cho Password Toggle trong Modal Add User */
+.password-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.password-field input {
+    width: 100%;
+    padding-right: 40px; 
+    box-sizing: border-box; 
+}
+.toggle-password-btn {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 5px;
+    z-index: 2;
+    transition: color 0.2s;
+}
+.toggle-password-btn:hover {
+    color: var(--primary);
+}
+/* KẾT THÚC BỔ SUNG */
+
 
 /* Vercel Links */
 .vercel-links-container {
