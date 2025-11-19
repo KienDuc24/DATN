@@ -1,4 +1,4 @@
-// public/game/Draw/script.js (FINAL FIX: Hiển thị trạng thái chờ cho người chơi)
+// public/game/Draw/script.js (CỐ ĐỊNH TIẾNG VIỆT & ĐỒNG BỘ UI HOST)
 
 (() => {
     const GAME_ID = 'DG';
@@ -11,7 +11,7 @@
     let playerName = params.get('user'); 
 
     if (!playerName || !roomCode) {
-        alert('Lỗi: Thiếu thông tin phòng hoặc người dùng. Đang quay về trang chủ.');
+        alert('Lỗi: Thiếu thông tin phòng. Đang quay về trang chủ.');
         window.location.href = '/'; 
         return; 
     }
@@ -43,121 +43,78 @@
     let currentTool = 'pen';
     let currentColor = '#000000'; 
     let currentSize = 5;
-    let lastX = 0;
-    let lastY = 0;
-    let isEraser = false;
     
     const ctx = $canvas ? $canvas.getContext('2d') : null;
-    
     if ($canvas) {
         $canvas.width = $canvas.offsetWidth;
         $canvas.height = $canvas.offsetHeight;
     }
-
     function clearCanvas() {
-        if (ctx) {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, $canvas.width, $canvas.height);
-        }
+        if (ctx) { ctx.fillStyle = 'white'; ctx.fillRect(0, 0, $canvas.width, $canvas.height); }
     }
     clearCanvas();
 
-    // --- Logic Vẽ (Canvas) ---
+    // --- Logic Vẽ (Giữ nguyên) ---
     function getMousePos(e) {
         if (!$canvas) return { x: 0, y: 0 };
         const rect = $canvas.getBoundingClientRect();
-        let clientX, clientY;
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
+        let clientX = e.touches?.[0]?.clientX || e.clientX;
+        let clientY = e.touches?.[0]?.clientY || e.clientY;
         const scaleX = $canvas.width / rect.width;
         const scaleY = $canvas.height / rect.height;
         return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
     }
-    
     function draw({ type, x, y, color, size }) {
         if (!ctx) return; 
         if (type === 'start') {
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.strokeStyle = color;
-            ctx.lineWidth = size;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
+            ctx.beginPath(); ctx.moveTo(x, y);
+            ctx.strokeStyle = color; ctx.lineWidth = size;
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         } else if (type === 'move') {
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(x, y);
+            ctx.lineTo(x, y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x, y);
         }
     }
-    
     function emitDraw(type, x, y, color = currentColor, size = currentSize) {
         if (currentDrawer !== playerName || !ctx) return; 
         const data = { type, x, y, color, size };
         socket.emit(`${GAME_ID}-draw`, { roomCode, data });
         draw(data);
     }
-    
+    // (Các hàm xử lý sự kiện vẽ... giữ nguyên logic cũ)
     function setActiveTool(tool) {
         currentTool = tool;
-        isEraser = (tool === 'eraser'); 
         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
         if (activeBtn) activeBtn.classList.add('active');
-        if ($canvas) {
-            if (tool === 'fill') $canvas.style.cursor = 'pointer'; 
-            else $canvas.style.cursor = 'crosshair';
-        }
+        if ($canvas) $canvas.style.cursor = (tool === 'fill') ? 'pointer' : 'crosshair';
     }
-
-    function handleFillCanvas(e) {
+    function handleFillCanvas() {
         if (currentDrawer !== playerName || currentTool !== 'fill' || !ctx) return;
-        ctx.fillStyle = currentColor;
-        ctx.fillRect(0, 0, $canvas.width, $canvas.height);
+        ctx.fillStyle = currentColor; ctx.fillRect(0, 0, $canvas.width, $canvas.height);
         socket.emit(`${GAME_ID}-fill`, { roomCode, color: currentColor }); 
         setActiveTool('pen'); 
     }
-
-    function handleCanvasClick(e) {
-        if (currentTool === 'fill') handleFillCanvas(e);
-    }
-    
     function handleDrawStart(e) {
         if (currentDrawer !== playerName || !$canvas) return;
-        if (currentTool === 'fill') { handleFillCanvas(e); return; }
-        if (currentTool !== 'pen' && currentTool !== 'eraser') return;
-
+        if (currentTool === 'fill') { handleFillCanvas(); return; }
         isDrawing = true;
         const pos = getMousePos(e);
-        lastX = pos.x;
-        lastY = pos.y;
-        const drawColor = isEraser ? 'white' : currentColor;
-        emitDraw('start', lastX, lastY, drawColor, currentSize);
+        const drawColor = (currentTool === 'eraser') ? 'white' : currentColor;
+        emitDraw('start', pos.x, pos.y, drawColor, currentSize);
         e.preventDefault();
     }
-
     function handleDrawMove(e) { 
         if (!isDrawing || currentDrawer !== playerName || !$canvas) return;
         const pos = getMousePos(e);
-        const drawColor = isEraser ? 'white' : currentColor;
+        const drawColor = (currentTool === 'eraser') ? 'white' : currentColor;
         emitDraw('move', pos.x, pos.y, drawColor, currentSize);
-        lastX = pos.x;
-        lastY = pos.y;
         e.preventDefault();
     }
-
-    function handleDrawEnd() { 
-        if (currentDrawer !== playerName) return;
-        isDrawing = false;
-    }
-
+    function handleDrawEnd() { if (currentDrawer === playerName) isDrawing = false; }
+    
     if ($canvas) {
-        $canvas.addEventListener('click', handleCanvasClick); 
+        $canvas.addEventListener('click', (e) => { if(currentTool === 'fill') handleFillCanvas(); }); 
         $canvas.addEventListener('mousedown', handleDrawStart);
         $canvas.addEventListener('mousemove', handleDrawMove);
         $canvas.addEventListener('mouseup', handleDrawEnd);
@@ -166,19 +123,18 @@
         $canvas.addEventListener('touchmove', handleDrawMove);
         $canvas.addEventListener('touchend', handleDrawEnd);
     }
-    
     if ($penTool) $penTool.addEventListener('click', () => setActiveTool('pen'));
     if ($eraseBtn) $eraseBtn.addEventListener('click', () => setActiveTool('eraser'));
     if ($fillTool) $fillTool.addEventListener('click', () => setActiveTool('fill'));
     if ($sizeSlider) $sizeSlider.addEventListener('input', (e) => currentSize = parseInt(e.target.value));
-    
     if ($clearBtn) $clearBtn.addEventListener('click', () => {
-        if (currentDrawer === playerName && confirm('Xác nhận xóa toàn bộ?')) {
+        if (currentDrawer === playerName && confirm('Xóa toàn bộ bảng vẽ?')) {
             socket.emit(`${GAME_ID}-clear`, { roomCode });
             clearCanvas();
         }
     });
     
+    // Palette
     const colors = ['#FFFFFF', '#000000', '#C1C1C1', '#4D4D4D', '#EF130B', '#740B07', '#FF7100', '#C23800', '#FFE400', '#E8A200', '#00CC00', '#005510', '#00B2FF', '#00569E', '#231FD3', '#0E0865', '#A300BA', '#550069', '#D37CAA', '#A75574', '#A0522D', '#63300D'];
     if ($colorPalette) {
         colors.forEach((color, index) => {
@@ -196,7 +152,7 @@
         });
     }
 
-    // --- Chat & Game Logic ---
+    // --- Chat & Game Logic (Tiếng Việt Cố định) ---
     function renderChatMessage(player, message, type = 'msg-guess') { 
         if (!$chatMessages) return; 
         const el = document.createElement('div');
@@ -215,7 +171,7 @@
              $guessInput.disabled = false; 
              $sendGuess.disabled = false;
         } else {
-             $guessInput.placeholder = 'Nhập từ khóa đoán hoặc chat...';
+             $guessInput.placeholder = 'Nhập đáp án hoặc chat...';
         }
         if (disabled) {
             $guessInput.disabled = true;
@@ -247,7 +203,6 @@
         socket.emit(`${GAME_ID}-join`, { roomCode, player: playerObj });
     });
 
-    // FIX: Avatar DiceBear
     function pickAvatarFor(name) {
         const safeName = name || 'guest';
         return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
@@ -269,7 +224,7 @@
             startBtn = document.createElement('button');
             startBtn.id = 'startGameBtn';
             startBtn.className = 'btn start-game-btn'; 
-            startBtn.textContent = '🚀 BẮT ĐẦU VẼ ĐOÁN';
+            startBtn.textContent = '🚀 BẮT ĐẦU NGAY';
             startBtn.addEventListener('click', () => {
                 socket.emit(`${GAME_ID}-start-game`, { roomCode });
             });
@@ -292,7 +247,7 @@
             if ($wordHint) $wordHint.classList.add('hidden');
 
             if (currentHost !== playerName && $gameStatus) {
-                $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+                $gameStatus.textContent = `Đang chờ chủ phòng (${currentHost}) bắt đầu...`;
             } else if (currentHost === playerName && $gameStatus) {
                  $gameStatus.textContent = ''; 
                  if (startBtn) $gameStatus.appendChild(startBtn);
@@ -312,26 +267,18 @@
     });
     
     socket.on(`${GAME_ID}-secret-word`, ({ word }) => {
-        if ($gameStatus) $gameStatus.textContent = `BẠN ĐANG VẼ: ${word}`;
+        if ($gameStatus) $gameStatus.textContent = `BẠN VẼ: ${word}`;
         if ($wordHint) $wordHint.classList.remove('hidden');
     });
 
     socket.on(`${GAME_ID}-drawing`, (data) => {
         if (currentDrawer !== playerName) draw(data);
     });
-    
     socket.on(`${GAME_ID}-fill-canvas`, ({ color }) => {
-        if (ctx) {
-            ctx.fillStyle = color;
-            ctx.fillRect(0, 0, $canvas.width, $canvas.height);
-        }
+        if (ctx) { ctx.fillStyle = color; ctx.fillRect(0, 0, $canvas.width, $canvas.height); }
     });
-    
     socket.on(`${GAME_ID}-clear-canvas`, () => clearCanvas());
-
-    socket.on(`${GAME_ID}-timer`, ({ time }) => {
-        if ($timer) $timer.textContent = time;
-    });
+    socket.on(`${GAME_ID}-timer`, ({ time }) => { if ($timer) $timer.textContent = time; });
 
     socket.on(`${GAME_ID}-chat-message`, ({ player, message }) => {
         const type = player === currentDrawer ? 'msg-drawer' : 'msg-guess';
@@ -339,9 +286,7 @@
     });
 
     socket.on(`${GAME_ID}-correct-guess`, ({ player, scores, time }) => {
-        const bonus = time || 0;
-        renderChatMessage('Hệ thống', `${player} đã đoán đúng! 🎉 (+${50 + bonus} điểm)`, 'msg-correct');
-        
+        renderChatMessage('Hệ thống', `${player} đoán đúng! 🎉 (+${50 + (time||0)} điểm)`, 'msg-correct');
         const playerRow = document.querySelector(`.score-row.you`);
         if (player === playerName && playerRow) {
             playerRow.classList.add('flash-correct');
@@ -357,9 +302,9 @@
     socket.on(`${GAME_ID}-end-round`, ({ word, scores, drawer, guessed }) => {
         currentDrawer = null;
         if ($drawingTools) $drawingTools.classList.add('hidden'); 
-        if ($gameStatus) $gameStatus.textContent = `Vòng kết thúc! Từ khóa là: ${word}`;
+        if ($gameStatus) $gameStatus.textContent = `Vòng kết thúc! Từ khóa: ${word}`;
         if ($wordHint) $wordHint.classList.add('hidden'); 
-        if (guessed) renderChatMessage('Hệ thống', `Từ khóa đã được đoán đúng.`, 'msg-system');
+        if (guessed) renderChatMessage('Hệ thống', `Từ khóa đã được đoán.`, 'msg-system');
         else renderChatMessage('Hệ thống', `Hết giờ! Không ai đoán được.`, 'msg-system');
         
         renderScores(scores, null, roomPlayers);
@@ -372,7 +317,7 @@
                  if ($gameStatus) $gameStatus.appendChild(startBtn); 
                  startBtn.style.display = 'inline-block';
             } else if (currentHost !== playerName && $gameStatus) {
-                $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+                $gameStatus.textContent = `Đang chờ chủ phòng bắt đầu...`;
             }
         }, 5000); 
     });
@@ -387,10 +332,11 @@
     socket.on(`${GAME_ID}-game-restarted`, () => {
         hidePopup(); 
         if ($gameStatus && currentHost !== playerName) {
-            $gameStatus.textContent = `Đang chờ ${currentHost} bắt đầu...`;
+            $gameStatus.textContent = `Đang chờ chủ phòng bắt đầu...`;
         }
     });
 
+    // --- RENDER ĐIỂM (GIAO DIỆN GIỐNG ToD) ---
     function renderScores(scores, drawerName, playerList = []) {
         if (!$scoreGrid) return;
         $scoreGrid.innerHTML = '';
@@ -401,8 +347,6 @@
         
         const mergedScores = playerNames.reduce((acc, name) => ({ ...acc, [name]: currentScores[name] || 0 }), { ...currentScores });
         const sortedPlayers = playerNames.sort((a, b) => mergedScores[b] - mergedScores[a]);
-        
-        const iamHost = (currentHost === playerName);
 
         sortedPlayers.forEach(name => {
             const isDrawer = name === drawerName;
@@ -414,28 +358,20 @@
             const row = document.createElement('div');
             row.className = `score-row ${isDrawer ? 'drawer-turn' : ''} ${isYou ? 'you' : ''}`;
             
-            const tags = [];
-            if (isDrawer) tags.push('<span class="score-tag tag-drawer">🎨 Đang vẽ</span>');
-            if (isHost) tags.push('<span class="score-tag tag-host">👑 Host</span>');
-            if (isYou && !isDrawer) tags.push('<span class="score-tag tag-you">Bạn</span>');
-            
-            const crownIcon = isHost ? '<span class="crown-icon">👑</span>' : '';
-
-            // Nút chuyển chủ
-            let transferBtn = '';
-            if (iamHost && !isYou) {
-                transferBtn = `<button class="btn-transfer-host" onclick="transferHost('${name}')" title="Chuyển chủ phòng">👑➡️</button>`;
-            }
+            // SỬA: Bỏ tag chữ, dùng icon Overlay giống ToD
+            const crownHtml = isHost ? `<div class="crown-overlay">👑</div>` : '';
+            const penHtml = isDrawer ? `<div class="pen-overlay">✏️</div>` : '';
 
             row.innerHTML = `
-                ${crownIcon}
-                <div><img src="${pickAvatarFor(name)}" alt="${name}"></div>
+                <div class="score-avatar-container">
+                    ${crownHtml}
+                    ${penHtml}
+                    <img src="${pickAvatarFor(name)}" alt="${name}">
+                </div>
                 <div class="score-name-tags">
                     <span class="player-name">${displayName}</span> 
-                    <div class="tags-container">${tags.join(' ')}</div>
                 </div>
                 <div class="score-right">
-                     ${transferBtn}
                     <div class="score-value">${mergedScores[name] || 0}</div>
                 </div>
             `;
@@ -443,23 +379,16 @@
         });
     }
     
-    window.transferHost = function(targetName) {
-        if (confirm(`Bạn có chắc muốn chuyển quyền chủ phòng cho ${targetName}?`)) {
-            socket.emit(`${GAME_ID}-assign-host`, { roomCode, newHostName: targetName });
-        }
-    };
-    
+    // (Các hàm popup giữ nguyên, chỉ sửa text thành Tiếng Việt)
     function getSortedScores(scores) {
         if (!scores || typeof scores !== 'object') return [];
         return Object.entries(scores).sort(([, a], [, b]) => b - a);
     }
-    
     function showRankingPopup(scores, isFinal) {
         hidePopup(); 
         const sortedScores = getSortedScores(scores);
-        const title = isFinal ? '🏆 BẢNG XẾP HẠNG CUỐI CÙNG' : '✨ KẾT QUẢ VÒNG ĐẤU';
+        const title = isFinal ? '🏆 KẾT QUẢ CHUNG CUỘC' : '✨ KẾT QUẢ VÒNG ĐẤU';
         let content = `<h2 style="color:var(--accent-yellow); margin-bottom: 20px;">${title}</h2>`;
-        
         content += '<ol style="padding: 0; list-style-position: inside; text-align: left; font-size: 1.1em; max-height: 250px; overflow-y: auto;">';
         sortedScores.forEach(([player, score], index) => {
             const isWinner = index === 0 && isFinal;
@@ -471,7 +400,6 @@
         content += '</ol>';
         content += '<div id="popup-actions" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">';
         
-        // --- SỬA: HIỂN THỊ TRẠNG THÁI CHỜ CHO NGƯỜI CHƠI KHÁC ---
         if (isFinal) {
             if (currentHost === playerName) {
                 content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
@@ -480,7 +408,7 @@
             }
             content += `<button id="popup-exit" class="btn btn-danger">Thoát</button>`;
         } else {
-            content += `<p>Vòng tiếp theo sẽ bắt đầu sau 5 giây...</p>`;
+            content += `<p>Vòng mới sau 5 giây...</p>`;
         }
         content += '</div>';
 
@@ -489,28 +417,14 @@
         modal.className = 'modal-overlay';
         modal.innerHTML = `<div class="modal-content">${content}</div>`;
         document.body.appendChild(modal);
-
+        // ... (style modal giữ nguyên)
         const styleId = 'modal-styles';
         if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
             style.id = styleId;
-            style.innerHTML = `
-                .modal-overlay {
-                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                    background: rgba(0, 0, 0, 0.8); z-index: 1000;
-                    display: flex; justify-content: center; align-items: center;
-                    backdrop-filter: blur(5px);
-                }
-                .modal-content {
-                    background: var(--card-bg); padding: 30px; border-radius: var(--border-radius);
-                    box-shadow: var(--shadow-base); text-align: center; max-width: 90%;
-                }
-                .btn-danger { background-color: var(--text-accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
-                .btn-primary { background-color: var(--accent-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
-            `;
+            style.innerHTML = `.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); } .modal-content { background: var(--card-bg); padding: 30px; border-radius: var(--border-radius); box-shadow: var(--shadow-base); text-align: center; max-width: 90%; } .btn-danger { background-color: var(--text-accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; } .btn-primary { background-color: var(--accent-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }`;
             document.head.appendChild(style);
         }
-
         if (isFinal) {
             const continueBtn = document.getElementById('popup-continue');
             if (continueBtn) {
@@ -521,14 +435,9 @@
             }
             const exitBtn = document.getElementById('popup-exit');
             if (exitBtn) {
-                exitBtn.addEventListener('click', () => {
-                    window.location.href = '/'; 
-                });
+                exitBtn.addEventListener('click', () => { window.location.href = '/'; });
             }
         }
     }
-    function hidePopup() {
-        const modal = document.getElementById('rankingModal');
-        if (modal) modal.remove();
-    }
+    function hidePopup() { const modal = document.getElementById('rankingModal'); if (modal) modal.remove(); }
 })();
