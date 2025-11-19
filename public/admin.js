@@ -77,7 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Form Submits
     const fGame = el('gameForm');
-    if(fGame) fGame.onsubmit = saveGame;
+    // CHÚ Ý: Dòng này đã được sửa thành gán function 'saveGame' rõ ràng.
+    if(fGame) fGame.onsubmit = saveGame; 
     
     // Socket listeners
     if(socket) {
@@ -458,36 +459,39 @@ function openGameForm(game) {
     modal.style.display = 'block';
 }
 
+// HÀM SAVE GAME (ĐÃ ĐƯỢC KHAI BÁO RÕ RÀNG VÀ GÁN Ở DÒNG 94)
+async function saveGame(e) {
+    e.preventDefault();
+    showOverlay(true);
+    
+    const payload = {
+        id: el('gameIdInput').value,
+        name: { vi: el('gameNameVi').value, en: el('gameNameEn').value },
+        category: { vi: el('gameCatVi').value, en: el('gameCatEn').value },
+        desc: { vi: el('gameDescVi').value, en: el('gameDescEn').value },
+        players: el('gamePlayers').value,
+        featured: el('gameFeatured').checked
+    };
+
+    const url = isEditing ? API_ENDPOINTS.GAME_ID(payload.id) : API_ENDPOINTS.GAMES;
+    const method = isEditing ? 'PUT' : 'POST';
+
+    await fetchApi(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    
+    modal.style.display = 'none';
+    showOverlay(false);
+}
+
+
 if(modal) {
     document.querySelectorAll('.close-modal, .close-modal-btn').forEach(btn => {
         btn.onclick = () => modal.style.display = 'none';
     });
-
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-        showOverlay(true);
-        
-        const payload = {
-            id: el('gameIdInput').value,
-            name: { vi: el('gameNameVi').value, en: el('gameNameEn').value },
-            category: { vi: el('gameCatVi').value, en: el('gameCatEn').value },
-            desc: { vi: el('gameDescVi').value, en: el('gameDescEn').value },
-            players: el('gamePlayers').value,
-            featured: el('gameFeatured').checked
-        };
-
-        const url = isEditing ? API_ENDPOINTS.GAME_ID(payload.id) : API_ENDPOINTS.GAMES;
-        const method = isEditing ? 'PUT' : 'POST';
-
-        await fetchApi(url, {
-            method: method,
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
-        });
-        
-        modal.style.display = 'none';
-        showOverlay(false);
-    };
+    // ĐÃ CHUYỂN LOGIC SUBMIT SANG HÀM saveGame VÀ GÁN Ở DÒNG 94
 }
 
 // Helper Debounce
