@@ -1,4 +1,4 @@
-// public/admin.js (FINAL VERSION: Fixes, User Edit, Log, 8-Column User Table)
+// public/admin.js (FINAL: Thêm chức năng Tạo User)
 
 const ADMIN_API = 'https://datn-socket.up.railway.app'; 
 
@@ -56,9 +56,13 @@ const gameModal = el('gameModal');
 const gameForm = el('gameForm');
 let isEditingGame = false; 
 
-const userModal = el('userModal'); // Modal User
+const userModal = el('userModal'); // Modal Sửa User
 const userForm = el('userForm');
 let isEditingUser = false; 
+
+// BỔ SUNG: Modal Thêm User
+const addUserModal = el('addUserModal');
+const addUserForm = el('addUserForm');
 
 // --- 1. MAIN INIT ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -69,6 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Gán sự kiện cho các nút chính
     const btnAddGame = el('addGameBtn');
     if(btnAddGame) btnAddGame.onclick = () => openGameForm(null);
+    
+    // BỔ SUNG: NÚT THÊM NGƯỜI DÙNG
+    const btnAddUser = el('addUserBtn');
+    if(btnAddUser) btnAddUser.onclick = openAddUserForm;
     
     const btnSync = el('syncGamesBtn');
     if(btnSync) btnSync.onclick = syncGames;
@@ -86,7 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Form Submits
     if(gameForm) gameForm.onsubmit = saveGame;
-    if(userForm) userForm.onsubmit = saveUser; // Gán hàm save User
+    if(userForm) userForm.onsubmit = saveUser; // Sửa thông tin user
+    if(addUserForm) addUserForm.onsubmit = saveNewUser; // BỔ SUNG: Thêm user mới
     
     // Socket listeners (Đã thêm log)
     if(socket) {
@@ -155,7 +164,6 @@ async function fetchApi(url, options = {}) {
         return await res.json();
     } catch (err) {
         console.error("API Error:", err);
-        // alert('Lỗi kết nối API Admin.'); // Bỏ thông báo alert để tránh spam
         return null;
     }
 }
@@ -173,7 +181,6 @@ async function loadData() {
 async function loadStats() {
     const data = await fetchApi(API_ENDPOINTS.STATS);
     if (data) {
-        // FIX: Đã thêm API stats để khắc phục lỗi không hiển thị tổng
         if(el('totalGames')) el('totalGames').innerText = data.totalGames || 0;
         if(el('totalRooms')) el('totalRooms').innerText = data.totalRooms || 0;
         if(el('onlineUsers')) el('onlineUsers').innerText = data.onlineUsers || 0;
@@ -306,7 +313,7 @@ function renderUsersTable(users) {
                 <td>${u.googleId ? '<span class="badge google">Google</span>' : '<span class="badge local">Local</span>'}</td>
                 <td><span class="status-dot ${u.status}"></span> ${u.status}</td>
                 <td>${formatDateTime(u.createdAt)}</td>
-                <td style="font-size:0.85em; color:#bbb; line-height: 1.3;">${historyHtml}</td> <td>
+                <td style="font-size:0.85em; color:#64748b; line-height: 1.3;">${historyHtml}</td> <td>
                     <button class="action-btn edit" data-id="${u._id}" data-type="user" title="Sửa"><i class="fas fa-edit"></i></button>
                     <button class="action-btn delete" data-id="${u._id}" data-type="user" title="Xóa"><i class="fas fa-trash"></i></button>
                 </td>
@@ -354,7 +361,7 @@ function renderGamesTable(games) {
             <td><img src="${ADMIN_API}/game/${g.id}/Img/logo.png" class="game-thumb" onerror="this.src='/img/fav.svg'"></td>
             <td>
                 <div><b>VI:</b> ${g.name?.vi || ''}</div>
-                <div style="color:#666;font-size:0.9em"><b>EN:</b> ${g.name?.en || ''}</div>
+                <div style="color:#64748b;font-size:0.9em"><b>EN:</b> ${g.name?.en || ''}</div>
             </td>
             <td>${g.players}</td>
             <td>
@@ -476,10 +483,16 @@ function setupModals() {
             btn.onclick = () => gameModal.style.display = 'none';
         });
     }
-    // Đóng modal User
+    // Đóng modal Sửa User
     if(userModal) {
         document.querySelectorAll('#userModal .close-modal, #userModal .close-modal-btn').forEach(btn => {
             btn.onclick = () => userModal.style.display = 'none';
+        });
+    }
+    // Đóng modal Thêm User
+    if(addUserModal) {
+        document.querySelectorAll('#addUserModal .close-modal, #addUserModal .close-modal-btn').forEach(btn => {
+            btn.onclick = () => addUserModal.style.display = 'none';
         });
     }
 }
@@ -583,6 +596,51 @@ async function saveUser(e) {
     showOverlay(false);
 }
 
+// BỔ SUNG: Mở form thêm người dùng
+function openAddUserForm() {
+    if(addUserForm) addUserForm.reset();
+    if (addUserModal) addUserModal.style.display = 'block';
+}
+
+// BỔ SUNG: Lưu người dùng mới (POST)
+async function saveNewUser(e) {
+    e.preventDefault();
+    showOverlay(true);
+
+    const payload = {
+        username: el('addUsernameInput').value,
+        password: el('addPasswordInput').value,
+        displayName: el('addDisplayNameInput').value,
+        email: el('addEmailInput').value || undefined,
+    };
+    
+    if (!payload.username || !payload.password || !payload.displayName) {
+        alert('Vui lòng nhập Username, Password và Tên hiển thị.');
+        showOverlay(false);
+        return;
+    }
+
+    const url = API_ENDPOINTS.USERS; // POST to /api/admin/users
+    
+    const res = await fetchApi(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    
+    if(res && res.ok) { 
+        logActivity(`Đã thêm User mới: ${payload.username}`, 'success');
+        if (addUserModal) addUserModal.style.display = 'none';
+        fetchUsers(''); // Tải lại danh sách
+    } else {
+        const message = res?.message || 'Lỗi không xác định khi tạo người dùng.';
+        logActivity(`Tạo User thất bại: ${message}`, 'danger');
+        alert(`Lỗi tạo người dùng: ${message}`);
+    }
+    
+    showOverlay(false);
+}
+
 // --- 7. LOGGING & UTILS ---
 
 function logActivity(message, type = 'info') {
@@ -594,7 +652,7 @@ function logActivity(message, type = 'info') {
     const color = type === 'success' ? '#22c55e' : type === 'danger' ? '#ef4444' : type === 'warning' ? '#f97316' : '#94a3b8';
     
     const newItem = document.createElement('li');
-    newItem.style.cssText = `padding: 8px 0; border-bottom: 1px dotted var(--border); color: ${color}; font-size: 0.9em;`;
+    newItem.style.cssText = `padding: 8px 0; border-bottom: 1px dotted var(--border-light); color: ${color}; font-size: 0.9em;`;
     newItem.innerHTML = `
         <span style="color:var(--text-muted); margin-right: 8px;">[${timestamp}]</span> 
         ${icon} ${message}

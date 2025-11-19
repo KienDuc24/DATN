@@ -15,7 +15,6 @@ module.exports = function(io) {
       }
   });
 
-
   // --- USER ---
   router.get('/users', async (req, res) => {
     try {
@@ -29,11 +28,24 @@ module.exports = function(io) {
         query = { $or: [{ username: regex }, { email: regex }, { displayName: regex }] };
       }
       
-      // Kết quả trả về sẽ có dạng { data: [], total: 100, page: 1, pages: 10 }
       const result = await adminController.getAllUsers(query, page, limit); 
       res.json(result);
     } catch (e) { res.status(500).json({ message: e.message }); }
   });
+  
+  // BỔ SUNG: Route TẠO USER MỚI (POST)
+  router.post('/users', async (req, res) => {
+      try {
+          const newUser = await adminController.createUser(req.body);
+          io.emit('admin-users-changed'); 
+          // Trả về 201 Created
+          res.status(201).json({ ok: true, user: newUser, message: 'User created successfully' });
+      } catch(e) { 
+          // 400 Bad Request cho lỗi nghiệp vụ (ví dụ: username đã tồn tại)
+          res.status(400).json({ message: e.message }); 
+      }
+  });
+  // KẾT THÚC BỔ SUNG
 
   // Route SỬA USER (PUT)
   router.put('/users/:id', async (req, res) => {

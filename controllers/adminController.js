@@ -1,8 +1,9 @@
-// controllers/adminController.js (CHỈ COPY TOÀN BỘ FILE NÀY)
+// controllers/adminController.js
 
 const User = require('../models/User');
 const Room = require('../models/Room');
 const Game = require('../models/Game');
+const bcrypt = require('bcryptjs'); // BỔ SUNG
 const fs = require('fs');
 const path = require('path');
 
@@ -13,17 +14,11 @@ async function paginate(model, query, page, limit) {
     // Đếm tổng số lượng (Phải đếm trước khi skip/limit)
     const total = await model.countDocuments(query);
     
-    // Thêm .lean() cho hiệu năng tốt hơn
     let queryBuilder = model.find(query)
              .sort({ createdAt: -1 }) // Sắp xếp mới nhất trước
              .skip(skip)
              .limit(limit)
              .lean(); 
-
-    // Nếu là User, ta muốn lấy cả lịch sử chơi
-    if (model === User) {
-        // Mongoose 8+ tự động xử lý sub-schema, chỉ cần .lean() để tăng tốc
-    }
 
     const data = await queryBuilder;
 
@@ -40,11 +35,32 @@ exports.getAllUsers = (query = {}, page = 1, limit = 10) => {
     return paginate(User, query, page, limit);
 };
 
+// BỔ SUNG: Hàm tạo User mới từ Admin
+exports.createUser = async ({ username, password, displayName, email }) => {
+    if (!username || !password) throw new Error('Username and password are required');
+    
+    const existingUser = await User.findOne({ username });
+    if (existingUser) throw new Error('Username already exists');
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const newUser = new User({ 
+        username, 
+        displayName: displayName || username,
+        email: email || undefined, 
+        password: hashedPassword,
+        role: 'user' 
+    });
+    
+    return newUser.save();
+};
+// KẾT THÚC BỔ SUNG
+
 exports.updateUser = (id, updates) => {
     // Chỉ cho phép cập nhật displayName và email từ Admin
     const allowedUpdates = {};
     if (updates.displayName) allowedUpdates.displayName = updates.displayName;
-    if (updates.email !== undefined) allowedUpdates.email = updates.email; // Cho phép gán null/empty
+    if (updates.email !== undefined) allowedUpdates.email = updates.email;
 
     // Lấy user sau khi sửa, bao gồm cả lịch sử chơi
     return User.findByIdAndUpdate(id, allowedUpdates, { new: true });
@@ -81,7 +97,6 @@ exports.deleteGame = (gameId) => {
     return Game.findOneAndDelete({ id: gameId });
 };
 
-// Hàm mới: Tính toán và trả về Stats (Fix lỗi không hiển thị tổng)
 exports.getStats = async () => {
     const totalGames = await Game.countDocuments({});
     const totalRooms = await Room.countDocuments({ status: { $in: ['open', 'playing'] } });
@@ -115,7 +130,6 @@ exports.syncGames = async () => {
             players: game.players,
             category: game.category,
             featured: game.featured || false,
-            // isComingSoon được cập nhật bởi watchGames.js khi file game tồn tại
         };
 
         const result = await Game.updateOne({ id: game.id }, { $set: updatePayload }, { upsert: true });

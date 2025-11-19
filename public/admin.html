@@ -7,24 +7,23 @@
   <link rel="icon" href="img/fav.svg">
   
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/admin.css"> <style>
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+   <style>
     /* Style bổ sung cho ảnh nền nếu cần */
-    body {
-        background: url('../img/fav.png') no-repeat center center fixed;
-        background-size: cover;
-    }
-    .main-content::before {
+    .admin-main::before {
+        /* Lớp phủ mờ để làm nổi bật content sáng */
         content: "";
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
-        background-color: rgba(14, 23, 32, 0.92); /* Lớp phủ tối màu */
+        background-color: rgba(14, 23, 32, 0.4); /* Lớp phủ tối mờ */
         z-index: 0;
     }
-    .admin-tab-content, .header-main, .confirm-bar {
+    .admin-tab-content, .header-main, .confirm-bar, .admin-main h1 {
         position: relative;
         z-index: 1;
     }
+    /* Đảm bảo tiêu đề cột đúng */
     .admin-table th:nth-child(6) { width: 10%; }
     .admin-table th:nth-child(7) { width: 20%; }
   </style>
@@ -34,7 +33,7 @@
     <aside class="admin-sidebar" id="adminSidebar">
       <div class="sidebar-header">
         <img src="img/fav.svg" alt="Logo">
-        <span>Admin Panel</span>
+        <span>Camping Game</span>
       </div>
       <nav class="sidebar-nav">
         <button class="nav-item active" data-tab="dashboard">
@@ -111,11 +110,11 @@
         </div>
 
         <div class="table-wrap" style="margin-top: 30px;">
-            <h3 style="padding: 16px; color: var(--text); border-bottom: 1px solid var(--border);">
+            <h3 style="padding: 16px; color: var(--text-dark); border-bottom: 1px solid var(--border-light);">
                 <i class="fas fa-history"></i> Hoạt động Gần đây (Socket Events)
             </h3>
             <ul id="activityLog" style="list-style: none; padding: 10px 16px; max-height: 350px; overflow-y: auto;">
-                <li style="padding: 8px 0; border-bottom: 1px dotted var(--border);">Đang chờ kết nối Socket...</li>
+                <li style="padding: 8px 0; border-bottom: 1px dotted var(--border-light);">Đang chờ kết nối Socket...</li>
             </ul>
         </div>
         </section>
@@ -191,7 +190,8 @@
               <i class="fas fa-search"></i>
               <input type="text" id="usersSearch" placeholder="Tìm user...">
             </div>
-          </div>
+            <button id="addUserBtn" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm Người Dùng</button>
+            </div>
         </header>
 
         <div class="table-wrap">
@@ -204,7 +204,8 @@
                 <th>Loại</th>
                 <th style="width: 10%;">Trạng thái</th>
                 <th style="width: 15%;">Ngày tạo</th>
-                <th style="width: 20%;">Lịch sử chơi</th> <th>Hành động</th>
+                <th style="width: 20%;">Lịch sử chơi</th> 
+                <th>Hành động</th>
               </tr>
             </thead>
             <tbody id="adminUsersList"></tbody>
@@ -238,50 +239,25 @@
       <form id="gameForm" class="auth-form">
         <input type="hidden" id="gameIdOriginal"> 
         
-        <div class="form-group">
-          <label>ID Game (Mã thư mục):</label>
-          <input type="text" id="gameIdInput" required>
-          <small style="color:#9aa4b2; font-size:0.85em;">Phải trùng với tên thư mục trong public/game/</small>
+        <div class="form-group"> <label>ID Game (Mã thư mục):</label> <input type="text" id="gameIdInput" required> <small style="color:#9aa4b2; font-size:0.85em;">Phải trùng với tên thư mục trong public/game/</small> </div>
+        
+        <div class="form-grid-2">
+          <div> <label>Tên (Việt):</label> <input type="text" id="gameNameVi" required> </div>
+          <div> <label>Tên (Anh):</label> <input type="text" id="gameNameEn" required> </div>
         </div>
 
         <div class="form-grid-2">
-          <div>
-            <label>Tên (Việt):</label>
-            <input type="text" id="gameNameVi" required>
-          </div>
-          <div>
-            <label>Tên (Anh):</label>
-            <input type="text" id="gameNameEn" required>
-          </div>
+            <div> <label>Thể loại (Việt):</label> <input type="text" id="gameCatVi" required> </div>
+            <div> <label>Thể loại (Anh):</label> <input type="text" id="gameCatEn" required> </div>
         </div>
 
         <div class="form-grid-2">
-            <div>
-                <label>Thể loại (Việt):</label>
-                <input type="text" id="gameCatVi" required>
-            </div>
-            <div>
-                <label>Thể loại (Anh):</label>
-                <input type="text" id="gameCatEn" required>
-            </div>
-        </div>
-
-        <div class="form-grid-2">
-            <div>
-              <label>Mô tả (Việt):</label>
-              <textarea id="gameDescVi" rows="3"></textarea>
-            </div>
-            <div>
-                <label>Mô tả (Anh):</label>
-                <textarea id="gameDescEn" rows="3"></textarea>
-            </div>
+            <div> <label>Mô tả (Việt):</label> <textarea id="gameDescVi" rows="3"></textarea> </div>
+            <div> <label>Mô tả (Anh):</label> <textarea id="gameDescEn" rows="3"></textarea> </div>
         </div>
 
         <div class="form-grid-2" style="align-items: center;">
-            <div>
-                <label>Số người chơi (VD: 2-10):</label>
-                <input type="text" id="gamePlayers" required>
-            </div>
+            <div> <label>Số người chơi (VD: 2-10):</label> <input type="text" id="gamePlayers" required> </div>
             <div class="checkbox-wrapper">
                 <label for="gameFeatured" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
                     <input type="checkbox" id="gameFeatured" style="width:auto;"> 
@@ -302,29 +278,33 @@
       <h2 id="userModalTitle">Sửa Người Dùng</h2>
       <form id="userForm" class="auth-form" style="text-align:left;">
           <input type="hidden" id="userIdInput">
-          <div class="form-group">
-              <label>Username (Không đổi):</label>
-              <input type="text" id="userUsernameInput" disabled>
-          </div>
-          <div class="form-group">
-              <label>Tên hiển thị:</label>
-              <input type="text" id="userDisplayNameInput" required>
-          </div>
-          <div class="form-group">
-              <label>Email:</label>
-              <input type="email" id="userEmailInput">
-          </div>
-          <div class="form-group">
-              <label>Lịch sử chơi:</label>
-              <textarea id="userPlayHistory" disabled rows="3" style="font-size:0.85em;"></textarea>
-          </div>
+          <div class="form-group"> <label>Username (Không đổi):</label> <input type="text" id="userUsernameInput" disabled> </div>
+          <div class="form-group"> <label>Tên hiển thị:</label> <input type="text" id="userDisplayNameInput" required> </div>
+          <div class="form-group"> <label>Email:</label> <input type="email" id="userEmailInput"> </div>
+          <div class="form-group"> <label>Lịch sử chơi:</label> <textarea id="userPlayHistory" disabled rows="3" style="font-size:0.85em;"></textarea> </div>
           <div class="form-actions" style="margin-top:20px; text-align:right;">
               <button type="button" class="btn btn-cancel close-modal-btn">Hủy</button>
               <button type="submit" class="btn btn-save">Lưu thay đổi</button>
           </div>
       </form>
   </div>
-  <div id="adminOverlay" class="admin-overlay" style="display:none;">
+
+  <div id="addUserModal" class="popup-modal" style="display:none; max-width:450px;">
+    <span class="close-modal" id="closeAddUserModal">&times;</span>
+    <h2 id="addUserModalTitle">Thêm Người Dùng Mới</h2>
+    <form id="addUserForm" class="auth-form" style="text-align:left;">
+        <div class="form-group"> <label>Username:</label> <input type="text" id="addUsernameInput" required> </div>
+        <div class="form-group"> <label>Password:</label> <input type="password" id="addPasswordInput" required> </div>
+        <div class="form-group"> <label>Tên hiển thị:</label> <input type="text" id="addDisplayNameInput" required> </div>
+        <div class="form-group"> <label>Email (Tùy chọn):</label> <input type="email" id="addEmailInput"> </div>
+        
+        <div class="form-actions" style="margin-top:20px; text-align:right;">
+            <button type="button" class="btn btn-cancel close-modal-btn">Hủy</button>
+            <button type="submit" class="btn btn-save">Tạo Người Dùng</button>
+        </div>
+    </form>
+</div>
+<div id="adminOverlay" class="admin-overlay" style="display:none;">
     <div class="spinner"></div>
   </div>
 
