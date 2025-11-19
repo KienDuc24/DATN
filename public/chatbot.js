@@ -1,4 +1,4 @@
-// public/chatbot.js (FINAL: Đa ngôn ngữ động + API chuẩn + Avatar DiceBear)
+// public/chatbot.js (FINAL: Personalization + Context)
 
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Tạo HTML cho Chatbot
@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const API_BASE_URL = window.BASE_API || 'https://datn-socket.up.railway.app';
 
-    // 3. Xác định ngữ cảnh (Context)
+    // 3. Xác định ngữ cảnh
     function getChatbotContext() {
         const pathname = window.location.pathname;
         if (pathname.endsWith('/room.html') || pathname.includes('/game/')) {
@@ -50,18 +50,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 4. Xử lý Đa ngôn ngữ
     let LANGS = {};
+    const currentLang = localStorage.getItem('lang') || 'vi';
 
     async function loadChatLanguage() {
         try {
             const res = await fetch('/lang.json');
             LANGS = await res.json();
-            // Không gọi applyLanguage() ngay ở đây để tránh xung đột
+            applyLanguage();
         } catch (e) {
             console.error("Chatbot: Không tải được ngôn ngữ", e);
         }
     }
 
-    // Lấy ngôn ngữ hiện tại từ localStorage
     function getCurrentLang() {
         return localStorage.getItem('lang') || 'vi';
     }
@@ -90,11 +90,19 @@ document.addEventListener("DOMContentLoaded", () => {
     function getUserName() {
         try {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
-            return user.username || 'guest';
+            return user.username || 'guest'; // Trả về username thực tế
         } catch { return 'guest'; }
     }
+    
+    // Hàm lấy Display Name (để hiển thị đẹp hơn nếu có)
+    function getUserDisplayName() {
+        try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            return user.displayName || user.username || 'Bạn';
+        } catch { return 'Bạn'; }
+    }
 
-    // --- 6. LOGIC GỢI Ý (SUGGESTIONS) ---
+    // 6. Logic Gợi ý (Suggestions)
     function addSuggestionButtons() {
         const oldSuggestions = document.getElementById('chat-suggestions');
         if (oldSuggestions) oldSuggestions.remove();
@@ -104,7 +112,6 @@ document.addEventListener("DOMContentLoaded", () => {
         suggestionsEl.id = 'chat-suggestions';
         suggestionsEl.className = 'chat-suggestions';
         
-        // Nội dung gợi ý phụ thuộc vào ngôn ngữ hiện tại
         const lang = getCurrentLang();
         
         if (context.page === 'room') {
@@ -156,16 +163,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 7. Logic Chat Chính
     chatIcon.addEventListener("click", () => {
-        // Cập nhật ngôn ngữ mỗi khi mở box chat
         applyLanguage();
-        
         chatWindow.classList.remove("hidden");
         chatIcon.classList.add("hidden");
         inputField.focus();
 
-        // Nếu chưa có tin nhắn, hiện chào mừng và gợi ý THEO NGÔN NGỮ HIỆN TẠI
         if (messagesArea.querySelectorAll('.message').length === 0) {
-            const welcomeText = t('chat_welcome', 'Xin chào! Tôi là AI. Tôi có thể giúp gì cho bạn hôm nay?');
+            const displayName = getUserDisplayName();
+            // Cá nhân hóa lời chào ở client
+            const welcomeText = lang === 'vi' 
+                ? `Xin chào ${displayName}! Tôi là AI. Tôi có thể giúp gì cho bạn hôm nay?`
+                : `Hello ${displayName}! I am AI. How can I help you today?`;
+            
             addMessage('bot', welcomeText);
             setTimeout(addSuggestionButtons, 500); 
         }
@@ -210,13 +219,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             const context = getChatbotContext();
-            
+            const username = getUserName(); // Lấy username để gửi lên
+
             const response = await fetch(`${API_BASE_URL}/api/ai/ask`, { 
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     question: text,
-                    gameId: context.gameId
+                    gameId: context.gameId,
+                    username: username // <-- GỬI USERNAME ĐỂ CÁ NHÂN HÓA
                 })
             });
 

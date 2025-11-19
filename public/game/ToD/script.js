@@ -1,4 +1,4 @@
-// public/game/ToD/script.js
+// public/game/ToD/script.js (ĐÃ UPDATE: Hiển thị DisplayName)
 
 (() => {
   const SOCKET_URL = "https://datn-socket.up.railway.app";
@@ -45,6 +45,8 @@
   const socket = window.socket;
   let currentAskedPlayer = null; 
   let currentHost = null;
+  // Thêm biến lưu danh sách để tra cứu
+  let roomPlayersList = [];
 
   socket.on('connect', () => {
     socket.emit('tod-join', { roomCode, player: playerName }); 
@@ -63,7 +65,13 @@
     return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(fallbackName)}`;
   }
 
-  // --- RENDER PLAYER (KHÔNG NÚT CHUYỂN CHỦ) ---
+  // --- HELPER: LẤY TÊN HIỂN THỊ ---
+  function getDisplayName(username) {
+      if (!username) return '';
+      const p = roomPlayersList.find(p => p.name === username);
+      return p ? (p.displayName || p.name) : username;
+  }
+
   function renderPlayers(players = [], askedName, host) { 
     if ($playersCount) $playersCount.textContent = `${players.length}`;
     if (!$avatars) return;
@@ -101,7 +109,9 @@
     const participantsCount = players.length;
     const status = payload.status || 'open';
     
+    roomPlayersList = players; // Cập nhật danh sách toàn cục
     currentHost = host; 
+    
     if ($room) $room.textContent = rc;
     if ($playersCount) $playersCount.textContent = participantsCount;
 
@@ -127,7 +137,10 @@
   socket.on('tod-your-turn', ({ player }) => {
     currentAskedPlayer = player; 
     socket.emit('tod-who', { roomCode }); 
-    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn' : `⏳ ${player} đang chọn...`;
+    
+    const playerDisplay = getDisplayName(player);
+
+    if ($turnText) $turnText.textContent = player === playerName ? '👉 Đến lượt bạn' : `⏳ ${playerDisplay} đang chọn...`;
     
     const startBtn = document.getElementById('startRoundBtn');
     if (startBtn) startBtn.style.display = 'none'; 
@@ -151,14 +164,17 @@
   socket.on('tod-question', ({ player, choice, question, totalVoters }) => {
     currentAskedPlayer = player; 
     socket.emit('tod-who', { roomCode }); 
+    
+    const playerDisplay = getDisplayName(player);
+
     if ($question) {
       $question.classList.remove('hidden');
       $question.classList.remove('collapsed');
       $question.className = `question-card ${choice}`;
       const qText = $question.querySelector('.q-text');
-      if (qText) qText.textContent = `${player} - ${choice}: ${question}`;
+      if (qText) qText.textContent = `${playerDisplay} - ${choice}: ${question}`;
     }
-    if ($turnText) $turnText.textContent = `${player} đang thực hiện`;
+    if ($turnText) $turnText.textContent = `${playerDisplay} đang thực hiện`;
     
     if (playerName === player) { 
       $actionBtns && ($actionBtns.innerHTML = ''); 

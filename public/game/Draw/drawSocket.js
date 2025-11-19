@@ -5,7 +5,6 @@ const path = require('path');
 const Room = require('../../../models/Room'); 
 const User = require('../../../models/User'); 
 
-// --- Cấu hình Game ---
 const GAME_ID = 'DG';
 const ROUND_TIME = 90; 
 const MAX_ROUNDS_PER_PLAYER = 1; 
@@ -21,19 +20,9 @@ try {
 const ROOM_STATE = {}; 
 const gameSocketMap = new Map();
 
-// --- Helper Functions ---
 function getRoomState(code) {
   if (!ROOM_STATE[code]) {
-    ROOM_STATE[code] = { 
-      currentIndex: 0, 
-      currentWord: null, 
-      drawer: null, 
-      timer: ROUND_TIME, 
-      guesses: new Set(),
-      drawingData: [], 
-      interval: null,
-      scores: {} 
-    };
+    ROOM_STATE[code] = { currentIndex: 0, currentWord: null, drawer: null, timer: ROUND_TIME, guesses: new Set(), drawingData: [], interval: null, scores: {} };
   }
   return ROOM_STATE[code];
 }
@@ -46,21 +35,13 @@ function getPlayersFromRoom(room) {
 
 async function attachAvatarsToPlayers(players) {
   const names = (players || []).map(p => p.name).filter(Boolean);
-  if (!names.length) {
-    return players;
-  }
-  
+  if (!names.length) return players;
   let users = [];
   try {
     users = await User.find({ username: { $in: names } }).lean().select('username displayName name');
-  } catch (e) {
-    console.warn('[Draw] attachAvatarsToPlayers user lookup failed', e && e.message);
-    users = [];
-  }
-  
+  } catch (e) { users = []; }
   const map = {};
   users.forEach(u => { map[u.username] = u; });
-
   return (players || []).map(p => {
     const user = map[p.name];
     const avatar = null;
@@ -84,11 +65,9 @@ function isCorrectGuess(guess, word) {
 function startTimer(io, roomCode) {
     const state = getRoomState(roomCode);
     if (state.interval) clearInterval(state.interval);
-
     state.interval = setInterval(() => {
         state.timer--;
         io.to(roomCode).emit(`${GAME_ID}-timer`, { time: state.timer });
-
         if (state.timer <= 0) {
             clearInterval(state.interval);
             endRound(io, roomCode, false); 
@@ -111,36 +90,24 @@ async function getMaxRounds(roomCode) {
 async function endRound(io, roomCode, guessed) {
     const state = getRoomState(roomCode);
     if (state.interval) clearInterval(state.interval);
-
     const room = await Room.findOne({ code: roomCode }).lean();
     if (!room) return; 
-    const players = getPlayersFromRoom(room);
     const totalGuessers = state.guesses.size;
-    
     if (totalGuessers > 0) {
         const drawerScore = 100 + (totalGuessers * 5);
         updateScores(state, state.drawer, drawerScore);
     }
-    
     io.to(roomCode).emit(`${GAME_ID}-end-round`, { 
-        word: state.currentWord, 
-        scores: state.scores,
-        drawer: state.drawer,
-        guessed: guessed
+        word: state.currentWord, scores: state.scores, drawer: state.drawer, guessed: guessed
     });
-
     const maxTotalRounds = await getMaxRounds(roomCode);
     state.currentIndex++;
-    
     if (state.currentIndex >= maxTotalRounds) { 
         io.to(roomCode).emit(`${GAME_ID}-game-over`, { finalScores: state.scores });
         state.drawer = null; 
         return; 
     }
-    
-    setTimeout(() => {
-        startRound(io, roomCode);
-    }, 5000); 
+    setTimeout(() => { startRound(io, roomCode); }, 5000); 
 }
 
 async function startRound(io, roomCode) {
@@ -151,58 +118,50 @@ async function startRound(io, roomCode) {
         io.to(roomCode).emit(`${GAME_ID}-message`, { message: 'Cần tối thiểu 2 người để chơi.' });
         return;
     }
-    
     const state = getRoomState(roomCode);
     state.currentWord = getRandomWord();
     state.drawer = players[state.currentIndex % players.length].name;
     state.timer = ROUND_TIME;
     state.guesses = new Set();
     state.drawingData = [];
-
     io.to(roomCode).emit(`${GAME_ID}-start-round`, { 
-        drawer: state.drawer, 
-        scores: state.scores,
-        round: state.currentIndex + 1,
-        playersCount: players.length,
-        wordHint: state.currentWord.length 
+        drawer: state.drawer, scores: state.scores, round: state.currentIndex + 1,
+        playersCount: players.length, wordHint: state.currentWord.length 
     });
-
-    const drawerSocketId = Array.from(gameSocketMap.entries())
-                               .find(([, info]) => info.player === state.drawer && info.code === roomCode);
-                               
+    const drawerSocketId = Array.from(gameSocketMap.entries()).find(([, info]) => info.player === state.drawer && info.code === roomCode);
     if (drawerSocketId) {
         io.to(drawerSocketId[0]).emit(`${GAME_ID}-secret-word`, { word: state.currentWord });
     }
-    
     startTimer(io, roomCode);
 }
 
-// --- MODULE EXPORT ---
 module.exports = (socket, io) => {
     console.log(`[${GAME_ID}] handler attached for socket ${socket.id}`);
     
-    // 1. Join
     socket.on(`${GAME_ID}-join`, async ({ roomCode, player }) => {
         try {
             const room = await Room.findOne({ code: roomCode }).lean();
             const isPlayerInRoom = room.players.some(p => p.name === player.name);
-            if (!isPlayerInRoom) return socket.emit(`${GAME_ID}-join-failed`, { reason: 'Bạn không có trong danh sách phòng này.' });
+            if (!isPlayerInRoom) return socket.emit(`${GAME_ID}-join-failed`, { reason: 'Bạn không có trong danh sách.' });
 
             socket.join(roomCode);
-            gameSocketMap.set(socket.id, { player: player.name, code: roomCode });
-            getRoomState(roomCode);
             
+            // --- LƯU DISPLAY NAME VÀO SOCKET MAP ---
+            // Tìm displayName trong DB hoặc Room
+            const playerInRoom = room.players.find(p => p.name === player.name);
+            const dName = playerInRoom ? (playerInRoom.displayName || playerInRoom.name) : player.name;
+            
+            gameSocketMap.set(socket.id, { player: player.name, displayName: dName, code: roomCode });
+            // ---------------------------------------
+
+            getRoomState(roomCode);
             const playersWithAvt = await attachAvatarsToPlayers(room.players);
-
             io.to(roomCode).emit(`${GAME_ID}-room-update`, { 
-                state: getRoomState(roomCode), 
-                room: { ...room, players: playersWithAvt }
+                state: getRoomState(roomCode), room: { ...room, players: playersWithAvt }
             });
-
         } catch (e) { console.error(`[${GAME_ID}] join error`, e); }
     });
 
-    // 2. Start Game
     socket.on(`${GAME_ID}-start-game`, async ({ roomCode }) => {
         const room = await Room.findOne({ code: roomCode });
         if (room && room.host === gameSocketMap.get(socket.id).player) {
@@ -213,7 +172,6 @@ module.exports = (socket, io) => {
         }
     });
 
-    // 3. Draw Events
     socket.on(`${GAME_ID}-draw`, ({ roomCode, data }) => {
         const state = getRoomState(roomCode);
         const playerInfo = gameSocketMap.get(socket.id);
@@ -239,7 +197,6 @@ module.exports = (socket, io) => {
         }
     });
 
-    // 4. Guess
     socket.on(`${GAME_ID}-guess`, async ({ roomCode, player, guess }) => {
         const state = getRoomState(roomCode);
         const drawer = state.drawer;
@@ -252,11 +209,9 @@ module.exports = (socket, io) => {
 
         if (isCorrectGuess(guess, state.currentWord)) {
             if (state.guesses.has(player)) return;
-
             const remainingTime = state.timer > 0 ? state.timer : 0;
             const guesserScore = 50 + remainingTime; 
             updateScores(state, player, guesserScore);
-            
             state.guesses.add(player);
             
             io.to(roomCode).emit(`${GAME_ID}-correct-guess`, { 
@@ -265,30 +220,22 @@ module.exports = (socket, io) => {
 
             const room = await Room.findOne({ code: roomCode }).lean();
             const totalGuessers = Math.max(0, getPlayersFromRoom(room).length - 1);
-            
-            if (state.guesses.size >= totalGuessers) { 
-                 endRound(io, roomCode, true);
-            }
+            if (state.guesses.size >= totalGuessers) endRound(io, roomCode, true);
         }
     });
 
-    // 5. Disconnect
     socket.on('disconnect', async () => {
         const userInfo = gameSocketMap.get(socket.id);
         if (!userInfo) return; 
-
-        const { player, code } = userInfo;
+        const { player, code, displayName } = userInfo; // Lấy displayName
         gameSocketMap.delete(socket.id); 
 
         try {
             const room = await Room.findOne({ code });
             if (!room) return;
-
             let newHost = room.host;
             const wasHost = (room.host === player);
-            
             room.players = room.players.filter(p => p.name !== player);
-            
             if (wasHost && room.players.length > 0) {
                 newHost = room.players[0].name;
                 room.host = newHost;
@@ -299,38 +246,28 @@ module.exports = (socket, io) => {
                 io.emit('admin-rooms-changed'); 
                 return; 
             }
-
             await room.save();
-            
             if (!player.startsWith('guest_')) {
                 await User.findOneAndUpdate({ username: player }, { status: 'online' });
                 io.emit('admin-user-status-changed');
             }
-
             const playersWithAvt = await attachAvatarsToPlayers(room.players);
             const state = getRoomState(code);
-
-            io.to(code).emit(`${GAME_ID}-room-update`, { 
-                state, 
-                room: { code: room.code, host: newHost, players: playersWithAvt }
-            });
+            io.to(code).emit(`${GAME_ID}-room-update`, { state, room: { code: room.code, host: newHost, players: playersWithAvt } });
             io.emit('admin-rooms-changed'); 
             
+            // Gửi tin nhắn với Display Name
+            const nameToShow = displayName || player;
             io.to(code).emit(`${GAME_ID}-chat-message`, { 
-                player: 'Hệ thống', message: `${player} đã rời phòng.`, type: 'msg-system' 
+                player: 'Hệ thống', message: `${nameToShow} đã rời phòng.`, type: 'msg-system' 
             });
-
-        } catch (e) {
-            console.error(`[${GAME_ID}] disconnect error`, e);
-        }
+        } catch (e) { console.error(`[${GAME_ID}] disconnect error`, e); }
     });
 
-    // 6. Restart Game
     socket.on(`${GAME_ID}-restart-game`, async ({ roomCode }) => {
         const state = getRoomState(roomCode);
         const room = await Room.findOne({ code: roomCode });
         const playerInfo = gameSocketMap.get(socket.id);
-
         if (room && playerInfo && room.host === playerInfo.player) {
             state.scores = {};
             state.currentIndex = 0;
@@ -338,12 +275,34 @@ module.exports = (socket, io) => {
             state.guesses = new Set();
             state.currentWord = null;
             if (state.interval) clearInterval(state.interval);
-            
             const playersWithAvt = await attachAvatarsToPlayers(room.players);
-            io.to(roomCode).emit(`${GAME_ID}-room-update`, { 
-                state: getRoomState(roomCode), 
-                room: { ...room.toObject(), players: playersWithAvt } 
-            });
+            io.to(roomCode).emit(`${GAME_ID}-room-update`, { state: getRoomState(roomCode), room: { ...room.toObject(), players: playersWithAvt } });
         }
+    });
+
+    socket.on(`${GAME_ID}-assign-host`, async ({ roomCode, newHostName }) => {
+        try {
+            const room = await Room.findOne({ code: roomCode });
+            const playerInfo = gameSocketMap.get(socket.id);
+            if (room && playerInfo && room.host === playerInfo.player) {
+                const exists = room.players.some(p => p.name === newHostName);
+                if (exists) {
+                    room.host = newHostName;
+                    await room.save();
+                    const playersWithAvt = await attachAvatarsToPlayers(room.players);
+                    io.to(roomCode).emit(`${GAME_ID}-room-update`, { state: getRoomState(roomCode), room: { ...room.toObject(), players: playersWithAvt }});
+                    io.to(roomCode).emit('update-players', { list: room.players, host: newHostName });
+                    io.emit('admin-rooms-changed');
+                    
+                    // Lấy displayName của Host mới để thông báo
+                    const newHostObj = room.players.find(p => p.name === newHostName);
+                    const newHostDisplay = newHostObj ? (newHostObj.displayName || newHostName) : newHostName;
+                    
+                    io.to(roomCode).emit(`${GAME_ID}-chat-message`, {
+                        player: 'Hệ thống', message: `👑 Chủ phòng đã được chuyển cho ${newHostDisplay}`, type: 'msg-system'
+                    });
+                }
+            }
+        } catch (e) {}
     });
 };

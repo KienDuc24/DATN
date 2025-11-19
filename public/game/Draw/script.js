@@ -1,4 +1,4 @@
-// public/game/Draw/script.js (CỐ ĐỊNH TIẾNG VIỆT & ĐỒNG BỘ UI HOST)
+// public/game/Draw/script.js (ĐÃ UPDATE: Hiển thị DisplayName thay vì Username)
 
 (() => {
     const GAME_ID = 'DG';
@@ -11,7 +11,7 @@
     let playerName = params.get('user'); 
 
     if (!playerName || !roomCode) {
-        alert('Lỗi: Thiếu thông tin phòng. Đang quay về trang chủ.');
+        alert('Lỗi: Thiếu thông tin phòng hoặc người dùng. Đang quay về trang chủ.');
         window.location.href = '/'; 
         return; 
     }
@@ -54,6 +54,13 @@
     }
     clearCanvas();
 
+    // --- HELPER: LẤY TÊN HIỂN THỊ ---
+    function getDisplayName(username) {
+        if (username === 'Hệ thống') return 'Hệ thống'; // Giữ nguyên tên hệ thống
+        const p = roomPlayers.find(p => p.name === username);
+        return p ? (p.displayName || p.name) : username;
+    }
+
     // --- Logic Vẽ (Giữ nguyên) ---
     function getMousePos(e) {
         if (!$canvas) return { x: 0, y: 0 };
@@ -81,7 +88,6 @@
         socket.emit(`${GAME_ID}-draw`, { roomCode, data });
         draw(data);
     }
-    // (Các hàm xử lý sự kiện vẽ... giữ nguyên logic cũ)
     function setActiveTool(tool) {
         currentTool = tool;
         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
@@ -134,7 +140,6 @@
         }
     });
     
-    // Palette
     const colors = ['#FFFFFF', '#000000', '#C1C1C1', '#4D4D4D', '#EF130B', '#740B07', '#FF7100', '#C23800', '#FFE400', '#E8A200', '#00CC00', '#005510', '#00B2FF', '#00569E', '#231FD3', '#0E0865', '#A300BA', '#550069', '#D37CAA', '#A75574', '#A0522D', '#63300D'];
     if ($colorPalette) {
         colors.forEach((color, index) => {
@@ -152,12 +157,16 @@
         });
     }
 
-    // --- Chat & Game Logic (Tiếng Việt Cố định) ---
-    function renderChatMessage(player, message, type = 'msg-guess') { 
+    // --- Chat & Game Logic (ĐÃ SỬA DISPLAY NAME) ---
+    function renderChatMessage(username, message, type = 'msg-guess') { 
         if (!$chatMessages) return; 
+        
+        // Chuyển đổi username -> displayName
+        const displayName = getDisplayName(username);
+
         const el = document.createElement('div');
         el.className = `chat-message ${type}`;
-        el.innerHTML = `<strong>${player}:</strong> ${message}`;
+        el.innerHTML = `<strong>${displayName}:</strong> ${message}`;
         $chatMessages.appendChild(el);
         $chatMessages.scrollTop = $chatMessages.scrollHeight;
     }
@@ -210,7 +219,7 @@
 
     socket.on(`${GAME_ID}-room-update`, ({ state, room }) => {
         currentHost = room.host;
-        roomPlayers = room.players;
+        roomPlayers = room.players; // Cập nhật danh sách (có displayName)
         
         if ($room) $room.textContent = room.code || '—';
         if ($playersCount) $playersCount.textContent = roomPlayers.length;
@@ -247,7 +256,8 @@
             if ($wordHint) $wordHint.classList.add('hidden');
 
             if (currentHost !== playerName && $gameStatus) {
-                $gameStatus.textContent = `Đang chờ chủ phòng (${currentHost}) bắt đầu...`;
+                const hostDisplay = getDisplayName(currentHost);
+                $gameStatus.textContent = `Đang chờ chủ phòng (${hostDisplay}) bắt đầu...`;
             } else if (currentHost === playerName && $gameStatus) {
                  $gameStatus.textContent = ''; 
                  if (startBtn) $gameStatus.appendChild(startBtn);
@@ -259,10 +269,13 @@
         currentDrawer = drawer;
         clearCanvas();
         if ($drawingTools) $drawingTools.classList.toggle('hidden', currentDrawer !== playerName);
-        if ($gameStatus) $gameStatus.textContent = `Vòng ${round}: ${drawer} đang vẽ...`;
+        
+        const drawerDisplay = getDisplayName(drawer);
+        if ($gameStatus) $gameStatus.textContent = `Vòng ${round}: ${drawerDisplay} đang vẽ...`;
+        
         if ($wordHint) $wordHint.classList.remove('hidden');
         renderScores(scores, drawer, roomPlayers);
-        renderChatMessage('Hệ thống', `Vòng ${round} bắt đầu! ${drawer} đang vẽ.`, 'msg-system');
+        renderChatMessage('Hệ thống', `Vòng ${round} bắt đầu! ${drawerDisplay} đang vẽ.`, 'msg-system');
         disableGuessInput(currentDrawer === playerName);
     });
     
@@ -286,7 +299,8 @@
     });
 
     socket.on(`${GAME_ID}-correct-guess`, ({ player, scores, time }) => {
-        renderChatMessage('Hệ thống', `${player} đoán đúng! 🎉 (+${50 + (time||0)} điểm)`, 'msg-correct');
+        const playerDisplay = getDisplayName(player);
+        renderChatMessage('Hệ thống', `${playerDisplay} đoán đúng! 🎉 (+${50 + (time||0)} điểm)`, 'msg-correct');
         const playerRow = document.querySelector(`.score-row.you`);
         if (player === playerName && playerRow) {
             playerRow.classList.add('flash-correct');
@@ -317,7 +331,8 @@
                  if ($gameStatus) $gameStatus.appendChild(startBtn); 
                  startBtn.style.display = 'inline-block';
             } else if (currentHost !== playerName && $gameStatus) {
-                $gameStatus.textContent = `Đang chờ chủ phòng bắt đầu...`;
+                const hostDisplay = getDisplayName(currentHost);
+                $gameStatus.textContent = `Đang chờ chủ phòng (${hostDisplay}) bắt đầu...`;
             }
         }, 5000); 
     });
@@ -332,11 +347,11 @@
     socket.on(`${GAME_ID}-game-restarted`, () => {
         hidePopup(); 
         if ($gameStatus && currentHost !== playerName) {
-            $gameStatus.textContent = `Đang chờ chủ phòng bắt đầu...`;
+            const hostDisplay = getDisplayName(currentHost);
+            $gameStatus.textContent = `Đang chờ chủ phòng (${hostDisplay}) bắt đầu...`;
         }
     });
 
-    // --- RENDER ĐIỂM (GIAO DIỆN GIỐNG ToD) ---
     function renderScores(scores, drawerName, playerList = []) {
         if (!$scoreGrid) return;
         $scoreGrid.innerHTML = '';
@@ -347,18 +362,20 @@
         
         const mergedScores = playerNames.reduce((acc, name) => ({ ...acc, [name]: currentScores[name] || 0 }), { ...currentScores });
         const sortedPlayers = playerNames.sort((a, b) => mergedScores[b] - mergedScores[a]);
+        
+        const iamHost = (currentHost === playerName);
 
         sortedPlayers.forEach(name => {
             const isDrawer = name === drawerName;
             const isHost = name === currentHost;
             const isYou = name === playerName;
+            
             const playerObj = safePlayerList.find(p => p.name === name);
             const displayName = playerObj ? playerObj.displayName || name : name; 
 
             const row = document.createElement('div');
             row.className = `score-row ${isDrawer ? 'drawer-turn' : ''} ${isYou ? 'you' : ''}`;
             
-            // SỬA: Bỏ tag chữ, dùng icon Overlay giống ToD
             const crownHtml = isHost ? `<div class="crown-overlay">👑</div>` : '';
             const penHtml = isDrawer ? `<div class="pen-overlay">✏️</div>` : '';
 
@@ -379,16 +396,17 @@
         });
     }
     
-    // (Các hàm popup giữ nguyên, chỉ sửa text thành Tiếng Việt)
     function getSortedScores(scores) {
         if (!scores || typeof scores !== 'object') return [];
         return Object.entries(scores).sort(([, a], [, b]) => b - a);
     }
+    
     function showRankingPopup(scores, isFinal) {
         hidePopup(); 
         const sortedScores = getSortedScores(scores);
         const title = isFinal ? '🏆 KẾT QUẢ CHUNG CUỘC' : '✨ KẾT QUẢ VÒNG ĐẤU';
         let content = `<h2 style="color:var(--accent-yellow); margin-bottom: 20px;">${title}</h2>`;
+        
         content += '<ol style="padding: 0; list-style-position: inside; text-align: left; font-size: 1.1em; max-height: 250px; overflow-y: auto;">';
         sortedScores.forEach(([player, score], index) => {
             const isWinner = index === 0 && isFinal;
@@ -401,7 +419,11 @@
         content += '<div id="popup-actions" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">';
         
         if (isFinal) {
-            content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
+            if (currentHost === playerName) {
+                content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
+            } else {
+                content += `<p style="color:#bbb;font-style:italic;">Đang chờ chủ phòng...</p>`;
+            }
             content += `<button id="popup-exit" class="btn btn-danger">Thoát</button>`;
         } else {
             content += `<p>Vòng mới sau 5 giây...</p>`;
@@ -413,7 +435,7 @@
         modal.className = 'modal-overlay';
         modal.innerHTML = `<div class="modal-content">${content}</div>`;
         document.body.appendChild(modal);
-        // ... (style modal giữ nguyên)
+
         const styleId = 'modal-styles';
         if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
@@ -421,6 +443,7 @@
             style.innerHTML = `.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); } .modal-content { background: var(--card-bg); padding: 30px; border-radius: var(--border-radius); box-shadow: var(--shadow-base); text-align: center; max-width: 90%; } .btn-danger { background-color: var(--text-accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; } .btn-primary { background-color: var(--accent-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }`;
             document.head.appendChild(style);
         }
+
         if (isFinal) {
             const continueBtn = document.getElementById('popup-continue');
             if (continueBtn) {
@@ -431,9 +454,14 @@
             }
             const exitBtn = document.getElementById('popup-exit');
             if (exitBtn) {
-                exitBtn.addEventListener('click', () => { window.location.href = '/'; });
+                exitBtn.addEventListener('click', () => {
+                    window.location.href = '/'; 
+                });
             }
         }
     }
-    function hidePopup() { const modal = document.getElementById('rankingModal'); if (modal) modal.remove(); }
+    function hidePopup() {
+        const modal = document.getElementById('rankingModal');
+        if (modal) modal.remove();
+    }
 })();

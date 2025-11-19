@@ -20,7 +20,6 @@ try {
   QUESTIONS = { truth: ["Bạn có bí mật nào không?"], dare: ["Hát một bài."] };
 }
 
-// --- Helper Functions ---
 const ROOM_STATE = {}; 
 function getRoomState(code) {
   if (!ROOM_STATE[code]) ROOM_STATE[code] = { currentIndex: 0, lastQuestion: null, lastChoice: null, votes: [] };
@@ -52,22 +51,13 @@ function normalizePlayerInput(input) {
 async function attachAvatarsToPlayers(players) {
   const normalized = (players || []).map(p => normalizePlayerInput(p)).filter(Boolean);
   const names = normalized.map(p => p.name).filter(Boolean);
-  
-  if (!names.length) {
-    return normalized.map(p => ({ name: p.name, displayName: p.displayName || null, avatar: null }));
-  }
-  
+  if (!names.length) return normalized.map(p => ({ name: p.name, displayName: p.displayName || null, avatar: null }));
   let users = [];
   try {
     users = await User.find({ username: { $in: names } }).lean().select('username displayName name');
-  } catch (e) {
-    console.warn('[ToD] attachAvatarsToPlayers lookup failed', e.message);
-    users = [];
-  }
-  
+  } catch (e) { users = []; }
   const map = {};
   users.forEach(u => { if (u.username) map[u.username] = u; });
-  
   return normalized.map(p => {
     const user = map[p.name];
     const avatar = null;
@@ -80,7 +70,6 @@ function getPlayersFromRoom(room) {
   if (!room) return [];
   let raw = [];
   if (Array.isArray(room.players)) raw = room.players;
-  
   return raw.map(p => {
     const np = normalizePlayerInput(p);
     if (!np) return null;
@@ -97,27 +86,18 @@ module.exports = (socket, io) => {
       if (!roomCode) {
         return socket.emit('tod-joined', { roomCode: '', host: null, status: 'open', participantsCount: 0, players: [], createdAt: null, updatedAt: null, state });
       }
-      
       const room = await Room.findOne({ code: roomCode }).lean(); 
       if (!room) {
         return socket.emit('tod-joined', { roomCode: String(roomCode), host: null, status: 'open', participantsCount: 0, players: [], createdAt: null, updatedAt: null, state });
       }
-
       const playersArr = getPlayersFromRoom(room);
       const playersWithAvt = await attachAvatarsToPlayers(playersArr);
       const roomStatus = room.status || 'open';
-
       const payload = {
-        roomCode: room.code,
-        host: room.host,
-        status: roomStatus,
-        participantsCount: playersArr.length,
-        players: playersWithAvt,
-        createdAt: room.createdAt || null,
-        updatedAt: room.updatedAt || null,
-        state
+        roomCode: room.code, host: room.host, status: roomStatus,
+        participantsCount: playersArr.length, players: playersWithAvt,
+        createdAt: room.createdAt || null, updatedAt: room.updatedAt || null, state
       };
-
       socket.emit('tod-joined', payload);
       io.to(roomCode).emit('tod-joined', payload);
     } catch (e) { console.error('[ToD] tod-who error', e); }
@@ -127,37 +107,30 @@ module.exports = (socket, io) => {
     try {
       const room = await Room.findOne({ code: roomCode }).lean(); 
       if (!room) return socket.emit('tod-join-failed', { reason: 'Phòng không tồn tại.' });
-
       const normalizedInput = normalizePlayerInput(player);
       if (!normalizedInput) return socket.emit('tod-join-failed', { reason: 'Invalid player' });
       const playerName = normalizedInput.name;
-
       const isPlayerInRoom = room.players.some(p => p.name === playerName);
       if (!isPlayerInRoom) return socket.emit('tod-join-failed', { reason: 'Bạn không có trong danh sách phòng này.' });
 
       socket.join(roomCode);
-      gameSocketMap.set(socket.id, { player: playerName, code: roomCode });
-      getRoomState(roomCode);
       
+      // --- LƯU MAP (CÓ DISPLAY NAME) ---
+      const pInfo = room.players.find(p => p.name === playerName);
+      const dName = pInfo ? (pInfo.displayName || pInfo.name) : playerName;
+      gameSocketMap.set(socket.id, { player: playerName, displayName: dName, code: roomCode });
+      // ---------------------------------
+
+      getRoomState(roomCode);
       const playersWithAvt = await attachAvatarsToPlayers(room.players);
       const state = getRoomState(roomCode);
-
       const payload = {
-        roomCode: room.code,
-        host: room.host,
-        status: room.status,
-        participantsCount: room.players.length,
-        players: playersWithAvt,
-        createdAt: room.createdAt || null,
-        updatedAt: room.updatedAt || null,
-        state
+        roomCode: room.code, host: room.host, status: room.status,
+        participantsCount: room.players.length, players: playersWithAvt,
+        createdAt: room.createdAt || null, updatedAt: room.updatedAt || null, state
       };
-      
       io.to(roomCode).emit('tod-joined', payload);
-    } catch (e) {
-      console.error('[ToD] tod-join error', e);
-      socket.emit('tod-join-failed', { reason: 'Lỗi server khi vào phòng game.' });
-    }
+    } catch (e) { console.error('[ToD] tod-join error', e); }
   });
 
   socket.on('tod-start-round', async ({ roomCode }) => {
@@ -166,7 +139,6 @@ module.exports = (socket, io) => {
       if (!room || !Array.isArray(room.players) || room.players.length < 1) return;
       const state = getRoomState(roomCode);
       if (typeof state.currentIndex !== 'number') state.currentIndex = 0;
-
       const playersNorm = getPlayersFromRoom(room);
       if (!playersNorm.length) return;
       const currentPlayer = playersNorm[state.currentIndex % playersNorm.length].name;
@@ -194,20 +166,15 @@ module.exports = (socket, io) => {
       const room = await Room.findOne({ code: roomCode });
       if (!room) return;
       const state = getRoomState(roomCode);
-
       const playersNorm = getPlayersFromRoom(room);
       const currentAsked = playersNorm[state.currentIndex % playersNorm.length].name;
-      
       if (player === currentAsked) return;
       if (!state.votes) state.votes = [];
       if (!state.votes.some(v => v.player === player)) state.votes.push({ player, vote });
-
       const total = Math.max(0, (playersNorm.length - 1));
       const voted = state.votes.length;
       const acceptCount = state.votes.filter(v => v.vote === 'accept').length;
-
       io.to(roomCode).emit('tod-voted', { player, vote, acceptCount, voted, total });
-
       if (voted === total) {
         if (acceptCount >= Math.ceil(total / 2)) {
           io.to(roomCode).emit('tod-result', { result: 'accepted' });
@@ -226,9 +193,7 @@ module.exports = (socket, io) => {
           setTimeout(() => {
             io.to(roomCode).emit('tod-question', {
               player: playersNorm[state.currentIndex % playersNorm.length].name,
-              choice: lastChoice,
-              question: newQ,
-              totalVoters: total
+              choice: lastChoice, question: newQ, totalVoters: total
             });
           }, 700);
         }
@@ -236,10 +201,34 @@ module.exports = (socket, io) => {
     } catch (e) { console.error('[ToD] tod-vote error', e); }
   });
 
+  socket.on('tod-assign-host', async ({ roomCode, newHostName }) => {
+    try {
+      const room = await Room.findOne({ code: roomCode });
+      const playerInfo = gameSocketMap.get(socket.id);
+      if (room && playerInfo && room.host === playerInfo.player) {
+          const exists = room.players.some(p => p.name === newHostName);
+          if (exists) {
+              room.host = newHostName;
+              await room.save();
+              const playersWithAvt = await attachAvatarsToPlayers(room.players);
+              const state = getRoomState(roomCode);
+              const payload = {
+                roomCode: room.code, host: room.host, status: room.status,
+                participantsCount: room.players.length, players: playersWithAvt,
+                createdAt: room.createdAt, state
+              };
+              io.to(roomCode).emit('tod-joined', payload); 
+              io.to(roomCode).emit('update-players', { list: room.players, host: newHostName }); 
+              io.emit('admin-rooms-changed');
+          }
+      }
+    } catch (e) { console.error('[ToD] assign-host error:', e); }
+  });
+
   socket.on('disconnecting', async () => {
     const userInfo = gameSocketMap.get(socket.id);
     if (!userInfo) return;
-    const { player, code } = userInfo;
+    const { player, code, displayName } = userInfo;
     gameSocketMap.delete(socket.id);
     try {
         const room = await Room.findOne({ code });
@@ -247,7 +236,6 @@ module.exports = (socket, io) => {
         let newHost = room.host;
         const wasHost = (room.host === player);
         room.players = room.players.filter(p => p.name !== player);
-        
         if (wasHost && room.players.length > 0) {
             newHost = room.players[0].name;
             room.host = newHost;
