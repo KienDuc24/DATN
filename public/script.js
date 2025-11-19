@@ -580,16 +580,68 @@ document.addEventListener('DOMContentLoaded', function() {
             this.innerHTML = `<span class="eye-icon">${icon}</span> <span class="text" data-i18n="${textKey}">${textVal}</span>`;
         };
     }
-    
-    // --- KẾT THÚC FIX ---
+    // XỬ LÝ NÚT "QUÊN MẬT KHẨU"
+    const forgotBtn = document.getElementById('forgotPasswordBtn'); // Nút ở form login
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const forgotForm = document.getElementById('forgotForm');
+    const backToLoginBtn = document.getElementById('backToLoginBtn');
 
-
-    // Quên mật khẩu
-    const forgotBtn = document.getElementById('forgotPasswordBtn');
+    // Chuyển sang form quên mật khẩu
     if (forgotBtn) {
-        forgotBtn.onclick = function() {
-            alert('Tính năng quên mật khẩu sẽ được bổ sung sau!');
+        forgotBtn.onclick = function(e) {
+            e.preventDefault();
+            loginForm.style.display = 'none';
+            registerForm.style.display = 'none';
+            forgotForm.style.display = 'flex';
         };
+    }
+
+    // Quay lại login
+    if (backToLoginBtn) {
+        backToLoginBtn.onclick = function() {
+            forgotForm.style.display = 'none';
+            loginForm.style.display = 'flex';
+        };
+    }
+
+    // Xử lý Submit Form Quên Mật Khẩu
+    // Xử lý Submit Form Quên Mật Khẩu (Đa ngôn ngữ)
+    if (forgotForm) {
+        forgotForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('forgot-email').value;
+            const msg = document.getElementById('forgot-message');
+            
+            // Lấy text từ LANGS
+            const txtSending = (LANGS[currentLang] && LANGS[currentLang].sending) || 'Đang gửi...';
+            msg.innerText = txtSending;
+            msg.style.color = '#ff9800';
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    msg.style.color = '#4caf50';
+                    const txtSuccess = (LANGS[currentLang] && LANGS[currentLang].sent_success) || 'Đã gửi mail!';
+                    msg.innerText = txtSuccess;
+                } else {
+                    msg.style.color = '#ff4757';
+                    // Nếu server trả về message tiếng Anh, có thể cần map lại, nhưng tạm thời hiển thị data.message
+                    // hoặc dùng text mặc định:
+                    const txtError = (LANGS[currentLang] && LANGS[currentLang].sent_error) || 'Lỗi gửi mail.';
+                    msg.innerText = data.message || txtError;
+                }
+            } catch (err) {
+                const txtConnErr = (LANGS[currentLang] && LANGS[currentLang].connect_error) || 'Lỗi kết nối.';
+                msg.innerText = txtConnErr;
+            }
+        });
     }
 
     // Nút toggle sidebar

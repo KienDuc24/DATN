@@ -56,6 +56,12 @@ const userSchema = new Schema({
   password: { 
     type: String
   },
+  resetPasswordToken: { 
+    type: String
+  },
+  resetPasswordExpires:{ 
+    type: Date
+  },
   status: { 
     type: String,
     enum: ['online', 'offline', 'playing'],

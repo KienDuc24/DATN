@@ -12,6 +12,27 @@
     "login_guest": "Tài khoản ẩn danh",
     "login_google": "Tiếp tục với Google",
     "search_placeholder": "Tìm kiếm trò chơi...",
+    
+    "show_pass": "Hiện mật khẩu",
+    "hide_pass": "Ẩn mật khẩu",
+    
+    "forgot_pass_title": "Quên Mật Khẩu",
+    "forgot_pass_desc": "Nhập email để nhận link đặt lại mật khẩu.",
+    "email_placeholder": "Nhập email của bạn",
+    "send_request": "Gửi yêu cầu",
+    "back_to_login": "Quay lại Đăng nhập",
+    "sending": "Đang gửi...",
+    "sent_success": "Đã gửi mail! Vui lòng kiểm tra hộp thư (cả spam).",
+    "sent_error": "Lỗi gửi mail.",
+    "connect_error": "Lỗi kết nối.",
+    
+    "reset_title": "Đặt lại mật khẩu",
+    "new_pass_placeholder": "Mật khẩu mới",
+    "confirm_btn": "Xác nhận",
+    "pass_mismatch": "Mật khẩu không khớp!",
+    "reset_success": "Thành công! Đang chuyển về trang chủ...",
+    "reset_error": "Lỗi đặt lại mật khẩu.",
+
     "all": "Tất cả game",
     "featured": "Trò chơi nổi bật",
     "by_category": "Game theo thể loại",
@@ -35,10 +56,6 @@
     "room_not_found": "Mã phòng không tồn tại!",
     "room_players": "người chơi",
     "welcome_back": "Xin chào",
-    
-    "show_pass": "Hiện mật khẩu",
-    "hide_pass": "Ẩn mật khẩu",
-
     "leave_room": "Rời phòng",
     "copy_code": "Sao chép",
     "waiting_host": "Đang chờ chủ phòng bắt đầu...",
@@ -53,12 +70,10 @@
     "copied": "📋 Mã phòng đã được sao chép!",
     "confirm_kick": "Bạn có chắc muốn mời người chơi này ra khỏi phòng?",
     "kicked_msg": "Bạn đã bị chủ phòng mời ra khỏi phòng!",
-
     "chat_title": "Trợ lý AI",
     "chat_placeholder": "Hỏi gì đó...",
     "chat_send": "Gửi",
     "chat_welcome": "Xin chào! Tôi là AI. Tôi có thể giúp gì cho bạn hôm nay?",
-    
     "game_developing": "🚧 Game này đang được phát triển! Vui lòng quay lại sau.",
     "badge_coming_soon": "Sắp ra mắt"
   },
@@ -75,6 +90,27 @@
     "login_guest": "Login as Guest",
     "login_google": "Continue with Google",
     "search_placeholder": "Search games...",
+    
+    "show_pass": "Show Password",
+    "hide_pass": "Hide Password",
+
+    "forgot_pass_title": "Forgot Password",
+    "forgot_pass_desc": "Enter your email to receive a reset link.",
+    "email_placeholder": "Enter your email",
+    "send_request": "Send Request",
+    "back_to_login": "Back to Login",
+    "sending": "Sending...",
+    "sent_success": "Email sent! Please check your inbox (and spam).",
+    "sent_error": "Error sending email.",
+    "connect_error": "Connection error.",
+
+    "reset_title": "Reset Password",
+    "new_pass_placeholder": "New Password",
+    "confirm_btn": "Confirm",
+    "pass_mismatch": "Passwords do not match!",
+    "reset_success": "Success! Redirecting to home...",
+    "reset_error": "Error resetting password.",
+
     "all": "All Games",
     "featured": "Featured Games",
     "by_category": "Games by Category",
@@ -98,10 +134,6 @@
     "room_not_found": "Room code not found!",
     "room_players": "players",
     "welcome_back": "Welcome back",
-    
-    "show_pass": "Show Password",
-    "hide_pass": "Hide Password",
-
     "leave_room": "Leave",
     "copy_code": "Copy",
     "waiting_host": "Waiting for host to start...",
@@ -116,12 +148,10 @@
     "copied": "📋 Room code copied!",
     "confirm_kick": "Are you sure you want to kick this player?",
     "kicked_msg": "You have been kicked from the room!",
-
     "chat_title": "AI Assistant",
     "chat_placeholder": "Ask something...",
     "chat_send": "Send",
     "chat_welcome": "Hello! I am AI. How can I help you today?",
-
     "game_developing": "🚧 This game is under development! Please come back later.",
     "badge_coming_soon": "Coming Soon"
   }

@@ -168,12 +168,21 @@
         <input class="hide" id="register-password" type="password" placeholder="Password" data-i18n-placeholder="password" required />
         <input class="hide" id="register-password2" type="password" placeholder="Confirm password" data-i18n-placeholder="password_confirm" required />
         
-        <button id="toggleRegisterPassword" type="button" class="register-btn" style="margin-bottom: 8px;">
+        <button id="toggleRegisterPassword" type="button" class="toggle-password-btn-below" style="margin-bottom: 8px;">
           <span class="eye-icon">👁</span> <span class="text" data-i18n="show_pass">Hiện mật khẩu</span>
         </button>
         
         <button type="submit" class="register-btn" data-i18n="register_btn">Register</button>
         <div id="register-message" class="auth-message"></div>
+      </form>
+
+      <form id="forgotForm" class="auth-form" style="display:none;">
+        <h3 style="text-align:center; color:#ff9800; margin:0;" data-i18n="forgot_pass_title">Quên Mật Khẩu</h3>
+        <p style="text-align:center; color:#ccc; font-size:0.9rem;" data-i18n="forgot_pass_desc">Nhập email để nhận link đặt lại mật khẩu.</p>
+        <input id="forgot-email" type="email" placeholder="Nhập email của bạn" data-i18n-placeholder="email_placeholder" required />
+        <button type="submit" class="login-btn" data-i18n="send_request">Gửi yêu cầu</button>
+        <button type="button" id="backToLoginBtn" class="auth-btn" style="background:none; border:1px solid #555; margin-top:5px;" data-i18n="back_to_login">Quay lại Đăng nhập</button>
+        <div id="forgot-message" class="auth-message"></div>
       </form>
     </div>
   </div>
