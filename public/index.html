@@ -137,33 +137,42 @@
   <div id="auth-modal" class="auth-modal" style="display:none;">
     <div class="auth-modal-content">
       <button class="auth-modal-close" type="button" onclick="document.getElementById('auth-modal').style.display='none'">&times;</button>
+      
       <div class="auth-tabs">
-        <button id="loginTab" class="auth-tab active" type="button">Đăng nhập</button>
-        <button id="registerTab" class="auth-tab" type="button">Đăng ký</button>
+        <button id="loginTab" class="auth-tab active" type="button" data-i18n="login_tab">Đăng nhập</button>
+        <button id="registerTab" class="auth-tab" type="button" data-i18n="register_tab">Đăng ký</button>
       </div>
+      
       <div class="auth-social">
-        <button id="googleLoginBtn" class="social-btn social-google" type="button">Continue with Google</button>
+        <button id="googleLoginBtn" class="social-btn social-google" type="button" data-i18n="login_google">Continue with Google</button>
         <button id="facebookLoginBtn" class="social-btn social-facebook" type="button" style="display:none;">Continue with Facebook</button>
-        <button id="anonymousLoginBtn" class="social-btn social-guest" type="button">Login as Guest</button>
+        <button id="anonymousLoginBtn" class="social-btn social-guest" type="button" data-i18n="login_guest">Login as Guest</button>
       </div>
-      <div class="auth-or"><span>OR</span></div>
+      
+      <div class="auth-or"><span data-i18n="or">OR</span></div>
+      
       <form id="loginForm" class="auth-form">
-        <input id="login-username" type="text" placeholder="Username" required />
-        <input id="login-password" type="password" placeholder="Password" required />
+        <input id="login-username" type="text" placeholder="Username" data-i18n-placeholder="username" required />
+        <input id="login-password" type="password" placeholder="Password" data-i18n-placeholder="password" required />
+        
         <button id="togglePassword" type="button" class="toggle-password-btn-below">
-          <span class="eye-icon">👁</span> Hiện mật khẩu
+          <span class="eye-icon">👁</span> <span class="text" data-i18n="show_pass">Hiện mật khẩu</span>
         </button>
-        <button type="submit" class="login-btn">Login</button>
+        
+        <button type="submit" class="login-btn" data-i18n="login_btn">Login</button>
         <div id="login-message" class="auth-message"></div>
       </form>
+      
       <form id="registerForm" class="auth-form" style="display:none;">
-        <input id="register-username" type="text" placeholder="Username" required />
-        <input class="hide" id="register-password" type="password" placeholder="Password" required />
-        <input class="hide" id="register-password2" type="password" placeholder="Confirm password" required />
+        <input id="register-username" type="text" placeholder="Username" data-i18n-placeholder="username" required />
+        <input class="hide" id="register-password" type="password" placeholder="Password" data-i18n-placeholder="password" required />
+        <input class="hide" id="register-password2" type="password" placeholder="Confirm password" data-i18n-placeholder="password_confirm" required />
+        
         <button id="toggleRegisterPassword" type="button" class="register-btn" style="margin-bottom: 8px;">
-          <span class="eye-icon">👁</span> Hiện mật khẩu
+          <span class="eye-icon">👁</span> <span class="text" data-i18n="show_pass">Hiện mật khẩu</span>
         </button>
-        <button type="submit" class="register-btn">Register</button>
+        
+        <button type="submit" class="register-btn" data-i18n="register_btn">Register</button>
         <div id="register-message" class="auth-message"></div>
       </form>
     </div>

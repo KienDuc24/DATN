@@ -1,4 +1,4 @@
-// Game.js
+// models/Game.js
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
@@ -20,8 +20,13 @@ const gameSchema = new Schema({
   category: { type: LangSchema, required: true },
   featured: {
     type: Boolean,
-    default: false, // Mặc định là không nổi bật
+    default: false, 
   },
+  // --- THÊM MỚI: Cờ đánh dấu game đang phát triển ---
+  isComingSoon: {
+    type: Boolean,
+    default: true // Mặc định là True (chưa chơi được)
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Game', gameSchema);

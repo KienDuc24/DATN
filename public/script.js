@@ -10,10 +10,22 @@ function renderGameCard(game) {
   const name = getGameName(game, currentLang);
   const desc = getGameDesc(game, currentLang);
   const category = getGameCategory(game, currentLang);
+  
+  // Logic hiển thị Badge
+  let badgeHtml = "";
+  if (game.isComingSoon) {
+      // Badge màu xám cho game đang phát triển
+      const badgeText = LANGS[currentLang]?.badge_coming_soon || "Coming Soon";
+      badgeHtml = `<div class="game-badge" style="background: linear-gradient(90deg, #7f8c8d, #95a5a6);">${badgeText}</div>`;
+  } else if (game.badge) {
+      // Badge bình thường (ví dụ: HOT, NEW)
+      badgeHtml = `<div class="game-badge">${game.badge}</div>`;
+  }
+
   return `
     <div class="game-card" onclick="handleGameClick('${game.id}', '${name.replace(/'/g, "\\'")}')">
-      ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
-      <img src="game/${game.id}/Img/logo.png" alt="${name}" />
+      ${badgeHtml}
+      <img src="game/${game.id}/Img/logo.png" alt="${name}" onerror="this.src='img/fav.svg'" />
       <div class="game-title">${name}</div>
       <div class="game-category">${category}</div>
       <div class="game-desc">${desc}</div>
@@ -381,18 +393,30 @@ function updateLangUI() {
   if (!LANGS || !LANGS[currentLang]) return;
   const langData = LANGS[currentLang];
   
+  // Dịch text nội dung (innerHTML/innerText)
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (langData[key]) {
-      if (el.tagName === 'A' && el.querySelector('.icon')) {
-        const icon = el.querySelector('.icon');
-        el.innerHTML = icon.outerHTML + ' ' + langData[key];
+      // Nếu có icon bên trong, giữ lại icon
+      const icon = el.querySelector('.icon') || el.querySelector('.eye-icon');
+      if (icon) {
+         // Nếu là cấu trúc <icon> Text
+         // Ta chỉ thay text node
+         // Cách an toàn nhất cho nút toggle password:
+         const textSpan = el.querySelector('.text');
+         if(textSpan) {
+             textSpan.innerText = langData[key];
+         } else {
+             // Fallback cho menu sidebar
+             el.innerHTML = icon.outerHTML + ' ' + langData[key];
+         }
       } else {
         el.innerText = langData[key];
       }
     }
   });
 
+  // Dịch placeholder
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     const key = el.getAttribute('data-i18n-placeholder');
     if (langData[key]) el.placeholder = langData[key];
@@ -441,7 +465,6 @@ function getGameCategory(game, lang = currentLang) {
 // --- 4. Gắn sự kiện DOM ---
 
 document.addEventListener('DOMContentLoaded', function() {
-    
     window.addEventListener('scroll', function() {
         const btn = document.getElementById('backToTopBtn');
         if(!btn) return;
@@ -469,9 +492,11 @@ document.addEventListener('DOMContentLoaded', function() {
             loginPwdInput.type = isHidden ? 'text' : 'password';
             
             const icon = isHidden ? '🙈' : '👁';
-            const text = isHidden ? ' Ẩn mật khẩu' : ' Hiện mật khẩu';
+            // Lấy text từ LANGS hoặc fallback
+            const textKey = isHidden ? 'hide_pass' : 'show_pass';
+            const textVal = (LANGS[currentLang] && LANGS[currentLang][textKey]) || (isHidden ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
             
-            this.innerHTML = `<span class="eye-icon">${icon}</span>${text}`;
+            this.innerHTML = `<span class="eye-icon">${icon}</span> <span class="text" data-i18n="${textKey}">${textVal}</span>`;
         };
     }
 
@@ -487,9 +512,11 @@ document.addEventListener('DOMContentLoaded', function() {
             pw2.type = isHidden ? 'text' : 'password';
             
             const icon = isHidden ? '🙈' : '👁️';
-            const text = isHidden ? ' Ẩn mật khẩu' : ' Hiện mật khẩu';
+             // Lấy text từ LANGS hoặc fallback
+            const textKey = isHidden ? 'hide_pass' : 'show_pass';
+            const textVal = (LANGS[currentLang] && LANGS[currentLang][textKey]) || (isHidden ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
             
-            this.innerHTML = `<span class="eye-icon">${icon}</span>${text}`;
+            this.innerHTML = `<span class="eye-icon">${icon}</span> <span class="text" data-i18n="${textKey}">${textVal}</span>`;
         };
     }
     

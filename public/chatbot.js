@@ -1,7 +1,7 @@
-// public/chatbot.js (FINAL: Personalization + Context)
+// public/chatbot.js (FINAL: Smart Suggestions + Personalized)
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Tạo HTML cho Chatbot
+    // 1. Render HTML
     const chatbotContainer = document.createElement("div");
     chatbotContainer.id = "chatbot-container";
     chatbotContainer.innerHTML = `
@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div id="chatbot-window" class="hidden">
             <div id="chatbot-header">
                 <div class="header-info">
-                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Assistant" alt="Bot Avatar">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Assistant" alt="Bot">
                     <span id="chat-title-text">Trợ lý AI</span>
                 </div>
                 <button id="chatbot-close">&times;</button>
@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
     document.body.appendChild(chatbotContainer);
 
-    // 2. Các biến DOM
+    // 2. DOM Elements
     const chatIcon = document.getElementById("chatbot-icon");
     const chatWindow = document.getElementById("chatbot-window");
     const closeBtn = document.getElementById("chatbot-close");
@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const API_BASE_URL = window.BASE_API || 'https://datn-socket.up.railway.app';
 
-    // 3. Xác định ngữ cảnh
+    // 3. Context & Auth Helpers
     function getChatbotContext() {
         const pathname = window.location.pathname;
         if (pathname.endsWith('/room.html') || pathname.includes('/game/')) {
@@ -48,24 +48,35 @@ document.addEventListener("DOMContentLoaded", () => {
         return { page: 'index', gameId: 'all' };
     }
 
-    // 4. Xử lý Đa ngôn ngữ
-    let LANGS = {};
-    const currentLang = localStorage.getItem('lang') || 'vi';
+    function getUserInfo() {
+        try {
+            return JSON.parse(localStorage.getItem('user') || '{}');
+        } catch { return {}; }
+    }
 
+    function isRealUser() {
+        const user = getUserInfo();
+        // Đã đăng nhập nếu có username và không phải là khách (guest_)
+        return user.username && !user.isGuest && !user.username.startsWith('guest_');
+    }
+
+    function getUserDisplayName() {
+        const user = getUserInfo();
+        return user.displayName || user.username || 'Bạn';
+    }
+
+    // 4. Multi-language
+    let LANGS = {};
+    
     async function loadChatLanguage() {
         try {
             const res = await fetch('/lang.json');
             LANGS = await res.json();
-            applyLanguage();
-        } catch (e) {
-            console.error("Chatbot: Không tải được ngôn ngữ", e);
-        }
+        } catch (e) { console.error("Lang error", e); }
     }
-
-    function getCurrentLang() {
-        return localStorage.getItem('lang') || 'vi';
-    }
-
+    
+    function getCurrentLang() { return localStorage.getItem('lang') || 'vi'; }
+    
     function t(key, defaultText) {
         const lang = getCurrentLang();
         return LANGS[lang]?.[key] || defaultText || key;
@@ -78,31 +89,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     loadChatLanguage(); 
 
-    // 5. Xử lý Avatar DiceBear
+    // 5. Avatar
     function getAvatarUrl(type, username) {
-        if (type === 'bot') {
-            return `https://api.dicebear.com/7.x/bottts/svg?seed=Assistant`; 
-        }
+        if (type === 'bot') return `https://api.dicebear.com/7.x/bottts/svg?seed=Assistant`; 
         const safeName = username || 'guest';
         return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(safeName)}`;
     }
 
-    function getUserName() {
-        try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            return user.username || 'guest'; // Trả về username thực tế
-        } catch { return 'guest'; }
-    }
-    
-    // Hàm lấy Display Name (để hiển thị đẹp hơn nếu có)
-    function getUserDisplayName() {
-        try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            return user.displayName || user.username || 'Bạn';
-        } catch { return 'Bạn'; }
-    }
-
-    // 6. Logic Gợi ý (Suggestions)
+    // 6. --- LOGIC GỢI Ý (SUGGESTIONS) ---
     function addSuggestionButtons() {
         const oldSuggestions = document.getElementById('chat-suggestions');
         if (oldSuggestions) oldSuggestions.remove();
@@ -113,28 +107,39 @@ document.addEventListener("DOMContentLoaded", () => {
         suggestionsEl.className = 'chat-suggestions';
         
         const lang = getCurrentLang();
-        
-        if (context.page === 'room') {
-            const btn1Text = lang === 'vi' ? 'Mô tả game này' : 'Describe this game';
-            const btn2Text = lang === 'vi' ? 'Luật chơi thế nào?' : 'How to play?';
-            
-            suggestionsEl.innerHTML = `
-                <button class="suggestion-btn" data-question="${btn1Text}">${btn1Text} <i class="fas fa-info-circle"></i></button>
-                <button class="suggestion-btn" data-question="${btn2Text}">${btn2Text} <i class="fas fa-book"></i></button>
-            `;
-        } else {
-            const btn1Text = lang === 'vi' ? 'Giới thiệu các game' : 'Introduce games';
-            const btn2Text = lang === 'vi' ? 'Đăng nhập / Đăng ký' : 'Login / Register';
+        let buttonsHTML = '';
 
-            suggestionsEl.innerHTML = `
-                <button class="suggestion-btn" data-question="${btn1Text}">${btn1Text} <i class="fas fa-gamepad"></i></button>
-                <button class="suggestion-btn" data-action="login">${btn2Text} <i class="fas fa-user-circle"></i></button>
-            `;
+        if (context.page === 'room') {
+            // --- TRONG PHÒNG GAME (2 Gợi ý) ---
+            const btn1 = lang === 'vi' ? 'Mô tả game này' : 'Describe this game';
+            const btn2 = lang === 'vi' ? 'Luật chơi thế nào?' : 'How to play?';
+            
+            buttonsHTML += `<button class="suggestion-btn" data-question="${btn1}">${btn1} <i class="fas fa-info-circle"></i></button>`;
+            buttonsHTML += `<button class="suggestion-btn" data-question="${btn2}">${btn2} <i class="fas fa-book"></i></button>`;
+        
+        } else {
+            // --- TRANG CHỦ (Homepage) ---
+            
+            // 1. Gợi ý chung: Danh sách game
+            const btnList = lang === 'vi' ? 'Bạn có những game gì?' : 'List available games';
+            buttonsHTML += `<button class="suggestion-btn" data-question="${btnList}">${btnList} <i class="fas fa-list"></i></button>`;
+
+            // 2. Gợi ý chung: Tìm game (Thay thế cho Logic cũ)
+            const btnFind = lang === 'vi' ? 'Tìm game theo yêu cầu' : 'Find game by requirement';
+            buttonsHTML += `<button class="suggestion-btn" data-question="${btnFind}">${btnFind} <i class="fas fa-search"></i></button>`;
+
+            // 3. Gợi ý Auth (Chỉ hiện khi CHƯA ĐĂNG NHẬP)
+            if (!isRealUser()) {
+                const btnLogin = lang === 'vi' ? 'Đăng nhập / Đăng ký' : 'Login / Register';
+                buttonsHTML += `<button class="suggestion-btn" data-action="login">${btnLogin} <i class="fas fa-user-circle"></i></button>`;
+            }
         }
         
+        suggestionsEl.innerHTML = buttonsHTML;
         messagesArea.appendChild(suggestionsEl);
         messagesArea.scrollTop = messagesArea.scrollHeight;
 
+        // Gắn sự kiện click
         suggestionsEl.querySelectorAll('.suggestion-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const question = btn.getAttribute('data-question');
@@ -147,8 +152,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         openAuthModal('login');
                         chatWindow.classList.add('hidden'); 
                         chatIcon.classList.remove("hidden");
-                    } else {
-                        alert('Chức năng này chưa sẵn sàng ở đây.');
                     }
                     removeSuggestionButtons();
                 }
@@ -168,14 +171,18 @@ document.addEventListener("DOMContentLoaded", () => {
         chatIcon.classList.add("hidden");
         inputField.focus();
 
+        // Nếu chưa có tin nhắn, hiện chào mừng và gợi ý
         if (messagesArea.querySelectorAll('.message').length === 0) {
             const displayName = getUserDisplayName();
-            // Cá nhân hóa lời chào ở client
+            const lang = getCurrentLang();
+            
             const welcomeText = lang === 'vi' 
-                ? `Xin chào ${displayName}! Tôi là AI. Tôi có thể giúp gì cho bạn hôm nay?`
-                : `Hello ${displayName}! I am AI. How can I help you today?`;
+                ? `Xin chào ${displayName}! Tôi là AI hỗ trợ. Tôi có thể giúp gì cho bạn?`
+                : `Hello ${displayName}! I am AI Assistant. How can I help you?`;
             
             addMessage('bot', welcomeText);
+            
+            // Thêm gợi ý sau 0.5s
             setTimeout(addSuggestionButtons, 500); 
         }
     });
@@ -191,7 +198,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const msgDiv = document.createElement("div");
         msgDiv.classList.add("message", sender);
         
-        const avatarUrl = getAvatarUrl(sender, getUserName());
+        const uName = getUserInfo().username || 'guest';
+        const avatarUrl = getAvatarUrl(sender, uName);
         
         msgDiv.innerHTML = `
             <img src="${avatarUrl}" class="chat-avatar" alt="${sender}">
@@ -200,7 +208,6 @@ document.addEventListener("DOMContentLoaded", () => {
         
         messagesArea.appendChild(msgDiv);
         messagesArea.scrollTop = messagesArea.scrollHeight;
-        return msgDiv;
     }
 
     async function handleChat(manualText = null) {
@@ -213,13 +220,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const loadingDiv = document.createElement("div");
         loadingDiv.className = "message bot loading";
-        loadingDiv.innerHTML = `<img src="${getAvatarUrl('bot')}" class="chat-avatar"><div class="bubble">...</div>`;
+        loadingDiv.innerHTML = `<img src="${getAvatarUrl('bot')}" class="chat-avatar"><div class="bubble"><i class="fas fa-ellipsis-h"></i></div>`;
         messagesArea.appendChild(loadingDiv);
         messagesArea.scrollTop = messagesArea.scrollHeight;
 
         try {
             const context = getChatbotContext();
-            const username = getUserName(); // Lấy username để gửi lên
+            const username = getUserInfo().username || 'guest';
 
             const response = await fetch(`${API_BASE_URL}/api/ai/ask`, { 
                 method: "POST",
@@ -227,7 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({ 
                     question: text,
                     gameId: context.gameId,
-                    username: username // <-- GỬI USERNAME ĐỂ CÁ NHÂN HÓA
+                    username: username
                 })
             });
 
