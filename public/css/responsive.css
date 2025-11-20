@@ -1,6 +1,6 @@
-/* public/css/responsive.css (ĐÃ SỬA: Ẩn nav, căn giữa 65vw) */
+/* public/css/responsive.css (ĐÃ SỬA: Tăng margin-bottom cho section title) */
 
-/* * ========================================
+/* ========================================
  * Breakpoint: Tablet
  * (Từ 700px trở lên)
  * ========================================
@@ -115,7 +115,8 @@
   .section-title-row {
     flex-direction: row; 
     align-items: center;
-    margin: 28px 0 12px 0;
+    /* SỬA: Tăng margin-bottom lên 28px */
+    margin: 28px 0 28px 0; 
   }
   .section-title {
     font-size: 1.18rem;
@@ -168,92 +169,4 @@
   #auth-modal .auth-modal-content {
     min-width: 320px;
   }
-}
-
-
-/* * ========================================
- * Breakpoint: Game Layouts
- * (Dưới 992px)
- * ========================================
- */
-@media (max-width: 992px) {
-  /* ... (Phần này giữ nguyên) ... */
-  /* Game ToD */
-  .game-header { padding: 0.5rem; }
-  .back-btn {
-    top: 1rem;
-    left: 1rem;
-    padding: 0.4rem 0.8rem;
-    font-size: 0.9rem;
-  }
-  .back-btn span { display: none; }
-  .game-title { font-size: 2.5rem; }
-
-  .playground-container {
-      width: 95%;
-      padding: 1rem;
-      margin-top: 0.5rem;
-  }
-  .game-container {
-      flex-direction: column;
-      padding: 0;
-      gap: 1.5rem;
-  }
-  .player-camp {
-      flex: none;
-      height: auto;
-      min-height: auto;
-      max-width: 100%;
-  }
-  .player-grid {
-      max-height: none;
-      grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-      gap: 1rem;
-  }
-  .game-controls {
-      flex: none;
-      width: 100%;
-      max-width: 500px;
-      padding: 1rem;
-      box-sizing: border-box;
-  }
-}
-
-/* * ========================================
- * Breakpoint: Mobile (Tinh chỉnh Game)
- * (Dưới 600px)
- * ========================================
- */
-@media (max-width: 600px) {
-  /* ... (Phần này giữ nguyên) ... */
-  /* Game Draw */
-  .game-main { gap: 10px; }
-  .canvas-section, .game-info-box, .chat-section { padding: 10px; }
-  #scoreGrid { max-height: 25vh; }
-  
-  /* Game ToD */
-  .player-grid {
-      grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-      gap: 0.8rem;
-  }
-  .player .pic {
-      width: 50px;
-      height: 50px;
-  }
-  .player .name { font-size: 0.7em; max-width: 80px; }
-  .campfire { width: 100px; height: 100px; bottom: -30px; }
-  .game-controls .action-buttons {
-      flex-direction: column;
-      gap: 0.8rem;
-  }
-  .game-controls .btn {
-      width: 100%;
-      max-width: 250px;
-      margin: 0 auto;
-  }
-  
-  /* Room CSS */
-  .container h2 { font-size: 1.5rem; }
-  ul#playerList li { font-size: 0.95rem; }
-  .container button { width: 100%; }
 }

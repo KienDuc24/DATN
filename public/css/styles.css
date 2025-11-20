@@ -89,12 +89,12 @@ body::after, body::before {
   justify-content: flex-start; 
   max-width: 100%;
   align-items: stretch;
-  scrollbar-width: none;           
+  scrollbar-width: none;            
   -ms-overflow-style: none;        
   scroll-behavior: smooth;
 }
 .games-slider-scroll::-webkit-scrollbar {
-  display: none;                   
+  display: none;                    
 }
 
 /* Lưới cho Category */
