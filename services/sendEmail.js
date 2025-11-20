@@ -1,4 +1,4 @@
-// services/sendEmail.js (Cập nhật sử dụng biến GMAIL_XXX)
+// services/sendEmail.js (Đã cập nhật để FIX LỖI TIMEOUT bằng PORT 587)
 
 const nodemailer = require('nodemailer');
 
@@ -10,23 +10,25 @@ const sendEmail = async (options) => {
                          process.env.GMAIL_REFRESH_TOKEN;
 
   if (!requiredConfig) {
-      console.error('CẢNH BÁO: Gửi Email bị BỎ QUA. Thiếu cấu hình GMAIL_CLIENT_ID/SECRET/REFRESH_TOKEN.');
-      // Ném lỗi để hàm forgotPassword bắt và không lưu token
+      console.error('CẢNH BÁO: Gửi Email bị BỎ QUA vì thiếu cấu hình GMAIL_CLIENT_ID/SECRET/REFRESH_TOKEN.');
+      // Ném lỗi lên để userController bắt
       throw new Error('Lỗi Gửi Email: Thiếu cấu hình GMAIL_CLIENT_ID/SECRET/REFRESH_TOKEN.');
   }
 
-  // 2. Sử dụng cấu hình OAuth2 với biến mới
+  // 2. Cấu hình OAuth2 TƯỜNG MINH với PORT 587 (Khắc phục ETIMEDOUT)
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com', // Cố định host
+    port: 587, // FIX: Sử dụng port 587 (STARTTLS)
+    secure: false, // FIX: Phải là false cho port 587
     auth: {
       type: 'OAuth2',
       user: process.env.EMAIL_USER,
-      // SỬ DỤNG BIẾN MỚI CHO MAIL
       clientId: process.env.GMAIL_CLIENT_ID,
       clientSecret: process.env.GMAIL_CLIENT_SECRET,
       refreshToken: process.env.GMAIL_REFRESH_TOKEN,
     },
     tls: {
+        // Tắt kiểm tra ủy quyền (Nếu không, có thể gây lỗi SSL)
         rejectUnauthorized: false
     }
   });
@@ -46,7 +48,7 @@ const sendEmail = async (options) => {
     // 4. Log lỗi chi tiết
     console.error(`[Email Service] GỬI MAIL THẤT BẠI TỚI ${options.email}:`, error);
     // Ném lỗi lên cấp trên
-    throw new Error(`Lỗi Gửi Email: Vui lòng kiểm tra lại GMAIL_REFRESH_TOKEN.`);
+    throw new Error('Lỗi Gửi Email: Kết nối thất bại. Kiểm tra lại cấu hình và kết nối mạng.');
   }
 };
 
