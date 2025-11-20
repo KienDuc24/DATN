@@ -2,32 +2,31 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     // --- 1. KHAI BÁO CÁC ĐƯỜNG DẪN BIỂU CẢM CỦA CATMI ---
-    // NOTE: Các key này phải khớp với logic mapping ở hàm mapTagToKey VÀ tên file bạn lưu trong public/assets/avatar/
-const CAMI_AVATAR_STATIC = "/assets/welcome.png"; 
+    const CAMI_AVATAR_STATIC = "/assets/welcome.gif"; // Ảnh đại diện tĩnh của Catmi (có thể đổi thành ảnh khác)
 
     const CATMI_EXPRESSIONS = {
         // [QUAN TRỌNG] Các key này phải khớp với logic mapping ở hàm mapTagToKey
-        default: "/assets/welcome.png",    // Biểu cảm mặc định (có thể dùng cute nếu muốn)
-        amazed: "/assets/amazed.png",     // [Ngạc nhiên / Bất ngờ]
-        angry: "/assets/angry.png",       // [Tức giận / Cáu kỉnh dữ dội]
-        annoyed: "/assets/annoyed.png",     // [Bực mình / Gặp lỗi]
-        bye: "/assets/bye.png",           // [Tạm biệt / Ngủ]
-        confused: "/assets/confused.png",   // [Hoài nghi / Không chắc chắn]
-        cute: "/assets/cute.png",         // [Chào mừng / Vui vẻ tổng quát] - có thể dùng cho default
-        focus: "/assets/focus.png",       // [Tập trung cao độ]
-        guild: "/assets/guild.png",       // [Chỉ dẫn / Hướng dẫn]
-        happy: "/assets/happy.png",       // [Tìm thấy kết quả / Thành công]
-        mad: "/assets/mad.png",           // (Khác của tức giận)
-        question: "/assets/question.png", // Dùng lại confused nếu không có ảnh riêng cho "question"
-        sad: "/assets/sad.png",           // [Buồn bã / Đồng cảm]
-        sorry: "/assets/sorry.png",       // (Có thể dùng cho lỗi hoặc đồng cảm)
-        searching: "/assets/searching.png", // [Đang tìm kiếm] (Nếu là GIF)
-        success: "/assets/success.png",     // [Vỗ tay / Khuyến khích] - hoặc happy
-        teasing: "/assets/teasing.png",     // [Đùa vui / Trêu chọc nhẹ]
-        sassy: "/assets/sassy.png",   // [Đang suy nghĩ / Xử lý dữ liệu] (Nếu là GIF)
-        tired: "/assets/tired.png",         // [Mệt mỏi / Pin yếu]
-        welcome: "/assets/welcome.png",     // (Dùng cho chào mừng)
-        yessir: "/assets/yessir.png"            // (Dùng cho đã hiểu rõ)
+        default: "/assets/welcome.gif",    // Biểu cảm mặc định (có thể dùng cute nếu muốn)
+        amazed: "/assets/amazed.gif",     // [Ngạc nhiên / Bất ngờ]
+        angry: "/assets/angry.gif",       // [Tức giận / Cáu kỉnh dữ dội]
+        annoyed: "/assets/annoyed.gif",     // [Bực mình / Gặp lỗi]
+        bye: "/assets/bye.gif",           // [Tạm biệt / Ngủ]
+        confused: "/assets/confused.gif",   // [Hoài nghi / Không chắc chắn]
+        cute: "/assets/cute.gif",         // [Chào mừng / Vui vẻ tổng quát] - có thể dùng cho default
+        focus: "/assets/focus.gif",       // [Tập trung cao độ]
+        guild: "/assets/guild.gif",       // [Chỉ dẫn / Hướng dẫn]
+        happy: "/assets/happy.gif",       // [Tìm thấy kết quả / Thành công]
+        mad: "/assets/mad.gif",           // (Khác của tức giận)
+        question: "/assets/question.gif", // Dùng lại confused nếu không có ảnh riêng cho "question"
+        sad: "/assets/sad.gif",           // [Buồn bã / Đồng cảm]
+        sassy: "/assets/sassy.gif",       // (Có thể dùng cho lỗi hoặc đồng cảm)
+        searching: "/assets/searching.gif", // [Đang tìm kiếm] (Nếu là GIF)
+        success: "/assets/success.gif",     // [Vỗ tay / Khuyến khích] - hoặc happy
+        teasing: "/assets/teasing.gif",     // [Đùa vui / Trêu chọc nhẹ]
+        thinking: "/assets/thinking.gif",   // [Đang suy nghĩ / Xử lý dữ liệu] (Nếu là GIF)
+        tired: "/assets/tired.gif",         // [Mệt mỏi / Pin yếu]
+        welcome: "/assets/welcome.gif",     // (Dùng cho chào mừng)
+        yessir: "/assets/yessir.gif"            // (Dùng cho đã hiểu rõ)
     };
     // ----------------------------------------------------
 
@@ -41,7 +40,7 @@ const CAMI_AVATAR_STATIC = "/assets/welcome.png";
         <div id="chatbot-window" class="hidden">
             <div id="chatbot-header">
                 <div class="header-info">
-                    <img src="${CAMI_AVATAR_STATIC}" alt="Bot Avatar">
+                    <img src="${CAMI_AVATAR_STATIC}" alt="Bot Avatar" class="chat-avatar large-avatar header-avatar">
                     <span id="chat-title-text">Trợ lý AI</span>
                 </div>
                 <div class="header-actions" style="display:flex;gap:10px;align-items:center;">
@@ -58,10 +57,9 @@ const CAMI_AVATAR_STATIC = "/assets/welcome.png";
             </div>
         </div>
     `;
-    // Thêm container vào body trước khi truy cập các phần tử con
     document.body.appendChild(chatbotContainer);
 
-    // 3. DOM Elements & Constants (Bây giờ đã có thể truy cập an toàn)
+    // 3. DOM Elements & Constants
     const chatIcon = document.getElementById("chatbot-icon");
     const chatWindow = document.getElementById("chatbot-window");
     const closeBtn = document.getElementById("chatbot-close");
@@ -70,17 +68,17 @@ const CAMI_AVATAR_STATIC = "/assets/welcome.png";
     const inputField = document.getElementById("chatbot-input");
     const messagesArea = document.getElementById("chatbot-messages");
     const titleText = document.getElementById("chat-title-text");
+    const headerAvatar = document.querySelector('#chatbot-header .header-info img'); // Lấy avatar trong header
     const API_BASE_URL = window.BASE_API || 'https://datn-socket.up.railway.app';
 
-    // --- CĂN CHỈNH VỊ TRÍ BOT SANG GÓC DƯỚI BÊN PHẢI VÀ TÍNH CHIỀU CAO (Di chuyển xuống đây) ---
-    // chatWindow đã được định nghĩa ở trên, nên giờ có thể truy cập
-    chatWindow.style.transformOrigin = 'bottom right';
-    chatWindow.style.height = '66vh'; // Chiều cao 2/3 màn hình
-    chatWindow.style.maxWidth = '380px';
+    // --- CĂN CHỈNH VỊ TRÍ BOT SANG GÓC DƯỚI BÊN PHẢI VÀ TÍNH CHIỀU CAO ---
     chatbotContainer.style.position = 'fixed';
     chatbotContainer.style.bottom = '20px';
     chatbotContainer.style.right = '20px'; 
     chatbotContainer.style.left = 'auto'; 
+    chatWindow.style.transformOrigin = 'bottom right';
+    chatWindow.style.height = '66vh'; 
+    chatWindow.style.maxWidth = '380px';
     // ------------------------------------------------------------------
 
     // 4. Context & Auth Helpers (Giữ nguyên)
@@ -99,17 +97,16 @@ const CAMI_AVATAR_STATIC = "/assets/welcome.png";
         titleText.innerText = t('chat_title', 'Catmi - Nàng Trợ Lý Chảnh Chọe');
         inputField.placeholder = t('chat_placeholder', 'Hỏi Catmi...');
         resetBtn.title = getCurrentLang() === 'vi' ? 'Xóa lịch sử' : 'Clear history';
-        // Cập nhật avatar trên header khi ngôn ngữ được tải (nếu có logic đặc biệt)
-        document.querySelector('#chatbot-header .header-info img').src = CAMI_AVATAR_STATIC; 
+        headerAvatar.src = CAMI_AVATAR_STATIC; // Đảm bảo avatar header luôn đúng
     }
-    loadChatLanguage().then(applyLanguage); // Đảm bảo ngôn ngữ được tải trước khi áp dụng
+    loadChatLanguage().then(applyLanguage); 
 
     // 6. MAPPING CẢM XÚC (FIXED)
     function mapTagToKey(tag) {
         const tagLower = tag.toLowerCase().replace(/[\s\/\\]/g, ''); 
         
         // Ánh xạ các tag AI dài hơn hoặc có nhiều từ
-       if (tagLower.includes('welcome') || tagLower.includes('start')) return 'welcome';
+        if (tagLower.includes('welcome') || tagLower.includes('start')) return 'welcome';
         if (tagLower.includes('thinking') || tagLower.includes('processing')) return 'searching';
         if (tagLower.includes('sassy')) return 'sassy';
         if (tagLower.includes('annoyed') || tagLower.includes('error')) return 'annoyed'; 
@@ -125,8 +122,8 @@ const CAMI_AVATAR_STATIC = "/assets/welcome.png";
         if (tagLower.includes('happy') || tagLower.includes('content')) return 'happy';
         if (tagLower.includes('sad') || tagLower.includes('empathetic')) return 'sad';
         if (tagLower.includes('deepfocus')) return 'focus';
+        if (tagLower.includes('mad')) return 'mad';
         if (tagLower.includes('angry') || tagLower.includes('furious')) return 'angry';
-        // Các tag bạn thêm vào
         if (tagLower.includes('praise')) return 'cute'; // Giữ nguyên khen ngợi nếu bạn muốn Catmi có biểu cảm này
         if (tagLower.includes('question') || tagLower.includes('doubt')) return 'question'; // Dùng 'question'
         
@@ -252,16 +249,11 @@ const CAMI_AVATAR_STATIC = "/assets/welcome.png";
 
         const hasHistory = loadHistory();
         
-        if (!hasHistory && messagesArea.querySelectorAll('.message').length === 0) {
+        if (!hasHistory || messagesArea.querySelectorAll('.message').length === 0) {
             initWelcome();
         } else {
-            // Chỉ thêm suggestion nếu không có tin nhắn chào mừng (tức là chat đang trống sau khi load lịch sử hoặc lần đầu mở)
-            if (!messagesArea.querySelector('.message.bot')) { 
-                 initWelcome();
-            } else {
-                 setTimeout(addSuggestionButtons, 200);
-            }
-           
+            // Đảm bảo suggestion buttons xuất hiện lại khi mở chat nếu có lịch sử
+            setTimeout(addSuggestionButtons, 200);
         }
     });
 
@@ -280,36 +272,47 @@ const CAMI_AVATAR_STATIC = "/assets/welcome.png";
         const uName = getUserName();
         const avatarUrl = getAvatarUrl(sender, uName, expressionKey); 
         
-        let emotionName = '';
+        // --- LOGIC HIỂN THỊ CẢM XÚC ĐỘNG TỪ AI ---
+        let emotionNotification = '';
+        const aiEmotionPrefixMap = {
+            'amazed': 'Catmi thật bất ngờ!',
+            'angry': 'Catmi đang cáu giận!',
+            'anoyed': 'Catmi hơi bực mình...',
+            'bye': 'Catmi tạm biệt bạn.',
+            'confused': 'Catmi đang hoài nghi...',
+            'cute': 'Catmi thấy đáng yêu quá!',
+            'focus': 'Catmi đang tập trung cao độ.',
+            'guild': 'Catmi sẽ chỉ dẫn bạn.',
+            'happy': 'Catmi đang thấy hạnh phúc!',
+            'mad': 'Catmi đang rất tức giận!',
+            'question': 'Catmi có chút nghi ngờ...',
+            'sad': 'Catmi cảm thấy buồn bã.',
+            'sassy': 'Catmi đang chảnh chọe đây!',
+            'searching': 'Catmi đang tìm kiếm...',
+            'success': 'Catmi thấy tuyệt vời!',
+            'teasing': 'Catmi đang trêu chọc bạn.',
+            'thinking': 'Catmi đang băn khoăn...',
+            'tired': 'Catmi cảm thấy mệt mỏi.',
+            'welcome': 'Catmi chào mừng bạn!',
+            'yessir': 'Catmi đã hiểu rõ!',
+            
+            'default': 'Catmi sẵn sàng phục vụ.',
+        };
+
         if (sender === 'bot') {
             const key = expressionKey || 'default';
-            const lang = getCurrentLang();
+            emotionNotification = `<div class="emotion-notification">${aiEmotionPrefixMap[key] || ''}</div>`;
             
-            // Lấy tên cảm xúc tiếng Việt/Anh để hiển thị
-            const emotionMap = {
-                'thinking': 'Đang băn khoăn...', 'annoyed': 'Bực mình...', 'happy': 'Vui vẻ!', 
-                'default': 'Sẵn sàng...', 'bye': 'Ngủ gật...', 'focus': 'Tập trung...', 
-                'sad': 'Buồn...', 'confused': 'Hoài nghi...', 'guild': 'Chỉ dẫn...', 
-                'angry': 'Cáu!', 'teasing': 'Trêu chọc...', 'welcome': 'Chào mừng!', 
-                'cute': 'Đáng yêu!', 'amazed': 'Bất ngờ!', 'success': 'Tuyệt vời!'
-            };
-            
-            emotionName = emotionMap[key] || `(${key.charAt(0).toUpperCase() + key.slice(1)})`;
-            if (lang === 'en') {
-                // Sửa thành tiếng Anh nếu cần thiết (có thể dùng key .toUpperCase() thôi)
-                emotionName = key.charAt(0).toUpperCase() + key.slice(1) + '...';
-            }
-            
-            // Cấu trúc tin nhắn BOT (Avatar lớn + Tên cảm xúc + Bong bóng)
+            // Cấu trúc tin nhắn BOT (Avatar lớn + Thông báo cảm xúc + Bong bóng)
              msgDiv.innerHTML = `
-                 <div class="bot-status-container">
+                 <div class="bot-info-container">
                     <img src="${avatarUrl}" class="chat-avatar large-avatar" alt="Catmi">
-                    <div class="emotion-text">${emotionName}</div>
+                    ${emotionNotification}
                  </div>
                  <div class="bubble">${text}</div>
             `;
         } else {
-            // Cấu trúc tin nhắn USER (Avatar nhỏ + Bong bóng)
+            // Cấu trúc tin nhắn USER (Bong bóng + Avatar nhỏ bên phải)
              msgDiv.innerHTML = `
                  <div class="bubble">${text}</div>
                  <img src="${avatarUrl}" class="chat-avatar" alt="${sender}">
@@ -336,13 +339,14 @@ const CAMI_AVATAR_STATIC = "/assets/welcome.png";
         const loadingDiv = document.createElement("div");
         loadingDiv.className = "message bot loading";
         
-        // SỬ DỤNG BIỂU CẢM 'thinking' cho loading
         const thinkingExpression = CATMI_EXPRESSIONS.thinking ? 'thinking' : 'default';
         const loadingMsg = t('chat_loading_thinking', 'Catmi đang băn khoăn...');
+
+        // Thêm thông báo "Catmi đang băn khoăn..." vào loading message
         loadingDiv.innerHTML = `
-             <div class="bot-status-container">
+             <div class="bot-info-container">
                 <img src="${getAvatarUrl('bot', '', thinkingExpression)}" class="chat-avatar large-avatar" alt="Thinking">
-                <div class="emotion-text">${loadingMsg}</div>
+                <div class="emotion-notification">${loadingMsg}</div>
              </div>
              <div class="bubble">...</div>
         `;
