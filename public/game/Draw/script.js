@@ -419,11 +419,7 @@
         content += '<div id="popup-actions" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">';
         
         if (isFinal) {
-            if (currentHost === playerName) {
-                content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
-            } else {
-                content += `<p style="color:#bbb;font-style:italic;">Đang chờ chủ phòng...</p>`;
-            }
+            content += `<button id="popup-continue" class="btn btn-primary">Chơi Lại</button>`;
             content += `<button id="popup-exit" class="btn btn-danger">Thoát</button>`;
         } else {
             content += `<p>Vòng mới sau 5 giây...</p>`;
