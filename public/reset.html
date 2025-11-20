@@ -1,70 +1,133 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đặt lại mật khẩu</title>
-    <link rel="stylesheet" href="css/auth.css">
-    <link rel="stylesheet" href="css/styles.css">
-    <style>
-        body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #1a1a2e; color: white; margin: 0; font-family: 'Quicksand', sans-serif; }
-        .reset-box { background: #23272f; padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #181c23; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #ff9800; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #e68900; }
-        h2 { color: #ff9800; margin-top: 0; margin-bottom: 10px;}
-        
-        /* Thêm style cho phần hiển thị tài khoản */
-        .account-info {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 0.95rem;
-            color: #ccc;
-        }
-        .account-highlight {
-            color: #43cea2;
-            font-weight: bold;
-            display: block;
-            margin-top: 5px;
-            font-size: 1.1rem;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đặt lại mật khẩu</title>
+    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="css/styles.css">
+<style>
+ body { 
+    display: flex;
+    justify-content: center; 
+    align-items: center; height: 100vh; 
+    background: #1a1a2e; color: white;
+    margin: 0; font-family: 'Quicksand', sans-serif; 
+}
+.reset-box { 
+    background: #23272f; 
+    padding: 30px; 
+    border-radius: 16px; 
+    width: 90%; 
+    max-width: 400px; 
+    text-align: center; 
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5); 
+}
+input { 
+    width: 100%; 
+    padding: 12px; 
+    margin: 10px 0; 
+    border-radius: 8px; 
+    border: 1px solid #444; 
+    background: #181c23; 
+    color: white; 
+    box-sizing: border-box; 
+}
+button { 
+    width: 100%; 
+    padding: 12px; 
+    background: #ff9800; 
+    border: none; 
+    border-radius: 8px; 
+    color: white; 
+    font-weight: bold; 
+    cursor: pointer; 
+    margin-top: 10px; 
+}
+button:hover { 
+    background: #e68900; 
+}
+h2 { 
+    color: #ff9800; 
+    margin-top: 0; 
+    margin-bottom: 10px;
+}
+
+/* Thêm style cho phần hiển thị tài khoản */
+.account-info {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+    color: #ccc;
+}
+.account-highlight {
+    color: #43cea2;
+    font-weight: bold;
+    display: block;
+    margin-top: 5px;
+    font-size: 1.1rem;
+}
+/* Style cho nút toggle password */
+#togglePassBtn {
+    background: none !important;
+    color: #ff9800 !important;
+    border: none;
+    padding: 5px 0;
+    margin-top: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    width: auto;
+    display: block;
+    margin-left: auto;
+    text-align: right;
+    box-shadow: none !important;
+}
+    </style> 
 </head>
 <body>
-    <div class="reset-box">
-        <h2 id="titleText">Đặt lại mật khẩu</h2>
-        
-        <div id="accountDisplay" class="account-info" style="display:none;">
-            Đang đặt lại cho tài khoản:
-            <span id="accountName" class="account-highlight">...</span>
-        </div>
+    <div class="reset-box">
+        <h2 id="titleText">Đặt lại mật khẩu</h2>
+        
+        <div id="accountDisplay" class="account-info" style="display:none;">
+            Đang đặt lại cho tài khoản:
+            <span id="accountName" class="account-highlight">...</span>
+        </div>
 
-        <form id="resetForm" style="display:none;"> <input type="password" id="newPass" placeholder="Mật khẩu mới" required>
-            <input type="password" id="confirmPass" placeholder="Nhập lại mật khẩu" required>
-            <button type="submit" id="btnConfirm">Xác nhận</button>
-        </form>
-        
-        <p id="message" style="margin-top:15px; color:#ff9800; font-size: 0.9rem;">Đang kiểm tra liên kết...</p>
-    </div>
+        <form id="resetForm" style="display:none;"> 
+            <input type="password" id="newPass" placeholder="Mật khẩu mới" required>
+            <input type="password" id="confirmPass" placeholder="Nhập lại mật khẩu" required>
+            <button type="button" id="togglePassBtn">
+                👁 Hiện mật khẩu
+            </button>
+                        <button type="submit" id="btnConfirm">Xác nhận</button>
+        </form>
+        
+        <p id="message" style="margin-top:15px; color:#ff9800; font-size: 0.9rem;">Đang kiểm tra liên kết...</p>
+    </div>
 
-    <script>
-        const API_BASE_URL = 'https://datn-socket.up.railway.app'; 
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
+    <script>
+        const API_BASE_URL = 'https://datn-socket.up.railway.app'; 
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        
+        const msg = document.getElementById('message');
+        const form = document.getElementById('resetForm');
+        const accDisplay = document.getElementById('accountDisplay');
+        const accNameSpan = document.getElementById('accountName');
         
-        const msg = document.getElementById('message');
-        const form = document.getElementById('resetForm');
-        const accDisplay = document.getElementById('accountDisplay');
-        const accNameSpan = document.getElementById('accountName');
+        // Khai báo các input và nút toggle
+        const newPass = document.getElementById('newPass');
+        const confirmPass = document.getElementById('confirmPass');
+        const toggleBtn = document.getElementById('togglePassBtn');
 
-        // --- BƯỚC 1: GỌI API ĐỂ LẤY THÔNG TIN USER KHI VÀO TRANG ---
+        // --- BƯỚC 1: GỌI API ĐỂ LẤY THÔNG TIN USER KHI VÀO TRANG (ĐÃ FIX URL) ---
         if (!token) {
             msg.style.color = '#ff4757';
             msg.innerText = 'Liên kết không hợp lệ (thiếu token).';
         } else {
-            // DÒNG NÀY ĐÃ ĐƯỢC SỬA: reset-password thành reset-info
+            // ĐÃ SỬA: Gọi đúng endpoint GET /reset-info/:token
             fetch(`${API_BASE_URL}/api/auth/reset-info/${token}`) 
                 .then(res => res.json())
                 .then(data => {
@@ -86,44 +149,55 @@
                     msg.innerText = 'Không thể kết nối đến máy chủ.';
                 });
         }
+        
+        // --- LOGIC ẨN/HIỆN MẬT KHẨU (MỚI) ---
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                const isPassword = newPass.type === 'password';
+                newPass.type = isPassword ? 'text' : 'password';
+                confirmPass.type = isPassword ? 'text' : 'password';
+
+                toggleBtn.innerHTML = isPassword ? '🙈 Ẩn mật khẩu' : '👁 Hiện mật khẩu';
+            });
+        }
 
         // --- BƯỚC 2: XỬ LÝ ĐỔI MẬT KHẨU ---
         form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const p1 = document.getElementById('newPass').value;
-            const p2 = document.getElementById('confirmPass').value;
+            e.preventDefault();
+            const p1 = newPass.value; // Lấy giá trị từ biến đã khai báo
+            const p2 = confirmPass.value; // Lấy giá trị từ biến đã khai báo
 
-            if (p1 !== p2) {
-                msg.style.color = '#ff4757';
-                msg.innerText = 'Mật khẩu không khớp!';
-                return;
-            }
-            
-            msg.style.color = '#ff9800';
-            msg.innerText = 'Đang xử lý...';
+            if (p1 !== p2) {
+                msg.style.color = '#ff4757';
+                msg.innerText = 'Mật khẩu không khớp!';
+                return;
+            }
+            
+            msg.style.color = '#ff9800';
+            msg.innerText = 'Đang xử lý...';
 
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/auth/reset-password/${token}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: p1 })
-                });
-                const data = await res.json();
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/auth/reset-password/${token}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: p1 })
+                });
+                const data = await res.json();
 
-                if (res.ok) {
-                    msg.style.color = '#4caf50';
-                    msg.innerText = 'Thành công! Đang chuyển về trang chủ...';
-                    form.style.display = 'none'; // Ẩn form đi
-                    setTimeout(() => window.location.href = '/index.html', 2000);
-                } else {
-                    msg.style.color = '#ff4757';
-                    msg.innerText = data.message || 'Lỗi đặt lại mật khẩu.';
-                }
-            } catch (err) {
-                msg.style.color = '#ff4757';
-                msg.innerText = 'Lỗi kết nối server.';
-            }
-        });
-    </script>
+                if (res.ok) {
+                    msg.style.color = '#4caf50';
+                    msg.innerText = 'Thành công! Đang chuyển về trang chủ...';
+                    form.style.display = 'none'; // Ẩn form đi
+                    setTimeout(() => window.location.href = '/index.html', 2000);
+                } else {
+                    msg.style.color = '#ff4757';
+                    msg.innerText = data.message || 'Lỗi đặt lại mật khẩu.';
+                }
+            } catch (err) {
+                msg.style.color = '#ff4757';
+                msg.innerText = 'Lỗi kết nối server.';
+            }
+        });
+    </script>
 </body>
 </html>

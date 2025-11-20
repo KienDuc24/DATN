@@ -105,6 +105,22 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.on('admin-games-changed', () => { fetchGames(el('gamesSearch')?.value || ''); logActivity('Game list updated', 'info'); });
     }
 
+    const toggleAddPassBtn = el('toggleAddPassword');
+    const addPasswordInput = el('addPasswordInput');
+
+    if (toggleAddPassBtn && addPasswordInput) {
+        toggleAddPassBtn.addEventListener('click', () => {
+            const isPassword = addPasswordInput.type === 'password';
+            addPasswordInput.type = isPassword ? 'text' : 'password';
+            
+            // Cập nhật icon
+            const icon = toggleAddPassBtn.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('fa-eye', !isPassword);
+                icon.classList.toggle('fa-eye-slash', isPassword);
+            }
+        });
+    }
     // Event Delegation cho bảng (QUAN TRỌNG)
     setupTableDelegation();
     
