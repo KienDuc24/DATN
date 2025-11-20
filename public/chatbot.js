@@ -3,7 +3,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     // --- 1. KHAI BÁO CÁC ĐƯỜNG DẪN BIỂU CẢM CỦA CATMI ---
     // NOTE: Các key này phải khớp với logic mapping ở hàm mapTagToKey VÀ tên file bạn lưu trong public/assets/avatar/
-const CAMI_AVATAR_STATIC = "/assets/avatar.png"; 
+const CAMI_AVATAR_STATIC = "/assets/welcome.png"; 
 
     const CATMI_EXPRESSIONS = {
         // [QUAN TRỌNG] Các key này phải khớp với logic mapping ở hàm mapTagToKey
