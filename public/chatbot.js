@@ -3,7 +3,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     // --- 1. KHAI BÁO CÁC ĐƯỜNG DẪN BIỂU CẢM CỦA CATMI ---
     // NOTE: Các key này phải khớp với logic mapping ở hàm mapTagToKey VÀ tên file bạn lưu trong public/assets/avatar/
-    const CAMI_AVATAR_STATIC = "/assets/avatar/avatar.png"; 
+const CAMI_AVATAR_STATIC = "/assets/avatar.png"; 
 
     const CATMI_EXPRESSIONS = {
         // [QUAN TRỌNG] Các key này phải khớp với logic mapping ở hàm mapTagToKey
@@ -58,18 +58,10 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         </div>
     `;
-    // --- CĂN CHỈNH VỊ TRÍ BOT SANG GÓC DƯỚI BÊN PHẢI VÀ TÍNH CHIỀU CAO ---
-    chatbotContainer.style.position = 'fixed';
-    chatbotContainer.style.bottom = '20px';
-    chatbotContainer.style.right = '20px'; // Sang phải
-    chatbotContainer.style.left = 'auto'; 
-    chatWindow.style.transformOrigin = 'bottom right';
-    chatWindow.style.height = '66vh'; // Chiều cao 2/3 màn hình
-    chatWindow.style.maxWidth = '380px';
-    // ------------------------------------------------------------------
+    // Thêm container vào body trước khi truy cập các phần tử con
     document.body.appendChild(chatbotContainer);
 
-    // 3. DOM Elements & Constants
+    // 3. DOM Elements & Constants (Bây giờ đã có thể truy cập an toàn)
     const chatIcon = document.getElementById("chatbot-icon");
     const chatWindow = document.getElementById("chatbot-window");
     const closeBtn = document.getElementById("chatbot-close");
@@ -79,6 +71,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const messagesArea = document.getElementById("chatbot-messages");
     const titleText = document.getElementById("chat-title-text");
     const API_BASE_URL = window.BASE_API || 'https://datn-socket.up.railway.app';
+
+    // --- CĂN CHỈNH VỊ TRÍ BOT SANG GÓC DƯỚI BÊN PHẢI VÀ TÍNH CHIỀU CAO (Di chuyển xuống đây) ---
+    // chatWindow đã được định nghĩa ở trên, nên giờ có thể truy cập
+    chatWindow.style.transformOrigin = 'bottom right';
+    chatWindow.style.height = '66vh'; // Chiều cao 2/3 màn hình
+    chatWindow.style.maxWidth = '380px';
+    chatbotContainer.style.position = 'fixed';
+    chatbotContainer.style.bottom = '20px';
+    chatbotContainer.style.right = '20px'; 
+    chatbotContainer.style.left = 'auto'; 
+    // ------------------------------------------------------------------
 
     // 4. Context & Auth Helpers (Giữ nguyên)
     function getUserInfo() { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } }
@@ -96,14 +99,15 @@ document.addEventListener("DOMContentLoaded", () => {
         titleText.innerText = t('chat_title', 'Catmi - Nàng Trợ Lý Chảnh Chọe');
         inputField.placeholder = t('chat_placeholder', 'Hỏi Catmi...');
         resetBtn.title = getCurrentLang() === 'vi' ? 'Xóa lịch sử' : 'Clear history';
+        // Cập nhật avatar trên header khi ngôn ngữ được tải (nếu có logic đặc biệt)
+        document.querySelector('#chatbot-header .header-info img').src = CAMI_AVATAR_STATIC; 
     }
-    loadChatLanguage(); 
+    loadChatLanguage().then(applyLanguage); // Đảm bảo ngôn ngữ được tải trước khi áp dụng
 
     // 6. MAPPING CẢM XÚC (FIXED)
     function mapTagToKey(tag) {
         const tagLower = tag.toLowerCase().replace(/[\s\/\\]/g, ''); 
         
-
         // Ánh xạ các tag AI dài hơn hoặc có nhiều từ
        if (tagLower.includes('welcome') || tagLower.includes('start')) return 'welcome';
         if (tagLower.includes('thinking') || tagLower.includes('processing')) return 'searching';
@@ -139,7 +143,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // 8. History & Main Logic
-    
     function loadHistory() {
         try {
             const history = JSON.parse(sessionStorage.getItem('chat_history') || '[]');
@@ -252,7 +255,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!hasHistory && messagesArea.querySelectorAll('.message').length === 0) {
             initWelcome();
         } else {
-            setTimeout(addSuggestionButtons, 200);
+            // Chỉ thêm suggestion nếu không có tin nhắn chào mừng (tức là chat đang trống sau khi load lịch sử hoặc lần đầu mở)
+            if (!messagesArea.querySelector('.message.bot')) { 
+                 initWelcome();
+            } else {
+                 setTimeout(addSuggestionButtons, 200);
+            }
+           
         }
     });
 
@@ -278,7 +287,11 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Lấy tên cảm xúc tiếng Việt/Anh để hiển thị
             const emotionMap = {
-                'thinking': 'Đang băn khoăn...', 'annoyed': 'Bực mình...', 'happy': 'Vui vẻ!', 'default': 'Sẵn sàng...', 'sleep': 'Ngủ gật...', 'focus': 'Tập trung...', 'sad': 'Buồn...', 'unsure': 'Hoài nghi...', 'guild': 'Chỉ dẫn...', 'angry': 'Cáu!', 'teasing': 'Trêu chọc...', 'welcome': 'Chào mừng!', 'cute': 'Đáng yêu!'
+                'thinking': 'Đang băn khoăn...', 'annoyed': 'Bực mình...', 'happy': 'Vui vẻ!', 
+                'default': 'Sẵn sàng...', 'bye': 'Ngủ gật...', 'focus': 'Tập trung...', 
+                'sad': 'Buồn...', 'confused': 'Hoài nghi...', 'guild': 'Chỉ dẫn...', 
+                'angry': 'Cáu!', 'teasing': 'Trêu chọc...', 'welcome': 'Chào mừng!', 
+                'cute': 'Đáng yêu!', 'amazed': 'Bất ngờ!', 'success': 'Tuyệt vời!'
             };
             
             emotionName = emotionMap[key] || `(${key.charAt(0).toUpperCase() + key.slice(1)})`;
@@ -369,7 +382,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 aiReply = aiReply.replace(expressionMatch[0], '').trim(); 
             }
             
-            const fallbackMsg = lang === 'vi' ? "Catmi không hiểu câu hỏi." : "Sorry, Catmi didn't understand the question.";
+            const fallbackMsg = lang === 'vi' ? "Xin lỗi, tôi không hiểu câu hỏi." : "Sorry, I didn't understand the question.";
             
             addMessageToUI("bot", aiReply || fallbackMsg, true, expressionKeyForReply); 
 
