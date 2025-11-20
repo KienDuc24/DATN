@@ -19,10 +19,10 @@ document.addEventListener("DOMContentLoaded", () => {
         question: "/assets/question.png", // Dùng lại confused nếu không có ảnh riêng cho "question"
         sad: "/assets/sad.png",           // [Buồn bã / Đồng cảm]
         sorry: "/assets/sorry.png",       // (Có thể dùng cho lỗi hoặc đồng cảm)
-        searching: "/assets/searching.gif", // [Đang tìm kiếm] (Nếu là GIF)
+        searching: "/assets/searching.png", // [Đang tìm kiếm] (Nếu là GIF)
         success: "/assets/success.png",     // [Vỗ tay / Khuyến khích] - hoặc happy
         teasing: "/assets/teasing.png",     // [Đùa vui / Trêu chọc nhẹ]
-        thinking: "/assets/thinking.gif",   // [Đang suy nghĩ / Xử lý dữ liệu] (Nếu là GIF)
+        thinking: "/assets/thinking.png",   // [Đang suy nghĩ / Xử lý dữ liệu] (Nếu là GIF)
         tired: "/assets/tired.png",         // [Mệt mỏi / Pin yếu]
         welcome: "/assets/welcome.png",     // (Dùng cho chào mừng)
         yessir: "/assets/yessir.png"            // (Dùng cho đã hiểu rõ)
