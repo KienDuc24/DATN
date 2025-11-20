@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
         searching: "/assets/searching.png", // [Đang tìm kiếm] (Nếu là GIF)
         success: "/assets/success.png",     // [Vỗ tay / Khuyến khích] - hoặc happy
         teasing: "/assets/teasing.png",     // [Đùa vui / Trêu chọc nhẹ]
-        thinking: "/assets/thinking.png",   // [Đang suy nghĩ / Xử lý dữ liệu] (Nếu là GIF)
+        sassy: "/assets/sassy.png",   // [Đang suy nghĩ / Xử lý dữ liệu] (Nếu là GIF)
         tired: "/assets/tired.png",         // [Mệt mỏi / Pin yếu]
         welcome: "/assets/welcome.png",     // (Dùng cho chào mừng)
         yessir: "/assets/yessir.png"            // (Dùng cho đã hiểu rõ)
@@ -121,8 +121,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Ánh xạ các tag AI dài hơn hoặc có nhiều từ
        if (tagLower.includes('welcome') || tagLower.includes('start')) return 'welcome';
-        if (tagLower.includes('thinking') || tagLower.includes('processing')) return 'thinking';
-        if (tagLower.includes('searching')) return 'searching';
+        if (tagLower.includes('thinking') || tagLower.includes('processing')) return 'searching';
+        if (tagLower.includes('sassy')) return 'sassy';
         if (tagLower.includes('annoyed') || tagLower.includes('error')) return 'annoyed'; 
         if (tagLower.includes('tired') || tagLower.includes('lowbattery')) return 'tired';
         if (tagLower.includes('success') || tagLower.includes('found')) return 'happy'; // Hoặc 'success' nếu bạn muốn phân biệt

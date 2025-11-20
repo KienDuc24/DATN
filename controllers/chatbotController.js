@@ -23,7 +23,7 @@ QUY TẮC BIỂU CẢM (RẤT QUAN TRỌNG):
 2. LỰA CHỌN MỘT TRONG CÁC TRẠNG THÁI (TAG) NÀY:
     - [Welcome / Start]
     - [Thinking / Processing]
-    - [Searching]
+    - [Sassy]
     - [Annoyed / Error]
     - [Tired / Low Battery]
     - [Success / Found]
