@@ -295,12 +295,19 @@ function showAuthTab(tab) {
     loginTab.classList.remove('active');
     registerTab.classList.add('active');
   }
+  if (forgotForm) forgotForm.style.display = 'none';
 }
 
 /** Đóng modal Auth */
 function closeAuthModal() {
   const modal = document.querySelector('.auth-form-modal, .auth-modal, .modal');
   if (modal) modal.style.display = 'none';
+  const loginForm = document.getElementById('loginForm');
+  const forgotForm = document.getElementById('forgotForm');
+  if (loginForm && forgotForm) {
+      loginForm.style.display = ''; 
+      forgotForm.style.display = 'none';
+  }
 }
 
 // --- HÀM HELPER TẠO AVATAR DICEBEAR (Dùng chung) ---
