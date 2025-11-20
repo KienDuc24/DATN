@@ -1,24 +1,31 @@
-// services/sendEmail.js (Đã sửa lỗi cấu hình SMTP và thêm log chi tiết)
+// services/sendEmail.js (Cập nhật sử dụng biến GMAIL_XXX)
 
 const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
-  // 1. Kiểm tra cấu hình môi trường
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn('CẢNH BÁO: Gửi Email bị BỎ QUA vì thiếu EMAIL_USER hoặc EMAIL_PASS trong .env.');
-      return; 
+  // 1. Kiểm tra cấu hình bắt buộc cho OAuth2
+  const requiredConfig = process.env.EMAIL_USER && 
+                         process.env.GMAIL_CLIENT_ID && 
+                         process.env.GMAIL_CLIENT_SECRET && 
+                         process.env.GMAIL_REFRESH_TOKEN;
+
+  if (!requiredConfig) {
+      console.error('CẢNH BÁO: Gửi Email bị BỎ QUA. Thiếu cấu hình GMAIL_CLIENT_ID/SECRET/REFRESH_TOKEN.');
+      // Ném lỗi để hàm forgotPassword bắt và không lưu token
+      throw new Error('Lỗi Gửi Email: Thiếu cấu hình GMAIL_CLIENT_ID/SECRET/REFRESH_TOKEN.');
   }
 
-  // 2. Sử dụng cấu hình SMTP tường minh (tin cậy hơn service: 'gmail')
+  // 2. Sử dụng cấu hình OAuth2 với biến mới
   const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: 465, 
-    secure: true, // Bắt buộc phải là true khi dùng port 465
+    service: 'gmail',
     auth: {
+      type: 'OAuth2',
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS // PHẢI LÀ Mật khẩu Ứng dụng (App Password)
+      // SỬ DỤNG BIẾN MỚI CHO MAIL
+      clientId: process.env.GMAIL_CLIENT_ID,
+      clientSecret: process.env.GMAIL_CLIENT_SECRET,
+      refreshToken: process.env.GMAIL_REFRESH_TOKEN,
     },
-    // Thêm tùy chọn xác minh kết nối (giúp chẩn đoán lỗi)
     tls: {
         rejectUnauthorized: false
     }
@@ -36,10 +43,10 @@ const sendEmail = async (options) => {
     const info = await transporter.sendMail(mailOptions);
     console.log(`[Email Service] Gửi thành công tới: ${options.email}. ID: ${info.messageId}`);
   } catch (error) {
-    // 4. Log chi tiết lỗi Nodemailer
+    // 4. Log lỗi chi tiết
     console.error(`[Email Service] GỬI MAIL THẤT BẠI TỚI ${options.email}:`, error);
-    // Quan trọng: Ném lỗi lên cấp trên để userController có thể bắt và trả về 500
-    throw new Error('Lỗi Gửi Email: Vui lòng kiểm tra lại EMAIL_PASS hoặc log server.');
+    // Ném lỗi lên cấp trên
+    throw new Error(`Lỗi Gửi Email: Vui lòng kiểm tra lại GMAIL_REFRESH_TOKEN.`);
   }
 };
 
