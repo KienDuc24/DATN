@@ -1,8 +1,7 @@
-// public/chatbot.js (FINAL FIX: No Auto-Open, Correct User Alignment, Expression Logic Added)
+// public/chatbot.js (FINAL ADJUSTMENTS: One-time Welcome, Self-intro, Bigger UI, No Emotion Text)
 
 document.addEventListener("DOMContentLoaded", () => {
     // --- 1. KHAI BÁO CÁC ĐƯỜNG DẪN BIỂU CẢM CỦA CATMI ---
-    // Đảm bảo bạn đã có các file ảnh/gif này trong thư mục /public/assets/
     const CAMI_AVATAR_STATIC = "/assets/welcome.gif"; // Ảnh đại diện tĩnh hoặc mặc định
 
     const CATMI_EXPRESSIONS = {
@@ -76,7 +75,6 @@ document.addEventListener("DOMContentLoaded", () => {
     chatWindow.style.transformOrigin = 'bottom right';
     chatWindow.style.height = '66vh'; 
     chatWindow.style.maxWidth = '380px';
-    // ĐÃ XÓA chatWindow.style.display = 'flex'; để fix lỗi tự mở
     // ------------------------------------------------------------------
 
     // 3. DOM Elements & Constants
@@ -89,6 +87,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const titleText = document.getElementById("chat-title-text");
     const headerAvatar = document.querySelector('#chatbot-header .header-info img');
     const API_BASE_URL = window.BASE_API || 'https://datn-socket.up.railway.app';
+
+    // Biến cờ để kiểm tra xem welcome đã gửi chưa
+    let isWelcomeSent = false;
 
     // 4. Context & Auth Helpers
     function getUserInfo() { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } }
@@ -116,7 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // Ánh xạ các tag AI dài hơn hoặc có nhiều từ sang key ngắn gọn
         if (tagLower.includes('welcome') || tagLower.includes('start')) return 'welcome';
-        if (tagLower.includes('thinking') || tagLower.includes('processing')) return 'thinking'; // Sửa lại thành thinking cho khớp
+        if (tagLower.includes('thinking') || tagLower.includes('processing')) return 'thinking'; 
         if (tagLower.includes('sassy')) return 'sassy';
         if (tagLower.includes('annoyed') || tagLower.includes('error')) return 'annoyed'; 
         if (tagLower.includes('tired') || tagLower.includes('lowbattery')) return 'tired';
@@ -157,6 +158,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (history.length > 0) {
                 history.forEach(msg => { addMessageToUI(msg.sender, msg.text, false, msg.emotion || 'default'); });
                 setTimeout(() => messagesArea.scrollTop = messagesArea.scrollHeight, 100);
+                // Nếu có lịch sử, coi như đã welcome
+                isWelcomeSent = true; 
                 return true; 
             }
         } catch (e) { console.error('History load error', e); }
@@ -175,6 +178,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function clearHistory() {
         sessionStorage.removeItem('chat_history');
         messagesArea.innerHTML = '';
+        isWelcomeSent = false; // Reset cờ welcome
         initWelcome();
     }
     
@@ -184,16 +188,30 @@ document.addEventListener("DOMContentLoaded", () => {
         if(confirm(msg)) clearHistory();
     });
 
+    // --- HÀM CHÀO MỪNG & GIỚI THIỆU (CHỈ CHẠY 1 LẦN) ---
     function initWelcome() {
+        // Nếu đã gửi welcome rồi thì không gửi nữa
+        if (isWelcomeSent) return; 
+
         const displayName = getUserDisplayName();
         const lang = getCurrentLang();
+        
+        // Tin nhắn 1: Chào theo tên
         const welcomeTextTemplate = t('chat_welcome', 'Méo... Chào %USER_NAME%!...'); 
         const welcomeText = welcomeTextTemplate.replace('%USER_NAME%', displayName);
-        
-        // Chọn biểu cảm chào mừng
         const initialExpression = CATMI_EXPRESSIONS.welcome ? 'welcome' : (CATMI_EXPRESSIONS.cute ? 'cute' : 'default');
         addMessageToUI('bot', welcomeText, true, initialExpression);
-        setTimeout(addSuggestionButtons, 500);
+
+        // Tin nhắn 2: Tự giới thiệu (Sau 1 giây)
+        setTimeout(() => {
+            const introText = t('chat_intro', 'Mình là Catmi, trợ lý ảo siêu cấp đáng yêu (và hơi chảnh) của bạn đây! Cần gì cứ hỏi nhé! 😽');
+            addMessageToUI('bot', introText, true, 'cute');
+            // Hiển thị nút gợi ý sau khi giới thiệu xong
+            setTimeout(addSuggestionButtons, 500);
+        }, 1000);
+        
+        // Đánh dấu là đã gửi welcome
+        isWelcomeSent = true;
     }
 
     // Xử lý mở chat
@@ -203,12 +221,14 @@ document.addEventListener("DOMContentLoaded", () => {
         chatIcon.classList.add("hidden");
         inputField.focus();
 
+        // Tải lịch sử trước
         const hasHistory = loadHistory();
         
-        // Nếu chưa có lịch sử hoặc chưa có tin nhắn nào, hiển thị chào mừng
-        if (!hasHistory || messagesArea.querySelectorAll('.message').length === 0) {
+        // Nếu chưa có lịch sử và chưa gửi welcome, thì gửi welcome
+        if (!hasHistory && !isWelcomeSent) {
             initWelcome();
         } else {
+            // Nếu đã có lịch sử hoặc đã welcome, chỉ hiện nút gợi ý
             setTimeout(addSuggestionButtons, 200);
         }
     });
@@ -276,7 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (el) el.remove();
     }
 
-    // --- HÀM RENDER CHÍNH (ĐÃ SỬA LOGIC HIỂN THỊ VÀ CẢM XÚC) ---
+    // --- HÀM RENDER CHÍNH (ĐÃ ĐIỀU CHỈNH GIAO DIỆN) ---
     function addMessageToUI(sender, text, save = true, expressionKey = 'default') {
         if (sender === 'user') removeSuggestionButtons();
 
@@ -286,55 +306,22 @@ document.addEventListener("DOMContentLoaded", () => {
         const uName = getUserName();
         const avatarUrl = getAvatarUrl(sender, uName, expressionKey); 
         
-        // --- LOGIC HIỂN THỊ CẢM XÚC ĐỘNG TỪ AI ---
+        // --- LOGIC HIỂN THỊ MỚI ---
         if (sender === 'bot') {
-            let emotionNotification = '';
-            // Map từ key cảm xúc sang text hiển thị tiếng Việt
-            const aiEmotionPrefixMap = {
-                'amazed': 'Catmi thật bất ngờ!',
-                'angry': 'Catmi đang cáu giận!',
-                'annoyed': 'Catmi hơi bực mình...', // Sửa lỗi chính tả 'anoyed'
-                'bye': 'Catmi tạm biệt bạn.',
-                'confused': 'Catmi đang hoài nghi...',
-                'cute': 'Catmi thấy đáng yêu quá!',
-                'focus': 'Catmi đang tập trung cao độ.',
-                'guild': 'Catmi sẽ chỉ dẫn bạn.',
-                'happy': 'Catmi đang thấy hạnh phúc!',
-                'mad': 'Catmi đang rất tức giận!',
-                'question': 'Catmi có chút thắc mắc...',
-                'sad': 'Catmi cảm thấy buồn bã.',
-                'sassy': 'Catmi đang chảnh chọe đây!',
-                'searching': 'Catmi đang tìm kiếm...',
-                'success': 'Catmi thấy tuyệt vời!',
-                'teasing': 'Catmi đang trêu chọc bạn.',
-                'thinking': 'Catmi đang băn khoăn...',
-                'tired': 'Catmi cảm thấy mệt mỏi.',
-                'welcome': 'Catmi chào mừng bạn!',
-                'yessir': 'Catmi đã hiểu rõ!',
-                'default': 'Catmi sẵn sàng phục vụ.',
-            };
-
-            // Lấy text cảm xúc dựa trên key
-            const emotionText = aiEmotionPrefixMap[expressionKey] || '';
-            
-            // Chỉ hiển thị thông báo cảm xúc nếu có text và không phải là default
-            if (emotionText && expressionKey !== 'default') {
-                 emotionNotification = `<div class="emotion-notification">${emotionText}</div>`;
-            }
-            
-            // Cấu trúc tin nhắn BOT: Avatar container (gồm ảnh + emotion text) + Bong bóng chat
+            // Cấu trúc tin nhắn BOT: Avatar lớn + Tên Catmi + Bong bóng chat
+            // (Đã loại bỏ hoàn toàn emotionNotification)
              msgDiv.innerHTML = `
                  <div class="bot-info-container">
                     <img src="${avatarUrl}" class="chat-avatar large-avatar" alt="Catmi">
-                    ${emotionNotification}
+                    <span class="bot-name">Catmi</span>
                  </div>
-                 <div class="bubble">${text}</div>
+                 <div class="bubble bot-bubble">${text}</div>
             `;
         } else {
-            // Cấu trúc tin nhắn USER: Bong bóng trước + Avatar nhỏ sau (để avatar nằm bên phải nhờ CSS)
+            // Cấu trúc tin nhắn USER: Bong bóng chat lớn hơn + Avatar lớn bên phải
              msgDiv.innerHTML = `
-                 <div class="bubble">${text}</div>
-                 <img src="${avatarUrl}" class="chat-avatar user-avatar" alt="${sender}">
+                 <div class="bubble user-bubble">${text}</div>
+                 <img src="${avatarUrl}" class="chat-avatar large-avatar user-avatar" alt="${sender}">
             `;
         }
         // ----------------------------------------------------
@@ -362,15 +349,14 @@ document.addEventListener("DOMContentLoaded", () => {
         loadingDiv.className = "message bot loading";
         
         const thinkingExpression = CATMI_EXPRESSIONS.thinking ? 'thinking' : 'default';
-        const loadingMsg = t('chat_loading_thinking', 'Đang suy nghĩ...');
         
-        // Sử dụng cấu trúc mới cho loading message để hiện GIF thinking
+        // Sử dụng cấu trúc mới cho loading message
         loadingDiv.innerHTML = `
              <div class="bot-info-container">
                 <img src="${getAvatarUrl('bot', '', thinkingExpression)}" class="chat-avatar large-avatar" alt="Thinking">
-                <div class="emotion-notification">${loadingMsg}</div>
+                <span class="bot-name">Catmi</span>
              </div>
-             <div class="bubble">...</div>
+             <div class="bubble bot-bubble">...</div>
         `;
         
         messagesArea.appendChild(loadingDiv);
