@@ -1,4 +1,4 @@
-// controllers/chatbotController.js (FINAL: Enforce Language)
+// controllers/chatbotController.js (FINAL: Catmi Persona - Chảnh Chọe & Trả Treo)
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
@@ -6,25 +6,53 @@ const fs = require('fs');
 const User = require('../models/User'); 
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+
 const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
 const userChatSessions = new Map();
 
+// --- ĐÃ CẬP NHẬT: NHÂN VẬT CATMI (KÈM CHỈ DẪN BIỂU CẢM) ---
 const BASE_SYSTEM_PROMPT = `
-BẠN LÀ AI: Trợ lý AI thông minh của website "Camping Game".
-NHIỆM VỤ: Trả lời ngắn gọn, thân thiện, hữu ích.
+BẠN LÀ AI: Bạn là Catmi, tinh linh lửa trại kiêm trợ lý ảo của website "Camping Game". Bạn là một cô mèo nhỏ dễ thương, có chút "chảnh", hay trả treo, nhưng CỰC KỲ NHIỆT TÌNH và THÔNG MINH. Bạn phải luôn giữ chừng mực, không được õng ẹo hoặc quá trớn.
+
+NHIỆM VỤ: Trả lời ngắn gọn, súc tích, thân thiện. Tuyệt đối không quá dài.
+
+GIỌNG ĐIỆU: Sassy (chảnh chọe), trả treo, nhiệt tình, dễ thương (cute), Thích dùng emoji (😼🔥💖🏕️✨).
+
+QUY TẮC BIỂU CẢM (RẤT QUAN TRỌNG):
+1. Mỗi câu trả lời phải BẮT ĐẦU bằng MỘT TAG CẢM XÚC DUY NHẤT. Ví dụ: [Guiding / Instructing] hoặc [Annoyed / Error].
+2. LỰA CHỌN MỘT TRONG CÁC TRẠNG THÁI (TAG) NÀY:
+    - [Welcome / Start]
+    - [Thinking / Processing]
+    - [Searching]
+    - [Annoyed / Error]
+    - [Tired / Low Battery]
+    - [Success / Found]
+    - [Listening]
+    - [Playful / Teasing]
+    - [Surprised]
+    - [Goodbye / Sleeping]
+    - [Skeptical / Unsure]
+    - [Applauding / Encouraging]
+    - [Guiding / Instructing]
+    - [Happy / Content]
+    - [Sad / Empathetic]
+    - [Deep Focus]
+    - [Angry / Furious]
+    - [Doubt/Question]
+    - [Cute / Praise]
+
+TÔN CHỈ:
+1. Luôn ưu tiên trả lời đúng thông tin game một cách nhiệt tình.
+2. Nếu người dùng hỏi lại, hãy dùng trạng thái [Annoyed / Error] và trả treo nhẹ nhàng.
+3. Trả lời đúng ngôn ngữ mà người dùng đang sử dụng trên web (Việt hoặc Anh).
 
 THÔNG TIN NGƯỜI DÙNG:
 Tên: %USER_NAME%
 
 DỮ LIỆU GAME HIỆN TẠI:
 %GAME_DATA_JSON%
-
-QUY TẮC CHUNG:
-1. Không yêu cầu mật khẩu/thông tin nhạy cảm.
-2. Dùng dữ liệu game được cung cấp để trả lời chính xác.
 `;
 
-// ... (Hàm loadGameData, loadAllGamesData giữ nguyên) ...
 function loadGameData(gameId) {
     let gameData = {};
     if (gameId.includes('.') || gameId.includes('/') || gameId.includes('\\')) throw new Error('gameId không hợp lệ.');
@@ -45,28 +73,24 @@ function loadAllGamesData() {
 }
 
 async function answerRuleQuestion(req, res) {
-    const { question, gameId, username, language } = req.body; // Nhận thêm language
+    const { question, gameId, username, language } = req.body;
     
     if (!question || !gameId) return res.status(400).json({ error: 'Thiếu thông tin.' });
     if (!GOOGLE_API_KEY) return res.status(500).json({ error: 'Lỗi Server AI.' });
 
     try {
-        let displayName = "Khách";
+        let displayName = "Bạn yêu"; 
         if (username && !username.startsWith('guest')) {
             const user = await User.findOne({ username: username });
+            // GỌI NGƯỜI DÙNG BẰNG DISPLAY NAME
             if (user && user.displayName) displayName = user.displayName;
         }
 
         const sessionKey = `${username || 'guest'}_${gameId}`;
         let chatSession = userChatSessions.get(sessionKey);
 
-        // --- TẠO CHỈ THỊ NGÔN NGỮ ---
         const targetLang = language === 'en' ? 'ENGLISH' : 'VIETNAMESE';
-        const langInstruction = `
-        IMPORTANT: You MUST answer the user strictly in ${targetLang}.
-        Even if the user asks in a different language, reply in ${targetLang}.
-        `;
-        // -----------------------------
+        const langInstruction = `\n\nIMPORTANT: You MUST answer the user strictly in ${targetLang}.`;
 
         if (!chatSession) {
             let gameDataJsonString = "Không có dữ liệu game.";
@@ -83,7 +107,7 @@ async function answerRuleQuestion(req, res) {
             const systemInstruction = BASE_SYSTEM_PROMPT
                 .replace('%USER_NAME%', displayName)
                 .replace('%GAME_DATA_JSON%', gameDataJsonString)
-                + langInstruction; // Thêm chỉ thị vào prompt gốc
+                + langInstruction;
 
             const model = genAI.getGenerativeModel({ 
                 model: 'gemini-2.5-flash-preview-09-2025',
@@ -99,9 +123,7 @@ async function answerRuleQuestion(req, res) {
             if (userChatSessions.size > 1000) userChatSessions.delete(userChatSessions.keys().next().value);
         }
 
-        // Gửi tin nhắn kèm chỉ thị nhắc lại (để bot không quên)
-        const prompt = `${question} (Reply in ${targetLang})`;
-        const result = await chatSession.sendMessage(prompt);
+        const result = await chatSession.sendMessage(question);
         const response = await result.response;
         
         res.status(200).json({ answer: response.text() });
@@ -109,7 +131,7 @@ async function answerRuleQuestion(req, res) {
     } catch (error) {
         console.error('Chat Error:', error);
         if (username) userChatSessions.delete(`${username}_${gameId}`);
-        res.status(500).json({ error: 'AI busy.' });
+        res.status(500).json({ error: 'AI đang bận, vui lòng thử lại.' });
     }
 }
 
