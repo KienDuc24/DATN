@@ -369,7 +369,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 aiReply = aiReply.replace(expressionMatch[0], '').trim(); 
             }
             
-            const fallbackMsg = lang === 'vi' ? "Xin lỗi, tôi không hiểu câu hỏi." : "Sorry, I didn't understand the question.";
+            const fallbackMsg = lang === 'vi' ? "Catmi không hiểu câu hỏi." : "Sorry, Catmi didn't understand the question.";
             
             addMessageToUI("bot", aiReply || fallbackMsg, true, expressionKeyForReply); 
 
