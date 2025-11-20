@@ -1,27 +1,27 @@
-/* public/css/chatbot.css (CẬP NHẬT GIAO DIỆN MỚI) */
+/* public/css/chatbot.css (FINAL FIX: Correct User Message Alignment) */
 
 /* --- ROOT (Giữ nguyên) --- */
 #chatbot-container {
     position: fixed;
     bottom: 20px;
-    right: 20px; /* Chuyển sang phải */
+    right: 20px;
     left: auto;
     z-index: 9999;
     font-family: 'Inter', sans-serif;
 }
 
-/* --- Cửa sổ chat (Sửa chiều cao và gốc biến đổi) --- */
+/* --- Cửa sổ chat (Giữ nguyên) --- */
 #chatbot-window {
-    width: 380px; /* Chiều rộng */
-    height: 66vh; /* 2/3 màn hình */
-    max-height: 550px; /* Giới hạn để không quá to */
+    width: 380px;
+    height: 66vh;
+    max-height: 550px;
     background: #fff;
     border-radius: 16px;
     box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transform-origin: bottom right; /* Gốc biến đổi ở dưới bên phải */
+    transform-origin: bottom right;
     animation: openChat 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -30,7 +30,7 @@
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* --- Header --- */
+/* --- Header (Giữ nguyên) --- */
 #chatbot-header {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
@@ -47,11 +47,10 @@
     gap: 10px;
 }
 
-/* Avatar trong header */
 #chatbot-header .header-avatar {
-    width: 40px; /* Kích thước lớn hơn cho avatar header */
+    width: 40px;
     height: 40px;
-    border-radius: 50%; /* Bo tròn */
+    border-radius: 50%;
     object-fit: cover;
     border: 2px solid #fff;
     box-shadow: 0 0 5px rgba(0,0,0,0.1);
@@ -71,17 +70,18 @@
 .message {
     display: flex;
     align-items: flex-end; /* Căn dưới cùng */
-    gap: 10px;
+    gap: 8px; /* ĐÃ SỬA: Giảm khoảng cách giữa avatar và bong bóng */
     max-width: 95%;
 }
 
 .message.user {
-    align-self: flex-end;
-    flex-direction: row-reverse; /* Avatar người dùng sang phải */
+    align-self: flex-end; /* ĐÃ SỬA: Căn tin nhắn sang phải */
+    /* flex-direction: row-reverse; -> ĐÃ XÓA vì đã đổi thứ tự HTML trong JS */
+    justify-content: flex-end; /* Đảm bảo nội dung bên trong cũng căn phải */
 }
 .message.bot {
     align-self: flex-start;
-    align-items: flex-start; /* Căn trên cùng */
+    align-items: flex-start; /* Căn trên cùng cho bot */
 }
 
 /* --- CẤU TRÚC TIN NHẮN BOT MỚI --- */
@@ -90,25 +90,25 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    width: 65px; /* Cố định chiều rộng cho avatar/status */
+    width: 60px; /* ĐÃ SỬA: Giảm chiều rộng một chút */
     flex-shrink: 0;
 }
 
 /* Thông báo cảm xúc */
 .emotion-notification {
-    font-size: 0.75rem; /* Kích thước nhỏ hơn */
+    font-size: 0.7rem; /* ĐÃ SỬA: Nhỏ hơn chút nữa */
     color: #764ba2; 
     font-weight: 600;
     text-align: center;
     line-height: 1.2;
     text-transform: capitalize;
-    background-color: rgba(255, 255, 255, 0.8);
-    border-radius: 8px;
-    padding: 3px 6px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 6px;
+    padding: 2px 5px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     position: relative;
-    top: -5px; /* Nâng nhẹ lên trên avatar */
-    white-space: nowrap; /* Không xuống dòng */
+    top: -3px;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
@@ -118,7 +118,7 @@
 .chat-avatar {
     width: 32px;
     height: 32px;
-    border-radius: 50%; /* Bo tròn avatar người dùng */
+    border-radius: 50%;
     object-fit: cover;
     background-color: #fff;
     flex-shrink: 0;
@@ -127,10 +127,14 @@
 
 /* Biểu cảm to hơn theo yêu cầu */
 .chat-avatar.large-avatar {
-    width: 50px; 
-    height: 50px;
+    width: 48px; /* ĐÃ SỬA: Kích thước vừa phải hơn */
+    height: 48px;
     border: 2px solid #667eea; 
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+/* Avatar người dùng */
+.chat-avatar.user-avatar {
+    margin-left: 5px; /* ĐÃ SỬA: Thêm chút khoảng cách bên trái */
 }
 
 .bubble {
@@ -139,22 +143,24 @@
     font-size: 0.95rem;
     line-height: 1.4;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    max-width: calc(100% - 75px); /* Tránh tràn ra khỏi avatar */
-    word-wrap: break-word; /* Đảm bảo văn bản xuống dòng */
+    max-width: calc(100% - 65px); /* ĐÃ SỬA: Tính toán lại chiều rộng tối đa */
+    word-wrap: break-word;
 }
 .message.user .bubble {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     border-bottom-right-radius: 4px;
+    text-align: right; /* ĐÃ SỬA: Căn lề văn bản sang phải cho người dùng */
 }
 .message.bot .bubble {
     background-color: #fff;
     color: #333;
     border: 1px solid #e9e9eb;
     border-bottom-left-radius: 4px;
+    text-align: left;
 }
 
-/* --- Suggestions --- */
+/* --- Suggestions (Giữ nguyên) --- */
 .chat-suggestions {
     display: flex;
     flex-wrap: wrap;
@@ -185,7 +191,7 @@
     transform: translateY(-1px);
 }
 
-/* --- Input Area --- */
+/* --- Input Area (Giữ nguyên) --- */
 #chatbot-input-area {
     display: flex;
     padding: 10px 15px;
@@ -208,7 +214,7 @@
     border-color: #667eea;
 }
 
-/* --- Chat Icon --- */
+/* --- Chat Icon (Giữ nguyên) --- */
 #chatbot-icon {
     width: 60px;
     height: 60px;
@@ -229,4 +235,9 @@
     height: 40px;
     object-fit: cover;
     border-radius: 50%;
+}
+
+/* Class ẩn/hiện (Bổ sung nếu thiếu) */
+.hidden {
+    display: none !important;
 }
