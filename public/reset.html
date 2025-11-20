@@ -64,7 +64,8 @@
             msg.style.color = '#ff4757';
             msg.innerText = 'Liên kết không hợp lệ (thiếu token).';
         } else {
-            fetch(`${API_BASE_URL}/api/auth/reset-password/${token}`)
+            // DÒNG NÀY ĐÃ ĐƯỢC SỬA: reset-password thành reset-info
+            fetch(`${API_BASE_URL}/api/auth/reset-info/${token}`) 
                 .then(res => res.json())
                 .then(data => {
                     if (data.valid) {
