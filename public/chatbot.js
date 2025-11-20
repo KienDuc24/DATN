@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Đã sửa đường dẫn để khớp với cấu trúc thư mục của bạn: public/assets/avatar/
     // Các key này sẽ được ánh xạ trực tiếp với tên file ảnh (ví dụ: 'pout' -> 'pout.png')
     const CATMI_EXPRESSIONS = {
-        default: "/assets/avatar.mp4",
+        default: "/assets/welcome.png",    // Biểu cảm mặc định (có thể dùng cute nếu muốn)
         amazed: "/assets/amazed.png",     // [Ngạc nhiên / Bất ngờ]
         angry: "/assets/angry.png",       // [Tức giận / Cáu kỉnh dữ dội]
         annoyed: "/assets/annoyed.png",     // [Bực mình / Gặp lỗi]
@@ -35,12 +35,12 @@ document.addEventListener("DOMContentLoaded", () => {
     chatbotContainer.id = "chatbot-container";
     chatbotContainer.innerHTML = `
         <div id="chatbot-icon">
-            <img src="/assets/avatar.mp4" alt="Catmi">
+            <img src="/assets/we" alt="Catmi">
         </div>
         <div id="chatbot-window" class="hidden">
             <div id="chatbot-header">
                 <div class="header-info">
-                    <img src="/assets/avatar.mp4" alt="Bot Avatar">
+                    <img src="/assets/we" alt="Bot Avatar">
                     <span id="chat-title-text">Trợ lý AI</span>
                 </div>
                 <div class="header-actions" style="display:flex;gap:10px;align-items:center;">
