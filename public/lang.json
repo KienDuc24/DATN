@@ -76,9 +76,8 @@
     "chat_placeholder": "Hừm, hỏi Catmi đi...",
     "chat_send": "Gửi",
     "chat_welcome": "Méo... Chào %USER_NAME%! Catmi đang bận làm đẹp đây... Có gì quan trọng mà bạn cần hỏi Catmi vậy? 😼💖🏕️",
-    
+    "chat_intro": "Mình là Catmi, trợ lý ảo siêu cấp đáng yêu của bạn đây! Cần gì cứ hỏi nhé! 😽",
     "chat_loading_thinking": "Catmi đang băn khoăn...",
-    
     "game_developing": "🚧 Game này đang được phát triển! Vui lòng quay lại sau.",
     "badge_coming_soon": "Sắp ra mắt"
   },
@@ -159,6 +158,7 @@
     "chat_placeholder": "Hmph, ask Catmi...",
     "chat_send": "Send",
     "chat_welcome": "Meow... Hey %USER_NAME%! Catmi is busy looking fabulous... What important thing do you need to ask Catmi? 😼💖🏕️",
+    "chat_intro": "I'm Catmi, your super cute virtual assistant! Feel free to ask me anything! 😽",
     "chat_loading_thinking": "Catmi is pondering...",
     "game_developing": "🚧 This game is under development! Please come back later.",
     "badge_coming_soon": "Coming Soon"
