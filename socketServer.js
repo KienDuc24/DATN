@@ -1,4 +1,4 @@
-// socketServer.js (FINAL FIX: Khôi phục luồng game và luồng host/player)
+// socketServer.js (FINAL FIX: Chuyển thẳng về offline khi rời phòng)
 
 const { Server } = require('socket.io');
 const Room = require('./models/Room');
@@ -47,9 +47,10 @@ async function handlePlayerLeave(socketId, io) {
 
     await room.save();
 
-    // Cập nhật status người chơi về 'online'
+    // Cập nhật status người chơi về 'offline'
     if (!player.startsWith('guest_')) {
-        await User.findOneAndUpdate({ username: player }, { status: 'online' });
+        // FIX: Chuyển status từ 'online' hoặc 'playing' (nếu thoát qua leaveRoom) về 'offline'
+        await User.findOneAndUpdate({ username: player }, { status: 'offline', socketId: null });
         io.emit('admin-user-status-changed');
     }
 

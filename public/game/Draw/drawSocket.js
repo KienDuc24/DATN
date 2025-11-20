@@ -100,6 +100,10 @@ async function endRound(io, roomCode, guessed) {
     io.to(roomCode).emit(`${GAME_ID}-end-round`, { 
         word: state.currentWord, scores: state.scores, drawer: state.drawer, guessed: guessed
     });
+    const drawerSocketId = Array.from(gameSocketMap.entries()).find(([, info]) => info.player === state.drawer && info.code === roomCode);
+    if (drawerSocketId) {
+        io.to(drawerSocketId[0]).emit(`${GAME_ID}-secret-word`, { word: state.currentWord });
+    }
     const maxTotalRounds = await getMaxRounds(roomCode);
     state.currentIndex++;
     if (state.currentIndex >= maxTotalRounds) { 
@@ -248,7 +252,8 @@ module.exports = (socket, io) => {
             }
             await room.save();
             if (!player.startsWith('guest_')) {
-                await User.findOneAndUpdate({ username: player }, { status: 'online' });
+                // FIX: Chuyển status trực tiếp về offline và xóa socketId
+                await User.findOneAndUpdate({ username: player }, { status: 'offline', socketId: null });
                 io.emit('admin-user-status-changed');
             }
             const playersWithAvt = await attachAvatarsToPlayers(room.players);

@@ -248,7 +248,8 @@ module.exports = (socket, io) => {
         }
         await room.save();
         if (!player.startsWith('guest_')) {
-            await User.findOneAndUpdate({ username: player }, { status: 'online' });
+            // FIX: Chuyển status trực tiếp về offline và xóa socketId
+            await User.findOneAndUpdate({ username: player }, { status: 'offline', socketId: null });
             io.emit('admin-user-status-changed');
         }
         const playersWithAvt = await attachAvatarsToPlayers(room.players);
