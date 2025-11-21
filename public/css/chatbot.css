@@ -143,7 +143,6 @@
     font-size: clamp(0.7rem, 1rem + 0.4vw, 1rem);
     line-height: 1.5;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    max-width: calc(100% - 75px); 
     word-wrap: break-word;
 }
 
