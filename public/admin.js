@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function checkAuth() {
     if (!document.cookie.includes('admin_token')) {
-        window.location.href = '/admin-login'; 
+        // window.location.href = '/admin-login'; 
     }
 }
 
