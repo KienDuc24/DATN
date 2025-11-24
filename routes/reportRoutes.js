@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Report = require('../models/Report');
-const { isAdmin } = require('../middleware/authMiddleware'); 
+const { isAdmin } = require('../middleware/adminAuth'); 
 
 
 router.post('/', async (req, res) => {
