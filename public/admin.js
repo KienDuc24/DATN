@@ -336,7 +336,11 @@ function renderRoomsTable(rooms) {
             <td><strong>${r.code}</strong></td>
             <td>${r.game?.type || '-'}</td>
             <td>${r.host}</td>
-            <td>${r.players}</td>
+            <td style="max-width: 200px; white-space: normal; word-wrap: break-word;">
+                ${r.players && r.players.length > 0 
+                    ? r.players.map(p => p.name).join(', ') 
+                    : '<span style="color:#ccc">Trống</span>'}
+            </td>
             <td><span class="badge ${r.status}">${r.status}</span></td>
             <td>${formatDateTime(r.createdAt)}</td>
             <td>
