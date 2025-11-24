@@ -1,5 +1,3 @@
-// public/game/Draw/script.js (ĐÃ UPDATE: Hiển thị DisplayName thay vì Username)
-
 (() => {
     const GAME_ID = 'DG';
     const SOCKET_URL = "https://datn-socket.up.railway.app";
@@ -17,7 +15,6 @@
     }
     window.playerName = playerName;
     
-    // --- DOM Elements ---
     const $room = document.getElementById('roomCode');
     const $playersCount = document.getElementById('playersCount');
     const $gameStatus = document.getElementById('game-status');
@@ -54,14 +51,12 @@
     }
     clearCanvas();
 
-    // --- HELPER: LẤY TÊN HIỂN THỊ ---
     function getDisplayName(username) {
-        if (username === 'Hệ thống') return 'Hệ thống'; // Giữ nguyên tên hệ thống
+        if (username === 'Hệ thống') return 'Hệ thống'; 
         const p = roomPlayers.find(p => p.name === username);
         return p ? (p.displayName || p.name) : username;
     }
 
-    // --- Logic Vẽ (Giữ nguyên) ---
     function getMousePos(e) {
         if (!$canvas) return { x: 0, y: 0 };
         const rect = $canvas.getBoundingClientRect();
@@ -157,11 +152,9 @@
         });
     }
 
-    // --- Chat & Game Logic (ĐÃ SỬA DISPLAY NAME) ---
     function renderChatMessage(username, message, type = 'msg-guess') { 
         if (!$chatMessages) return; 
         
-        // Chuyển đổi username -> displayName
         const displayName = getDisplayName(username);
 
         const el = document.createElement('div');
@@ -219,7 +212,7 @@
 
     socket.on(`${GAME_ID}-room-update`, ({ state, room }) => {
         currentHost = room.host;
-        roomPlayers = room.players; // Cập nhật danh sách (có displayName)
+        roomPlayers = room.players; 
         
         if ($room) $room.textContent = room.code || '—';
         if ($playersCount) $playersCount.textContent = roomPlayers.length;

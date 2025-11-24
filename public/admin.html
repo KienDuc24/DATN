@@ -9,20 +9,17 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/admin.css"> <style>
-    /* Style bổ sung cho ảnh nền nếu cần */
     .admin-main::before {
-        /* Lớp phủ mờ để làm nổi bật content sáng */
         content: "";
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
-        background-color: rgba(14, 23, 32, 0.4); /* Lớp phủ tối mờ */
+        background-color: rgba(14, 23, 32, 0.4); 
         z-index: 0;
     }
     .admin-tab-content, .header-main, .confirm-bar, .admin-main h1 {
         position: relative;
         z-index: 1;
     }
-    /* Đảm bảo tiêu đề cột đúng */
     .admin-table th:nth-child(6) { width: 10%; }
     .admin-table th:nth-child(7) { width: 20%; }
   </style>
@@ -46,6 +43,9 @@
         </button>
         <button class="nav-item" data-tab="users">
           <i class="fas fa-users"></i> Người Dùng
+        </button>
+        <button class="nav-item" data-tab="reports" id="btn-reports">
+            <i class="fas fa-flag"></i> Báo Cáo
         </button>
         <button class="nav-item" data-tab="analytics">
           <i class="fas fa-chart-bar"></i> Quản lý Web
@@ -213,6 +213,70 @@
         <div id="usersPagination" class="pagination-controls"></div>
       </section>
       
+      <section id="reportsTab" class="admin-tab-content" style="display:none">
+        <header class="content-header">
+          <h1>Quản lý Báo Cáo</h1>
+          <div class="header-actions">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="reportsSearch" placeholder="Tìm báo cáo...">
+            </div>
+          </div>
+        </header>
+
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID Báo Cáo</th>
+                <th>Người Báo Cáo</th>
+                <th>Loại Báo Cáo</th>
+                <th>Nội Dung</th>
+                <th>Trạng Thái</th>
+                <th>Ngày Tạo</th>
+                <th>Hành Động</th>
+              </tr>
+            </thead>
+            <tbody id="adminReportsList"></tbody>
+          </table>
+        </div>
+        <div id="reportsPagination" class="pagination-controls"></div>
+        </section>
+
+        <div id="reportModal" class="popup-modal wide" style="display:none; max-width: 600px;">
+            <span class="close-modal" id="closeReportModal">&times;</span>
+            <h2>Chi tiết Báo cáo</h2>
+            <div id="reportDetailContent" style="margin-top: 20px; line-height: 1.6;">
+                <p><strong>ID:</strong> <span id="detailReportId"></span></p>
+                <p><strong>Người gửi:</strong> <span id="detailReporter"></span></p>
+                <p><strong>Danh mục:</strong> <span id="detailCategory"></span></p>
+                <p><strong>Ngày gửi:</strong> <span id="detailDate"></span></p>
+                <div style="margin: 15px 0;">
+                    <strong>Nội dung chi tiết:</strong>
+                    <div id="detailContentText" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px; white-space: pre-wrap; border: 1px solid var(--border-light);"></div>
+                </div>
+                <form id="reportForm" class="auth-form" style="text-align:left; margin-top: 20px; border-top: 1px solid var(--border-light); padding-top: 20px;">
+                    <input type="hidden" id="editReportId">
+                    <div class="form-group">
+                        <label for="detailStatus">Trạng thái xử lý:</label>
+                        <select id="detailStatus" class="form-select" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-light);">
+                            <option value="pending">Đang chờ</option>
+                            <option value="reviewed">Đang xem xét</option>
+                            <option value="resolved">Đã giải quyết</option>
+                            <option value="rejected">Từ chối</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="detailAdminNote">Ghi chú của Admin:</label>
+                        <textarea id="detailAdminNote" rows="3" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-light);" placeholder="Nhập ghi chú xử lý..."></textarea>
+                    </div>
+                    <div class="form-actions" style="margin-top:20px; text-align:right;">
+                        <button type="button" class="btn btn-cancel close-modal-btn">Đóng</button>
+                        <button type="submit" class="btn btn-save">Cập nhật Báo cáo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
       <section id="analyticsTab" class="admin-tab-content" style="display:none">
         <header class="content-header">
           <h1>Quản lý Web (Vercel)</h1>

@@ -491,3 +491,14 @@ footer {
 #roomModal input:focus {
   border: 1.5px solid #ff9800;
 }
+
+.report-modal-content {
+    max-width: 500px; 
+}
+#reportCategory, #reportContent {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background: #f9f9f9;
+}

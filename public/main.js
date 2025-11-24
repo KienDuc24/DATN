@@ -514,4 +514,84 @@ document.addEventListener('DOMContentLoaded', () => {
     if (settingsForm) {
         settingsForm.addEventListener('submit', handleUpdateProfile);
     }
+
+    const reportModal = document.getElementById('reportModal');
+    const navReportBtn = document.getElementById('navReportBtn');
+    const footerReportBtn = document.getElementById('footerReportBtn');
+    const closeReportModalBtn = document.getElementById('closeReportModal');
+    const cancelReportBtn = document.getElementById('cancelReportBtn');
+    const reportForm = document.getElementById('reportForm');
+    const reportUsernameInput = document.getElementById('reportUsername');
+    const reportAnonCheckbox = document.getElementById('reportAnon');
+
+    function openReportModal() {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user && user.username && !user.isGuest) {
+            reportUsernameInput.value = user.username;
+            reportAnonCheckbox.checked = false;
+        } else {
+            reportUsernameInput.value = t('report_anon', 'Ẩn danh');
+            reportAnonCheckbox.checked = true;
+        }
+        updatePageLanguage(); 
+        reportModal.classList.remove('hidden');
+    }
+
+    function closeReportModal() {
+        reportModal.classList.add('hidden');
+        reportForm.reset();
+    }
+
+    if (navReportBtn) navReportBtn.addEventListener('click', (e) => { e.preventDefault(); openReportModal(); });
+    if (footerReportBtn) footerReportBtn.addEventListener('click', (e) => { e.preventDefault(); openReportModal(); });
+
+    if (closeReportModalBtn) closeReportModalBtn.addEventListener('click', closeReportModal);
+    if (cancelReportBtn) cancelReportBtn.addEventListener('click', closeReportModal);
+    window.addEventListener('click', (e) => { if (e.target === reportModal) closeReportModal(); });
+
+    if (reportAnonCheckbox) {
+        reportAnonCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                reportUsernameInput.value = t('report_anon', 'Ẩn danh');
+            } else {
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                reportUsernameInput.value = (user && user.username && !user.isGuest) ? user.username : t('report_anon', 'Ẩn danh');
+            }
+        });
+    }
+
+    if (reportForm) {
+        reportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = reportForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = t('processing', 'Đang xử lý...');
+
+            const reporterName = reportAnonCheckbox.checked ? 'Anonymous' : reportUsernameInput.value;
+            const category = document.getElementById('reportCategory').value;
+            const content = document.getElementById('reportContent').value;
+
+            try {
+                const response = await fetch('/api/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reporterName, category, content })
+                });
+
+                if (response.ok) {
+                    alert(t('report_success_msg', 'Báo cáo đã được gửi!'));
+                    closeReportModal();
+                } else {
+                    const data = await response.json();
+                    alert(data.error || t('report_error_msg', 'Có lỗi xảy ra.'));
+                }
+            } catch (error) {
+                console.error('Lỗi gửi báo cáo:', error);
+                alert(t('report_error_msg', 'Có lỗi xảy ra.'));
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = t('report_btn_submit', 'Gửi Báo cáo');
+            }
+        });
+    }
 });

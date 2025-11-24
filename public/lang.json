@@ -79,7 +79,25 @@
     "chat_intro": "Mình là Catmi, trợ lý ảo siêu cấp đáng yêu của bạn đây! Cần gì cứ hỏi nhé! 😽",
     "chat_loading_thinking": "Catmi đang băn khoăn...",
     "game_developing": "🚧 Game này đang được phát triển! Vui lòng quay lại sau.",
-    "badge_coming_soon": "Sắp ra mắt"
+    "badge_coming_soon": "Sắp ra mắt",
+
+    "nav_contact": "Liên hệ",
+    "nav_report": "Báo cáo",
+    "footer_contact": "Liên hệ chúng tôi",
+    "footer_report_issue": "Báo cáo vấn đề",
+    "report_modal_title": "Báo cáo Vấn đề",
+    "report_label_username": "Tên đăng nhập",
+    "report_anon": "Ẩn danh",
+    "report_label_category": "Danh mục báo cáo",
+    "report_cat_bug": "Lỗi kỹ thuật / Bug",
+    "report_cat_harass": "Quấy rối / Ngôn từ kích động",
+    "report_cat_spam": "Spam / Quảng cáo",
+    "report_cat_other": "Khác",
+    "report_label_content": "Nội dung chi tiết",
+    "report_btn_submit": "Gửi Báo cáo",
+    "report_btn_cancel": "Hủy",
+    "report_success_msg": "Báo cáo của bạn đã được gửi tới quản trị viên. Cảm ơn bạn!",
+    "report_error_msg": "Có lỗi xảy ra khi gửi báo cáo. Vui lòng thử lại sau."
   },
   "en": {
     "login": "Login",
@@ -161,6 +179,24 @@
     "chat_intro": "I'm Catmi, your super cute virtual assistant! Feel free to ask me anything! 😽",
     "chat_loading_thinking": "Catmi is pondering...",
     "game_developing": "🚧 This game is under development! Please come back later.",
-    "badge_coming_soon": "Coming Soon"
+    "badge_coming_soon": "Coming Soon",
+
+    "nav_contact": "Contact",
+    "nav_report": "Report",
+    "footer_contact": "Contact Us",
+    "footer_report_issue": "Report an Issue",
+    "report_modal_title": "Report Issue",
+    "report_label_username": "Username",
+    "report_anon": "Anonymous",
+    "report_label_category": "Report Category",
+    "report_cat_bug": "Technical Bug",
+    "report_cat_harass": "Harassment / Hate Speech",
+    "report_cat_spam": "Spam / Advertising",
+    "report_cat_other": "Other",
+    "report_label_content": "Detailed Content",
+    "report_btn_submit": "Submit Report",
+    "report_btn_cancel": "Cancel",
+    "report_success_msg": "Your report has been sent to the administrators. Thank you!",
+    "report_error_msg": "An error occurred while sending the report. Please try again later."
   }
 }

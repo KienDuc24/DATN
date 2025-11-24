@@ -1,38 +1,35 @@
-// public/admin.js (FINAL: Thêm chức năng Tạo User)
-
 const ADMIN_API = 'https://datn-socket.up.railway.app'; 
 
-// Các endpoint API
 const API_ENDPOINTS = {
     STATS: `${ADMIN_API}/api/admin/stats`,
     USERS: `${ADMIN_API}/api/admin/users`,
     ROOMS: `${ADMIN_API}/api/admin/rooms`,
     GAMES: `${ADMIN_API}/api/admin/games`,
+    REPORTS: `${ADMIN_API}/api/admin/reports`,
     SYNC_GAMES: `${ADMIN_API}/api/admin/games/sync`,
     
-    // Helper để tạo URL chi tiết
     USER_ID: (id) => `${ADMIN_API}/api/admin/users/${id}`,
     GAME_ID: (id) => `${ADMIN_API}/api/admin/games/${id}`,
-    ROOM_ID: (id) => `${ADMIN_API}/api/admin/rooms/${id}`
+    ROOM_ID: (id) => `${ADMIN_API}/api/admin/rooms/${id}`,
+    REPORT_ID: (id) => `${ADMIN_API}/api/admin/reports/${id}`
 };
 
-// Trạng thái trang hiện tại cho từng tab
 let pageState = {
     users: 1,
     rooms: 1,
-    games: 1
+    games: 1,
+    reports: 1
 };
 
-// Cache dữ liệu trang hiện tại (để dùng cho Edit)
 let currentDataCache = {
     users: [],
-    games: []
+    rooms: [],
+    games: [],
+    reports: []
 };
 
-// Hàng chờ thay đổi (Pending Changes)
 let pendingChanges = []; 
 
-// --- Socket.io ---
 let socket;
 try {
     socket = io(ADMIN_API, {
@@ -47,34 +44,32 @@ try {
     socket.on('disconnect', () => logActivity('Disconnected from Admin Socket', 'danger'));
 } catch (e) { console.error("Socket Error:", e); }
 
-// --- DOM Elements ---
 const el = id => document.getElementById(id);
 const showOverlay = show => { const o = el('adminOverlay'); if(o) o.style.display = show ? 'flex' : 'none'; };
 
-// --- FORM MODAL LOGIC (Đã sửa lỗi tham chiếu) ---
 const gameModal = el('gameModal');
 const gameForm = el('gameForm');
 let isEditingGame = false; 
 
-const userModal = el('userModal'); // Modal Sửa User
+const userModal = el('userModal'); 
 const userForm = el('userForm');
 let isEditingUser = false; 
 
-// BỔ SUNG: Modal Thêm User
 const addUserModal = el('addUserModal');
 const addUserForm = el('addUserForm');
 
-// --- 1. MAIN INIT ---
+const reportModal = el('reportModal');
+const reportForm = el('reportForm');
+let isEditingReport = false;
+
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
     setupTabs();
     setupNavToggle();
     
-    // Gán sự kiện cho các nút chính
     const btnAddGame = el('addGameBtn');
     if(btnAddGame) btnAddGame.onclick = () => openGameForm(null);
     
-    // BỔ SUNG: NÚT THÊM NGƯỜI DÙNG
     const btnAddUser = el('addUserBtn');
     if(btnAddUser) btnAddUser.onclick = openAddUserForm;
     
@@ -87,22 +82,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnRefresh = el('refreshDataBtn');
     if(btnRefresh) btnRefresh.onclick = loadData;
     
-    // Search Listeners (Debounce)
     if(el('usersSearch')) el('usersSearch').onkeyup = debounce(() => { pageState.users = 1; fetchUsers(el('usersSearch').value); }, 400);
     if(el('roomsSearch')) el('roomsSearch').onkeyup = debounce(() => { pageState.rooms = 1; fetchRooms(el('roomsSearch').value); }, 400);
     if(el('gamesSearch')) el('gamesSearch').onkeyup = debounce(() => { pageState.games = 1; fetchGames(el('gamesSearch').value); }, 400);
+    if(el('reportsSearch')) el('reportsSearch').onkeyup = debounce(() => { pageState.reports = 1; fetchReports(el('reportsSearch').value); }, 400); // THÊM MỚI
 
-    // Form Submits
     if(gameForm) gameForm.onsubmit = saveGame;
-    if(userForm) userForm.onsubmit = saveUser; // Sửa thông tin user
-    if(addUserForm) addUserForm.onsubmit = saveNewUser; // BỔ SUNG: Thêm user mới
+    if(userForm) userForm.onsubmit = saveUser; 
+    if(addUserForm) addUserForm.onsubmit = saveNewUser; 
+    if(reportForm) reportForm.onsubmit = saveReport;
     
-    // Socket listeners (Đã thêm log)
     if(socket) {
         socket.on('admin-stats-update', () => { loadStats(); logActivity('Dashboard Stats Updated', 'info'); });
         socket.on('admin-users-changed', () => { fetchUsers(el('usersSearch')?.value || ''); logActivity('User list updated', 'info'); });
         socket.on('admin-rooms-changed', () => { fetchRooms(el('roomsSearch')?.value || ''); logActivity('Room list updated', 'warning'); });
         socket.on('admin-games-changed', () => { fetchGames(el('gamesSearch')?.value || ''); logActivity('Game list updated', 'info'); });
+        socket.on('admin-reports-changed', () => { fetchReports(el('reportsSearch')?.value || ''); logActivity('Report list updated', 'warning'); });
     }
 
     const toggleAddPassBtn = el('toggleAddPassword');
@@ -113,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const isPassword = addPasswordInput.type === 'password';
             addPasswordInput.type = isPassword ? 'text' : 'password';
             
-            // Cập nhật icon
             const icon = toggleAddPassBtn.querySelector('i');
             if (icon) {
                 icon.classList.toggle('fa-eye', !isPassword);
@@ -121,24 +115,139 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    // Event Delegation cho bảng (QUAN TRỌNG)
     setupTableDelegation();
-    
-    // Setup Modals
     setupModals();
-
-    // Load Data
     loadData();
+
+    const btnReports = document.getElementById('btn-reports');
+    const reportsSection = document.getElementById('reports-section');
+    const reportsTableBody = document.getElementById('reports-table-body');
+    const reportsPagination = document.getElementById('reports-pagination');
+    
+    const adminReportModal = document.getElementById('adminReportModal');
+    const closeAdminReportModal = document.getElementById('closeAdminReportModal');
+    const adminReportForm = document.getElementById('adminReportForm');
+
+    let currentReportsPage = 1;
+
+    btnReports.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.querySelectorAll('.main-content > section').forEach(s => s.style.display = 'none');
+        reportsSection.style.display = 'block';
+        document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+        btnReports.classList.add('active');
+        loadReports(1);
+    });
+
+    const categoryMap = {
+        'bug': 'Lỗi kỹ thuật', 'harass': 'Quấy rối', 'spam': 'Spam', 'other': 'Khác'
+    };
+
+    async function loadReports(page) {
+        currentReportsPage = page;
+        reportsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Đang tải...</td></tr>';
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/report/admin?page=${page}&limit=10`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            
+            reportsTableBody.innerHTML = '';
+            if (data.reports.length === 0) {
+                reportsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Chưa có báo cáo nào.</td></tr>';
+            } else {
+                data.reports.forEach(report => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${report._id.substring(0, 8)}...</td>
+                        <td>${report.reporterName}</td>
+                        <td><span class="badge badge-${report.category}">${categoryMap[report.category] || report.category}</span></td>
+                        <td>${new Date(report.createdAt).toLocaleDateString()}</td>
+                        <td><span class="badge status-${report.status}">${t('admin_report_status_' + report.status, report.status)}</span></td>
+                        <td>
+                            <button class="btn-action btn-view" data-id="${report._id}"><i class="fas fa-eye"></i> Xem</button>
+                        </td>
+                    `;
+                    reportsTableBody.appendChild(row);
+                });
+            }
+            renderPagination(reportsPagination, data.currentPage, data.totalPages, loadReports);
+            updatePageLanguage(); 
+
+            document.querySelectorAll('.btn-view').forEach(btn => {
+                btn.addEventListener('click', () => openAdminReportModal(btn.dataset.id));
+            });
+
+        } catch (error) {
+            console.error('Lỗi tải báo cáo:', error);
+            reportsTableBody.innerHTML = '<tr><td colspan="6" style="color:red;text-align:center;">Lỗi tải dữ liệu.</td></tr>';
+        }
+    }
+
+    async function openAdminReportModal(id) {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/report/admin/${id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const report = await res.json();
+
+            document.getElementById('editReportId').value = report._id;
+            document.getElementById('detailReportId').textContent = report._id;
+            document.getElementById('detailReporter').textContent = report.reporterName;
+            document.getElementById('detailCategory').textContent = categoryMap[report.category] || report.category;
+            document.getElementById('detailDate').textContent = new Date(report.createdAt).toLocaleString();
+            document.getElementById('detailContentText').textContent = report.content;
+            document.getElementById('detailStatus').value = report.status;
+            document.getElementById('detailAdminNote').value = report.adminNote || '';
+
+            adminReportModal.classList.remove('hidden');
+        } catch (error) {
+            console.error('Lỗi lấy chi tiết báo cáo:', error);
+            alert('Không thể lấy thông tin báo cáo.');
+        }
+    }
+
+    closeAdminReportModal.addEventListener('click', () => adminReportModal.classList.add('hidden'));
+
+    adminReportForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('editReportId').value;
+        const status = document.getElementById('detailStatus').value;
+        const adminNote = document.getElementById('detailAdminNote').value;
+        const token = localStorage.getItem('token');
+
+        try {
+            const res = await fetch(`/api/report/admin/${id}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ status, adminNote })
+            });
+            if (res.ok) {
+                alert('Cập nhật báo cáo thành công!');
+                adminReportModal.classList.add('hidden');
+                loadReports(currentReportsPage); 
+            } else {
+                alert('Cập nhật thất bại.');
+            }
+        } catch (error) {
+            console.error('Lỗi cập nhật:', error);
+            alert('Lỗi server.');
+        }
+    });
 });
 
 function checkAuth() {
-    // Kiểm tra cookie (đơn giản)
     if (!document.cookie.includes('admin_token')) {
-        // window.location.href = '/admin-login'; 
+        window.location.href = '/admin-login'; 
     }
 }
 
-// --- 2. TABS LOGIC ---
+
 function setupTabs() {
     const tabs = document.querySelectorAll('.nav-item');
     tabs.forEach(tab => {
@@ -163,12 +272,6 @@ function setupTabs() {
     });
 }
 
-function setupNavToggle() {
-    // Logic toggle sidebar
-}
-
-// --- 3. DATA FETCHING ---
-
 async function fetchApi(url, options = {}) {
     options.credentials = 'include'; 
     try {
@@ -186,11 +289,11 @@ async function fetchApi(url, options = {}) {
 
 async function loadData() {
     await loadStats();
-    // Load song song
     await Promise.all([
         fetchUsers(''),
         fetchRooms(''),
-        fetchGames('')
+        fetchGames(''),
+        fetchReports('')
     ]);
 }
 
@@ -201,10 +304,11 @@ async function loadStats() {
         if(el('totalRooms')) el('totalRooms').innerText = data.totalRooms || 0;
         if(el('onlineUsers')) el('onlineUsers').innerText = data.onlineUsers || 0;
         if(el('totalUsers')) el('totalUsers').innerText = data.totalUsers || 0;
+        if(el('totalReports')) el('totalReports').innerText = data.totalReports || 0;
+        
     }
 }
 
-// --- FETCHING VỚI PHÂN TRANG ---
 
 async function fetchUsers(q) {
     const url = new URL(API_ENDPOINTS.USERS);
@@ -213,7 +317,7 @@ async function fetchUsers(q) {
     
     const j = await fetchApi(url.toString());
     if (j && j.data) {
-        currentDataCache.users = j.data; // Lưu cache để edit
+        currentDataCache.users = j.data; 
         renderUsersTable(j.data);
         renderPagination('users', j, fetchUsers);
     }
@@ -238,13 +342,24 @@ async function fetchGames(q) {
     
     const j = await fetchApi(url.toString());
     if (j && j.data) {
-        currentDataCache.games = j.data; // Lưu cache để edit
+        currentDataCache.games = j.data; 
         renderGamesTable(j.data);
         renderPagination('games', j, fetchGames);
     }
 }
 
-// --- 4. RENDER TABLE & PAGINATION ---
+async function fetchReports(q) {
+    const url = new URL(API_ENDPOINTS.REPORTS);
+    if (q) url.searchParams.set('q', q);
+    url.searchParams.set('page', pageState.reports);
+    
+    const j = await fetchApi(url.toString());
+    if (j && j.data) {
+        currentDataCache.reports = j.data;
+        renderReportsTable(j.data);
+        renderPagination('reports', j, fetchReports);
+    }
+}
 
 function formatDateTime(isoString) {
     if (!isoString) return '-';
@@ -254,7 +369,6 @@ function formatDateTime(isoString) {
 }
 
 function renderPagination(type, meta, fetchFunc) {
-    // Logic renderPagination giữ nguyên
     const container = el(`${type}Pagination`);
     if (!container) return;
     
@@ -302,21 +416,17 @@ function renderUsersTable(users) {
     if (!tbody) return;
     
     if (!users.length) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center">Không có dữ liệu</td></tr>`; // Sửa colspan = 8
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center">Không có dữ liệu</td></tr>`; 
         return;
     }
 
     tbody.innerHTML = users.map(u => {
         
-        // Tạo nội dung chi tiết cho cột Lịch sử chơi
         let historyHtml = 'Chưa có.';
         if (u.playHistory && u.playHistory.length > 0) {
-            // Lấy 3 lần chơi gần nhất
-            const recentHistory = u.playHistory.slice(-3).reverse(); 
+            const recentHistory = u.playHistory.reverse(); 
             historyHtml = recentHistory.map(h => {
-                // Định dạng ngày giờ cho lịch sử chơi
                 const playedAtFormatted = new Date(h.playedAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit', month: 'numeric', day: 'numeric'});
-                // Sử dụng h.gameName và h.gameId
                 return `<div>${h.gameName} (${h.gameId}) - ${playedAtFormatted}</div>`;
             }).join('');
         }
@@ -327,7 +437,6 @@ function renderUsersTable(users) {
                 <td>${u.displayName || ''}</td>
                 <td>${u.email || '-'}</td>
                 <td>${u.googleId ? '<span class="badge google">Google</span>' : '<span class="badge local">Local</span>'}</td>
-                <td><span class="status-dot ${u.status}"></span> ${u.status}</td>
                 <td>${formatDateTime(u.createdAt)}</td>
                 <td style="font-size:0.85em; color:#64748b; line-height: 1.3;">${historyHtml}</td> <td>
                     <button class="action-btn edit" data-id="${u._id}" data-type="user" title="Sửa"><i class="fas fa-edit"></i></button>
@@ -395,10 +504,48 @@ function renderGamesTable(games) {
     `).join('');
 }
 
-// --- 5. ACTIONS & EVENT DELEGATION ---
+const categoryMap = {
+    'bug': { text: 'Lỗi kỹ thuật', class: 'bug' },
+    'harass': { text: 'Quấy rối', class: 'harass' },
+    'spam': { text: 'Spam', class: 'spam' },
+    'other': { text: 'Khác', class: 'other' }
+};
+
+const statusMap = {
+    'pending': { text: 'Đang chờ', class: 'pending' },
+    'reviewed': { text: 'Đang xem xét', class: 'reviewed' },
+    'resolved': { text: 'Đã giải quyết', class: 'success' },
+    'rejected': { text: 'Từ chối', class: 'danger' }
+};
+
+function renderReportsTable(reports) {
+    const tbody = el('adminReportsList');
+    if (!tbody) return;
+
+    if (!reports.length) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Không có báo cáo</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = reports.map(r => {
+        const cat = categoryMap[r.category] || { text: r.category, class: 'default' };
+        const stat = statusMap[r.status] || { text: r.status, class: 'default' };
+        return `
+            <tr>
+                <td>${r._id.substring(0, 8)}...</td>
+                <td>${r.reporterName}</td>
+                <td><span class="badge badge-${cat.class}">${cat.text}</span></td>
+                <td>${formatDateTime(r.createdAt)}</td>
+                <td><span class="badge status-${stat.class}">${stat.text}</span></td>
+                <td>
+                    <button class="btn-action btn-view edit" data-id="${r._id}" data-type="report" title="Xem chi tiết"><i class="fas fa-eye"></i> Xem</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
 
 function setupTableDelegation() {
-    // Bảng Game
     const gamesList = el('adminGamesList');
     if (gamesList) {
         gamesList.addEventListener('click', (e) => {
@@ -421,7 +568,6 @@ function setupTableDelegation() {
         });
     }
 
-    // Bảng Room
     const roomsList = el('adminRoomsList');
     if (roomsList) {
         roomsList.addEventListener('click', (e) => {
@@ -432,7 +578,6 @@ function setupTableDelegation() {
         });
     }
 
-    // Bảng User (Sửa: Thêm nút Edit)
     const usersList = el('adminUsersList');
     if (usersList) {
         usersList.addEventListener('click', (e) => {
@@ -450,19 +595,18 @@ function setupTableDelegation() {
     }
 }
 
-// --- API CALLS FOR ACTIONS ---
 
 async function deleteItem(type, id) {
     if (!confirm('Xác nhận xóa/đóng item này?')) return;
     showOverlay(true);
     const endpoint = type === 'games' ? API_ENDPOINTS.GAME_ID(id) 
                    : type === 'rooms' ? API_ENDPOINTS.ROOM_ID(id)
-                   : API_ENDPOINTS.USER_ID(id);
+                   : type === 'users' ? API_ENDPOINTS.USER_ID(id)
+                   : API_ENDPOINTS.REPORT_ID(id);
                    
     const res = await fetchApi(endpoint, { method: 'DELETE' });
     if(res) logActivity(`Đã xóa/đóng ${type.toUpperCase()} ID: ${id}`, 'success');
     showOverlay(false);
-    // Socket sẽ tự update UI
 }
 
 async function toggleFeatured(id, checked) {
@@ -490,30 +634,30 @@ function logoutAdmin() {
       .finally(()=> location.href='/admin-login.html'); 
 }
 
-// --- 6. MODAL HANDLERS ---
 
 function setupModals() {
-    // Đóng modal Game
     if(gameModal) {
         document.querySelectorAll('#gameModal .close-modal, #gameModal .close-modal-btn').forEach(btn => {
             btn.onclick = () => gameModal.style.display = 'none';
         });
     }
-    // Đóng modal Sửa User
     if(userModal) {
         document.querySelectorAll('#userModal .close-modal, #userModal .close-modal-btn').forEach(btn => {
             btn.onclick = () => userModal.style.display = 'none';
         });
     }
-    // Đóng modal Thêm User
     if(addUserModal) {
         document.querySelectorAll('#addUserModal .close-modal, #addUserModal .close-modal-btn').forEach(btn => {
             btn.onclick = () => addUserModal.style.display = 'none';
         });
     }
+    if(reportModal) {
+        document.querySelectorAll('#reportModal .close-modal, #reportModal .close-modal-btn').forEach(btn => {
+            btn.onclick = () => reportModal.style.display = 'none';
+        });
+    }
 }
 
-// Mở form sửa Game
 function openGameForm(game) {
     isEditingGame = !!game;
     el('modalTitle').innerText = game ? 'Sửa Game' : 'Thêm Game Mới';
@@ -538,7 +682,6 @@ function openGameForm(game) {
     if (gameModal) gameModal.style.display = 'block';
 }
 
-// Lưu Game
 async function saveGame(e) {
     e.preventDefault();
     showOverlay(true);
@@ -566,7 +709,6 @@ async function saveGame(e) {
     showOverlay(false);
 }
 
-// Mở form sửa User
 function openUserForm(user) {
     isEditingUser = true;
     el('userModalTitle').innerText = `Sửa User: ${user.username}`;
@@ -588,7 +730,6 @@ function openUserForm(user) {
     if (userModal) userModal.style.display = 'block';
 }
 
-// Lưu User
 async function saveUser(e) {
     e.preventDefault();
     showOverlay(true);
@@ -612,13 +753,11 @@ async function saveUser(e) {
     showOverlay(false);
 }
 
-// BỔ SUNG: Mở form thêm người dùng
 function openAddUserForm() {
     if(addUserForm) addUserForm.reset();
     if (addUserModal) addUserModal.style.display = 'block';
 }
 
-// BỔ SUNG: Lưu người dùng mới (POST)
 async function saveNewUser(e) {
     e.preventDefault();
     showOverlay(true);
@@ -636,8 +775,7 @@ async function saveNewUser(e) {
         return;
     }
 
-    const url = API_ENDPOINTS.USERS; // POST to /api/admin/users
-    
+    const url = API_ENDPOINTS.USERS; 
     const res = await fetchApi(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -647,7 +785,7 @@ async function saveNewUser(e) {
     if(res && res.ok) { 
         logActivity(`Đã thêm User mới: ${payload.username}`, 'success');
         if (addUserModal) addUserModal.style.display = 'none';
-        fetchUsers(''); // Tải lại danh sách
+        fetchUsers(''); 
     } else {
         const message = res?.message || 'Lỗi không xác định khi tạo người dùng.';
         logActivity(`Tạo User thất bại: ${message}`, 'danger');
@@ -657,8 +795,97 @@ async function saveNewUser(e) {
     showOverlay(false);
 }
 
-// --- 7. LOGGING & UTILS ---
+async function openReportModal(reportId) {
+    isEditingReport = true;
+    showOverlay(true);
+    try {
+        const report = await fetchApi(API_ENDPOINTS.REPORT_ID(reportId));
+        if (!report) throw new Error('Không thể tải thông tin báo cáo');
 
+        const cat = categoryMap[report.category] || { text: report.category };
+
+        el('editReportId').value = report._id;
+        el('detailReportId').textContent = report._id;
+        el('detailReporter').textContent = report.reporterName;
+        el('detailCategory').textContent = cat.text;
+        el('detailDate').textContent = new Date(report.createdAt).toLocaleString('vi-VN');
+        el('detailContentText').textContent = report.content;
+        
+        el('detailStatus').value = report.status;
+        el('detailAdminNote').value = report.adminNote || '';
+
+        if (reportModal) reportModal.style.display = 'block';
+    } catch (e) {
+        console.error(e);
+        alert('Lỗi khi mở báo cáo: ' + e.message);
+    } finally {
+        showOverlay(false);
+    }
+}
+
+async function openReportModal(reportId) {
+    isEditingReport = true;
+    showOverlay(true);
+    try {
+        const report = await fetchApi(API_ENDPOINTS.REPORT_ID(reportId));
+        if (!report) throw new Error('Không thể tải thông tin báo cáo');
+
+        const cat = categoryMap[report.category] || { text: report.category };
+
+        el('editReportId').value = report._id;
+        el('detailReportId').textContent = report._id;
+        el('detailReporter').textContent = report.reporterName;
+        el('detailCategory').textContent = cat.text;
+        el('detailDate').textContent = new Date(report.createdAt).toLocaleString('vi-VN');
+        el('detailContentText').textContent = report.content;
+        
+        el('detailStatus').value = report.status;
+        el('detailAdminNote').value = report.adminNote || '';
+
+        if (reportModal) reportModal.style.display = 'block';
+    } catch (e) {
+        console.error(e);
+        alert('Lỗi khi mở báo cáo: ' + e.message);
+    } finally {
+        showOverlay(false);
+    }
+}
+
+async function saveReport(e) {
+    e.preventDefault();
+    showOverlay(true);
+
+    const reportId = el('editReportId').value;
+    const payload = {
+        status: el('detailStatus').value,
+        adminNote: el('detailAdminNote').value,
+    };
+
+    const url = API_ENDPOINTS.REPORT_ID(reportId);
+
+    try {
+        const res = await fetchApi(url, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        
+        if(res && res.ok) {
+            logActivity(`Báo cáo ${reportId} đã được cập nhật.`, 'success');
+            if (reportModal) reportModal.style.display = 'none';
+            // Cập nhật lại data trong cache và render lại bảng
+            fetchReports(el('reportsSearch')?.value || '');
+        } else {
+            const msg = res?.error || 'Lỗi không xác định';
+            alert('Cập nhật thất bại: ' + msg);
+        }
+    } catch (error) {
+        console.error('Lỗi cập nhật báo cáo:', error);
+        alert('Lỗi server khi cập nhật báo cáo.');
+    } finally {
+        showOverlay(false);
+    }
+}
 function logActivity(message, type = 'info') {
     const logList = el('activityLog');
     if (!logList) return;
@@ -674,17 +901,14 @@ function logActivity(message, type = 'info') {
         ${icon} ${message}
     `;
 
-    // Giới hạn 20 log item
     if (logList.children.length > 20) {
         logList.removeChild(logList.children[0]);
     }
     
-    // Thêm log mới
     logList.appendChild(newItem);
     logList.scrollTop = logList.scrollHeight;
 }
 
-// Helper Debounce
 function debounce(func, wait) {
     let timeout;
     return function(...args) {
@@ -692,3 +916,4 @@ function debounce(func, wait) {
         timeout = setTimeout(() => func.apply(this, args), wait);
     };
 }
+

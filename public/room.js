@@ -1,5 +1,3 @@
-// public/room.js (ĐÃ ĐỒNG BỘ ĐA NGÔN NGỮ)
-
 (function() {
   const BASE_API_URL = 'https://datn-socket.up.railway.app'; 
   window.__chatbot_API_BASE__ = BASE_API_URL; 
@@ -9,7 +7,6 @@
     transports: ['websocket', 'polling'] 
   });
   
-  // --- XỬ LÝ ĐA NGÔN NGỮ ---
   let LANGS = {};
   const currentLang = localStorage.getItem('lang') || 'vi';
 
@@ -23,23 +20,20 @@
     }
   }
   
-  // Hàm lấy text theo ngôn ngữ (Fallback về tiếng Việt nếu thiếu)
   function t(key, defaultText) {
     return LANGS[currentLang]?.[key] || defaultText || key;
   }
 
   function updateRoomUI() {
-    // Cập nhật các text tĩnh trong phòng (nếu có ID tương ứng trong HTML)
     const leaveBtn = document.querySelector('.leave-btn');
     if(leaveBtn) leaveBtn.innerHTML = `<i class="fas fa-arrow-left"></i> ${t('leave_room', 'Rời phòng')}`;
     
     const copyBtn = document.querySelector('.copy-btn');
     if(copyBtn) copyBtn.innerHTML = `<i class="far fa-copy"></i> ${t('copy_code', 'Sao chép')}`;
     
-    const readyText = document.getElementById('readyText'); // Nếu có
+    const readyText = document.getElementById('readyText'); 
     if(readyText) readyText.innerText = t('waiting_host', 'Đang chờ chủ phòng...');
   }
-  // ---------------------------
 
   const urlParams = new URLSearchParams(window.location.search);
   const roomCode = urlParams.get('code');
@@ -54,7 +48,7 @@
   }
   
   const playerName = usernameFromURL;
-  loadLanguage(); // Tải ngôn ngữ ngay khi script chạy
+  loadLanguage(); 
 
   if (document.getElementById("roomCode")) document.getElementById("roomCode").innerText = roomCode;
   if (document.getElementById("roomCodeDisplay")) document.getElementById("roomCodeDisplay").innerText = roomCode;

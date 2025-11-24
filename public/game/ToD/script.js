@@ -1,5 +1,3 @@
-// public/game/ToD/script.js (ĐÃ UPDATE: Hiển thị DisplayName)
-
 (() => {
   const SOCKET_URL = "https://datn-socket.up.railway.app";
   window.__SOCKET_URL__ = SOCKET_URL;
@@ -45,7 +43,6 @@
   const socket = window.socket;
   let currentAskedPlayer = null; 
   let currentHost = null;
-  // Thêm biến lưu danh sách để tra cứu
   let roomPlayersList = [];
 
   socket.on('connect', () => {
@@ -65,7 +62,6 @@
     return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(fallbackName)}`;
   }
 
-  // --- HELPER: LẤY TÊN HIỂN THỊ ---
   function getDisplayName(username) {
       if (!username) return '';
       const p = roomPlayersList.find(p => p.name === username);
@@ -109,7 +105,7 @@
     const participantsCount = players.length;
     const status = payload.status || 'open';
     
-    roomPlayersList = players; // Cập nhật danh sách toàn cục
+    roomPlayersList = players; 
     currentHost = host; 
     
     if ($room) $room.textContent = rc;

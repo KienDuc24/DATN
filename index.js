@@ -1,5 +1,3 @@
-// index.js (FINAL FIXED: Auto-logout invalid sessions)
-
 require('dotenv').config();
 const mongoose = require('mongoose');
 const express = require('express');
@@ -15,11 +13,11 @@ const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const MongoStore = require('connect-mongo');
+const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 const server = http.createServer(app);
 
-// --- 1. Cấu hình Middleware ---
 const frontendURL = process.env.FRONTEND_URL || 'https://datn-smoky.vercel.app';
 app.use(cors({
   origin: frontendURL,
@@ -32,7 +30,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- 2.A. Cấu hình Express Session ---
 app.use(session({
   secret: process.env.SESSION_SECRET || 'datn_secret_key',
   resave: false,
@@ -42,14 +39,13 @@ app.use(session({
     collectionName: 'sessions'
   }),
   cookie: {
-    maxAge: 1000 * 60 * 60 * 24 // 1 ngày
+    maxAge: 1000 * 60 * 60 * 24
   }
 }));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-// --- 2.C. Cấu hình Google Strategy ---
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -79,7 +75,7 @@ passport.use(new GoogleStrategy({
             email: userEmail,
             username: newUsername,
             displayName: newDisplayName,
-            isVerified: true // Google auto verified
+            isVerified: true
         });
         
         try {
@@ -106,18 +102,16 @@ passport.use(new GoogleStrategy({
   }
 ));
 
-// --- 2.D. Serialize/Deserialize User (FIXED) ---
 passport.serializeUser((user, done) => {
   done(null, user._id); 
 });
 
 passport.deserializeUser(async (id, done) => {
   try {
-    // --- FIX QUAN TRỌNG: Kiểm tra ID hợp lệ trước khi query DB ---
-    // Nếu ID trong cookie là định dạng cũ (UUID) hoặc rác, nó sẽ không phải ObjectId
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
         console.log(`[Auth] Phát hiện ID phiên cũ không hợp lệ: ${id}. Tự động đăng xuất.`);
-        return done(null, null); // Trả về null để logout user này ra
+        return done(null, null); 
     }
 
     const user = await User.findById(id);
@@ -128,7 +122,6 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-// --- Khởi tạo Socket.IO ---
 const io = attachSocket(server); 
 
 try {
@@ -138,13 +131,13 @@ try {
   app.use('/api/admin', adminAuth, require('./routes/adminRoutes')(io)); 
   app.use('/api', require('./routes/publicRoutes'));
   app.use('/api/ai', require('./routes/chatbotRoutes'));
+  app.use('/api/report', require('./routes/reportRoutes'));
   
   console.log('[index] All routes mounted successfully.');
 } catch (e) {
   console.error('[index] Error mounting routes:', e.message);
 }
 
-// --- Routes ---
 app.get('/admin-login', (req, res) => { res.sendFile(path.join(__dirname, 'public/admin-login.html')); });
 app.get('/admin', adminAuth, (req, res) => { res.sendFile(path.join(__dirname, 'public/admin.html')); });
 app.get('/admin.html', adminAuth, (req, res) => { res.sendFile(path.join(__dirname, 'public/admin.html')); });
@@ -153,7 +146,6 @@ app.get('/css/admin.css', (req, res) => { res.sendFile(path.join(__dirname, 'pub
 app.get('/admin-login.css', (req, res) => { res.sendFile(path.join(__dirname, 'public/admin-login.css')); });
 app.get('/admin-login.js', (req, res) => { res.sendFile(path.join(__dirname, 'public/admin-login.js')); });
 
-// --- Google Auth Routes ---
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
@@ -167,7 +159,6 @@ app.get('/auth/google/callback',
   }
 );
 
-// --- Khởi động Server ---
 const PORT = process.env.PORT || 3000;
 async function start() {
   try {

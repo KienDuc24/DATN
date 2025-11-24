@@ -1,29 +1,19 @@
-/* public/css/admin.css (ĐÃ SỬA: Áp dụng phong cách Trắng-Cam-Đen/Tối và thêm Toggle Password) */
-
 :root {
-  /* Màu chung */
   --primary: #ff9800; 
   --primary-hover: #ff7a2f; 
   --accent: #43cea2; 
-  
-  /* Màu Nền */
-  --bg-dark: #1a1a2e; /* Nền tối tổng thể */
-  --sidebar: #23272f; /* Nền Sidebar */
-  --card: #ffffff; /* Nền card/bảng là màu trắng */
-  
-  /* Màu Chữ */
-  --text-dark: #23272f; /* Chữ chính trên nền sáng */
-  --text-light: #f1f5f9; /* Chữ trên nền tối */
+  --bg-dark: #1a1a2e;
+  --sidebar: #23272f;
+  --card: #ffffff;
+  --text-dark: #23272f;
+  --text-light: #f1f5f9;
   --text-muted: #64748b; 
-  
-  /* Màu trạng thái & Border */
   --success: #22c55e;
   --danger: #ef4444;
   --pending: #f97316; 
-  --border-light: #e0e0e0; /* Border màu sáng cho card */
-  --border-dark: #333; /* Border màu tối cho sidebar */
+  --border-light: #e0e0e0;
+  --border-dark: #333;
   --radius: 12px;
-  
   font-family: 'Quicksand', 'Inter', sans-serif;
 }
 
@@ -34,20 +24,17 @@
 }
 
 body {
-  /* Giữ nguyên background image */
   background-color: var(--bg-dark);
-  color: var(--text-dark); /* Màu chữ mặc định (sẽ bị ghi đè) */
+  color: var(--text-dark);
   font-size: 14px;
   line-height: 1.5;
 }
 
-/* --- LAYOUT --- */
 .admin-container {
   display: flex;
   min-height: 100vh;
 }
 
-/* Sidebar */
 .admin-sidebar {
   width: 260px;
   background-color: var(--sidebar);
@@ -128,7 +115,6 @@ body {
 }
 .link-home:hover { color: var(--text-light); }
 
-/* Main Content */
 .admin-main {
   background: url('../img/fav.png') no-repeat center center fixed;
   background-size: cover;
@@ -137,9 +123,7 @@ body {
   padding: 30px;
   position: relative;
 }
-/* Xóa lớp phủ tối màu để thấy ảnh nền và áp dụng nền sáng cho content */
 .admin-main::before { content: none !important; }
-
 
 .content-header {
   display: flex;
@@ -160,7 +144,6 @@ body {
   align-items: center;
 }
 
-/* Search Box */
 .search-box {
   position: relative;
 }
@@ -182,7 +165,6 @@ body {
   color: var(--text-muted);
 }
 
-/* Buttons */
 .btn {
   padding: 10px 20px;
   border-radius: 8px;
@@ -226,7 +208,6 @@ body {
     color: var(--text-dark);
 }
 
-/* Stats Grid */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -260,7 +241,6 @@ body {
 .stat-info h3 { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px; }
 .stat-info p { font-size: 1.5rem; font-weight: 700; margin: 0; }
 
-/* Table */
 .table-wrap {
   background: var(--card);
   border-radius: 12px;
@@ -292,7 +272,6 @@ body {
 .admin-table tr:last-child td { border-bottom: none; }
 .admin-table tr:hover { background: #fcfcfc; }
 
-/* Table Elements */
 .game-thumb { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: white;}
 .user-cell { display: flex; align-items: center; gap: 10px; }
 .user-cell img { width: 32px; height: 32px; border-radius: 50%; }
@@ -315,7 +294,6 @@ body {
 .badge.playing { background: rgba(255, 152, 0, 0.1); color: var(--primary); }
 .badge.closed { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
 
-/* Action Buttons in Table */
 .action-btn {
   width: 32px; height: 32px;
   border-radius: 6px;
@@ -332,7 +310,6 @@ body {
 .action-btn.delete { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
 .action-btn.delete:hover { background: #ef4444; color: white; }
 
-/* Pagination */
 .pagination-controls {
   padding: 20px;
   display: flex;
@@ -356,13 +333,12 @@ body {
 .page-dots { padding: 0 5px; color: var(--text-muted); display: flex; align-items: center; }
 .page-info { margin-left: 10px; color: var(--text-muted); display: flex; align-items: center; font-size: 0.9rem; }
 
-/* Modals */
 .popup-modal {
     display: none;
     position: fixed;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    background: var(--sidebar); /* Giữ Modal tối để đồng bộ với Auth Modal */
+    background: var(--sidebar);
     border: 1px solid #334155;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     z-index: 1000;
@@ -370,7 +346,7 @@ body {
     padding: 24px;
     width: 90%;
     max-width: 500px;
-    color: var(--text-light); /* Chữ trắng trong Modal */
+    color: var(--text-light);
 }
 .popup-modal.wide { max-width: 700px; }
 
@@ -391,7 +367,6 @@ body {
     font-size: 1.5rem;
 }
 
-/* Forms */
 .form-group { margin-bottom: 16px; }
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 
@@ -404,7 +379,7 @@ label {
 }
 input[type="text"], input[type="email"], input[type="password"], textarea, select {
     width: 100%;
-    background: #181c23; /* Darker bg for inputs */
+    background: #181c23;
     border: 1px solid #444;
     color: white;
     padding: 10px 12px;
@@ -415,8 +390,6 @@ input[type="text"], input[type="email"], input[type="password"], textarea, selec
 input:focus, textarea:focus { border-color: var(--primary); }
 input:disabled { opacity: 0.6; cursor: not-allowed; }
 
-
-/* BỔ SUNG: Style cho Password Toggle trong Modal Add User */
 .password-field {
     position: relative;
     display: flex;
@@ -444,10 +417,7 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
 .toggle-password-btn:hover {
     color: var(--primary);
 }
-/* KẾT THÚC BỔ SUNG */
 
-
-/* Vercel Links */
 .vercel-links-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -473,7 +443,6 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
 }
 .vercel-card i { font-size: 2rem; margin-bottom: 5px; color: var(--primary);}
 
-/* Overlay Loading */
 .admin-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -492,7 +461,6 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Responsive */
 @media (max-width: 768px) {
     .admin-sidebar { transform: translateX(-100%); transition: 0.3s; }
     .admin-sidebar.active { transform: translateX(0); }
@@ -503,3 +471,4 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
     .search-box input { width: 100%; }
     .form-grid-2 { grid-template-columns: 1fr; }
 }
+  
