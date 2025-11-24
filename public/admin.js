@@ -234,8 +234,14 @@ async function fetchReports(q) {
 function formatDateTime(isoString) {
     if (!isoString) return '-';
     const date = new Date(isoString);
-    const options = { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return date.toLocaleTimeString('vi-VN', options);
+        return date.toLocaleString('vi-VN', {
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+    });
 }
 
 function renderPagination(type, meta, fetchFunc) {
@@ -398,24 +404,28 @@ function renderReportsTable(reports) {
 
     tbody.innerHTML = reports.map(r => {
         const cat = categoryMap[r.category] || { text: r.category, class: 'default' };
-    const stat = statusMap[r.status] || { text: r.status, class: 'default' };
-    
-    return `
-        <tr>
-            <td><span style="font-family:monospace; color:var(--text-muted)">#${r._id.substring(0, 6)}</span></td>
-            <td style="font-weight:600">${r.reporterName}</td>
-            <td><span class="badge badge-${cat.class}">${cat.text}</span></td>
-            <td>${formatDateTime(r.createdAt)}</td>
-            
-            <td><span class="badge ${stat.class}">${stat.text}</span></td>
-            
-            <td>
-                <button class="btn-view-detail edit" data-id="${r._id}" data-type="report">
-                    <i class="fas fa-eye"></i> Chi tiết
-                </button>
-            </td>
-        </tr>
-    `;
+        const stat = statusMap[r.status] || { text: r.status, class: 'default' };
+        
+        return `
+            <tr>
+                <td><span style="font-family:monospace; color:var(--text-muted)">#${r._id.substring(0, 6)}</span></td>
+                <td style="font-weight:600">${r.reporterName}</td>
+                <td><span class="badge badge-${cat.class}">${cat.text}</span></td>
+                <td>${formatDateTime(r.createdAt)}</td>
+                <td><span class="badge ${stat.class}">${stat.text}</span></td>
+                <td>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-view-detail edit" data-id="${r._id}" data-type="report" title="Xem chi tiết">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        
+                        <button class="action-btn delete" data-id="${r._id}" data-type="report" title="Xóa báo cáo" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
     }).join('');
 }
 
@@ -476,12 +486,15 @@ function setupTableDelegation() {
             const id = btn.dataset.id;
 
             if (btn.classList.contains('edit')) { 
-                openReportModal(id);
-            } 
+              openReportModal(id);
+            } else if (btn.classList.contains('delete')) { 
+                if(confirm('Bạn có chắc chắn muốn xóa báo cáo này không?')) {
+                    deleteItem('report', id);
+                }
+            }
         });
     }
 }
-
 
 async function deleteItem(type, id) {
     if (!confirm('Xác nhận xóa/đóng item này?')) return;
@@ -497,6 +510,7 @@ async function deleteItem(type, id) {
     if (type === 'games') fetchGames('');
     else if (type === 'rooms') fetchRooms('');
     else if (type === 'users') fetchUsers('');
+    else if (type === 'report') fetchReports('');
     
     showOverlay(false);
 }
