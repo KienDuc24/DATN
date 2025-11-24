@@ -402,24 +402,24 @@ function renderReportsTable(reports) {
         return;
     }
 
-    tbody.innerHTML = reports.map(r => {
-        const cat = categoryMap[r.category] || { text: r.category, class: 'default' };
-        const stat = statusMap[r.status] || { text: r.status, class: 'default' };
+    tbody.innerHTML = reports.map(rp => {
+        const cat = categoryMap[rp.category] || { text: rp.category, class: 'default' };
+        const stat = statusMap[rp.status] || { text: rp.status, class: 'default' };
         
         return `
             <tr>
-                <td><span style="font-family:monospace; color:var(--text-muted)">#${r._id.substring(0, 6)}</span></td>
-                <td style="font-weight:600">${r.reporterName}</td>
+                <td><span style="font-family:monospace; color:var(--text-muted)">#${rp._id.substring(0, 6)}</span></td>
+                <td style="font-weight:600">${rp.reporterName}</td>
                 <td><span class="badge badge-${cat.class}">${cat.text}</span></td>
-                <td>${formatDateTime(r.createdAt)}</td>
+                <td>${formatDateTime(rp.createdAt)}</td>
                 <td><span class="badge ${stat.class}">${stat.text}</span></td>
                 <td>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn-view-detail edit" data-id="${r._id}" data-type="report" title="Xem chi tiết">
+                        <button class="btn-view-detail edit" data-id="${rp._id}" data-type="report" title="Xem chi tiết">
                             <i class="fas fa-eye"></i>
                         </button>
                         
-                        <button class="action-btn delete" data-id="${r._id}" data-type="report" title="Xóa báo cáo" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                        <button class="action-btn delete" data-id="${rp._id}" data-type="report" title="Xóa báo cáo" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
