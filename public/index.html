@@ -240,7 +240,10 @@
         <form id="reportForm">
             <label for="reportUsername"></label>
             <input id="reportUsername" type="text" readonly>
-            <label for="reportAnon" type="checkbox"></label>
+            <div style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
+                <input id="reportAnon" type="checkbox">
+                <label for="reportAnon" style="margin: 0; cursor: pointer;"></label>
+            </div>
             <label for="reportCategory"></label>
             <select id="reportCategory">
                 <option value="bug">Lỗi hệ thống</option>
