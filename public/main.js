@@ -484,51 +484,81 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Failed to parse Google user from URL", e);
         }
     }
-    const reportBtn = document.getElementById('reportBtn');
     const reportModal = document.getElementById('reportModal');
+    const navReportBtn = document.getElementById('navReportBtn'); 
+    const footerReportBtn = document.getElementById('footerReportBtn');
+
     const reportForm = document.getElementById('reportForm');
     const reportUsernameInput = document.getElementById('reportUsername');
     const reportAnonCheckbox = document.getElementById('reportAnon');
     const reportCategory = document.getElementById('reportCategory');
     const reportContent = document.getElementById('reportContent');
+
     const reportTitle = reportModal.querySelector('h2');
     const reportUsernameLabel = reportModal.querySelector('label[for="reportUsername"]');
-    const reportAnonLabel = reportModal.querySelector('label[for="reportAnon"]');
     const reportCategoryLabel = reportModal.querySelector('label[for="reportCategory"]');
     const reportContentLabel = reportModal.querySelector('label[for="reportContent"]');
     const reportSubmitBtn = reportModal.querySelector('button[type="submit"]');
 
-    reportTitle.innerText = LANGS[currentLang]?.report_title || 'Gửi Báo Cáo';
-    reportUsernameLabel.innerText = LANGS[currentLang]?.report_username || 'Tên người báo cáo:';
-    reportAnonLabel.innerHTML = `<input id="reportAnon" type="checkbox"> ${LANGS[currentLang]?.report_anon || 'Báo cáo ẩn danh'}`;
-    reportCategoryLabel.innerText = LANGS[currentLang]?.report_category || 'Danh mục:';
-    reportContentLabel.innerText = LANGS[currentLang]?.report_content || 'Nội dung:';
-    reportSubmitBtn.innerText = LANGS[currentLang]?.report_submit || 'Gửi Báo Cáo';
+    reportTitle.innerText = LANGS[currentLang]?.report_modal_title || 'Báo cáo Vấn đề';
+    reportUsernameLabel.innerText = LANGS[currentLang]?.report_label_username || 'Tên đăng nhập:';
 
-    if (reportBtn) {
-        reportBtn.addEventListener('click', () => {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            if (user && user.username && !user.isGuest) {
-                reportUsernameInput.value = user.username;
-                reportAnonCheckbox.checked = false;
-            } else {
-                reportUsernameInput.value = LANGS[currentLang]?.report_anon || 'Ẩn danh';
-                reportAnonCheckbox.checked = true;
-            }
-            reportModal.classList.remove('hidden');
-        });
+    const anonLabel = reportModal.querySelector('label[for="reportAnon"]');
+    const anonText = " " + (LANGS[currentLang]?.report_anon || 'Báo cáo ẩn danh');
+    if (anonLabel.lastChild.nodeType === Node.TEXT_NODE) {
+        anonLabel.lastChild.nodeValue = anonText;
+    } else {
+        anonLabel.appendChild(document.createTextNode(anonText));
     }
+
+    reportCategoryLabel.innerText = LANGS[currentLang]?.report_label_category || 'Danh mục:';
+    reportContentLabel.innerText = LANGS[currentLang]?.report_label_content || 'Nội dung chi tiết:';
+    reportSubmitBtn.innerText = LANGS[currentLang]?.report_btn_submit || 'Gửi Báo Cáo';
+
+
+    const openReportModalLogic = () => {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        if (user && user.username && !user.isGuest) {
+            reportUsernameInput.value = user.username;
+            reportAnonCheckbox.checked = false;
+        } else {
+            reportUsernameInput.value = LANGS[currentLang]?.report_anon || 'Ẩn danh';
+            reportAnonCheckbox.checked = true;
+        }
+        
+        reportModal.classList.remove('hidden');
+        reportModal.style.display = 'flex'; 
+    };
+
+    [navReportBtn, footerReportBtn].forEach(btn => {
+        if (btn) {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                openReportModalLogic();
+            });
+        }
+    });
 
     const closeReportModal = document.getElementById('closeReportModal');
     if (closeReportModal) {
         closeReportModal.addEventListener('click', () => {
             reportModal.classList.add('hidden');
+            reportModal.style.display = 'none';
         });
     }
+
+    window.addEventListener('click', (e) => {
+        if (e.target === reportModal) {
+            reportModal.classList.add('hidden');
+            reportModal.style.display = 'none';
+        }
+    });
 
     if (reportForm) {
         reportForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
             const reporterName = reportAnonCheckbox.checked ? 'Anonymous' : reportUsernameInput.value;
             const category = reportCategory.value;
             const content = reportContent.value;
@@ -541,19 +571,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (res.ok) {
-                    alert(LANGS[currentLang]?.report_success || 'Báo cáo đã được gửi!');
+                    alert(LANGS[currentLang]?.report_success_msg || 'Báo cáo đã được gửi!');
                     reportModal.classList.add('hidden');
+                    reportModal.style.display = 'none';
+                    reportForm.reset();
                 } else {
                     const data = await res.json();
-                    alert(data.message || LANGS[currentLang]?.report_error || 'Lỗi gửi báo cáo.');
+                    alert(data.message || LANGS[currentLang]?.report_error_msg || 'Lỗi gửi báo cáo.');
                 }
             } catch (err) {
                 console.error('Lỗi gửi báo cáo:', err);
-                alert(LANGS[currentLang]?.report_error || 'Lỗi gửi báo cáo.');
+                alert(LANGS[currentLang]?.report_error_msg || 'Lỗi kết nối server.');
             }
         });
     }
-
     
     fetchLang();
     fetchGames();

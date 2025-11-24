@@ -422,7 +422,7 @@ function renderUsersTable(users) {
         
         let historyHtml = 'Chưa có.';
         if (u.playHistory && u.playHistory.length > 0) {
-            const recentHistory = u.playHistory.reverse(); 
+            const recentHistory = u.playHistory.slice(-5).reverse(); 
             historyHtml = recentHistory.map(h => {
                 const playedAtFormatted = new Date(h.playedAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit', month: 'numeric', day: 'numeric'});
                 return `<div>${h.gameName} (${h.gameId}) - ${playedAtFormatted}</div>`;
@@ -820,7 +820,7 @@ async function openReportModal(reportId) {
         showOverlay(false);
     }
 }
-
+Date
 async function saveReport(e) {
     e.preventDefault();
     showOverlay(true);
@@ -843,7 +843,6 @@ async function saveReport(e) {
         if(res && res.ok) {
             logActivity(`Báo cáo ${reportId} đã được cập nhật.`, 'success');
             if (reportModal) reportModal.style.display = 'none';
-            // Cập nhật lại data trong cache và render lại bảng
             fetchReports(el('reportsSearch')?.value || '');
         } else {
             const msg = res?.error || 'Lỗi không xác định';
