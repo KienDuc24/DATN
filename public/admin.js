@@ -398,6 +398,7 @@ function renderReportsTable(reports) {
     if (!tbody) return;
 
     if (!reports.length) {
+        // HTML có 7 cột, nên colspan phải là 7
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Không có báo cáo</td></tr>`;
         return;
     }
@@ -406,16 +407,27 @@ function renderReportsTable(reports) {
         const cat = categoryMap[rp.category] || { text: rp.category, class: 'default' };
         const stat = statusMap[rp.status] || { text: rp.status, class: 'default' };
         
+        // Cắt ngắn nội dung nếu quá dài
+        const shortContent = rp.content.length > 30 ? rp.content.substring(0, 30) + '...' : rp.content;
+
         return `
             <tr>
                 <td><span style="font-family:monospace; color:var(--text-muted)">#${rp._id.substring(0, 6)}</span></td>
+                
                 <td style="font-weight:600">${rp.reporterName}</td>
+                
                 <td><span class="badge badge-${cat.class}">${cat.text}</span></td>
+                
+                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${rp.content}">
+                    ${shortContent}
+                </td>
+                <td><span class="badge status-${stat.class}">${stat.text}</span></td>
+                
                 <td>${formatDateTime(rp.createdAt)}</td>
-                <td><span class="badge ${stat.class}">${stat.text}</span></td>
+                
                 <td>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn-view-detail edit" data-id="${rp._id}" data-type="report" title="Xem chi tiết">
+                        <button class="btn-action edit" data-id="${rp._id}" data-type="report" title="Xem chi tiết" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
                             <i class="fas fa-eye"></i>
                         </button>
                         
