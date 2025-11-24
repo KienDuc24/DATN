@@ -63,8 +63,8 @@ const reportForm = el('reportForm');
 let isEditingReport = false;
 
 document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
     setupTabs();    
+    
     const btnAddGame = el('addGameBtn');
     if(btnAddGame) btnAddGame.onclick = () => openGameForm(null);
     
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(el('usersSearch')) el('usersSearch').onkeyup = debounce(() => { pageState.users = 1; fetchUsers(el('usersSearch').value); }, 400);
     if(el('roomsSearch')) el('roomsSearch').onkeyup = debounce(() => { pageState.rooms = 1; fetchRooms(el('roomsSearch').value); }, 400);
     if(el('gamesSearch')) el('gamesSearch').onkeyup = debounce(() => { pageState.games = 1; fetchGames(el('gamesSearch').value); }, 400);
-    if(el('reportsSearch')) el('reportsSearch').onkeyup = debounce(() => { pageState.reports = 1; fetchReports(el('reportsSearch').value); }, 400); // THÊM MỚI
+    if(el('reportsSearch')) el('reportsSearch').onkeyup = debounce(() => { pageState.reports = 1; fetchReports(el('reportsSearch').value); }, 400);
 
     if(gameForm) gameForm.onsubmit = saveGame;
     if(userForm) userForm.onsubmit = saveUser; 
@@ -113,144 +113,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
     setupTableDelegation();
     setupModals();
     loadData();
-
-    const btnReports = document.getElementById('btn-reports');
-    const reportsSection = document.getElementById('reports-section');
-    const reportsTableBody = document.getElementById('reports-table-body');
-    const reportsPagination = document.getElementById('reports-pagination');
-    
-    const adminReportModal = document.getElementById('adminReportModal');
-    const closeAdminReportModal = document.getElementById('closeAdminReportModal');
-    const adminReportForm = document.getElementById('adminReportForm');
-
-    let currentReportsPage = 1;
-
-    btnReports.addEventListener('click', (e) => {
-        e.preventDefault();
-        document.querySelectorAll('.main-content > section').forEach(s => s.style.display = 'none');
-        reportsSection.style.display = 'block';
-        document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
-        btnReports.classList.add('active');
-        loadReports(1);
-    });
-
-    const categoryMap = {
-        'bug': 'Lỗi kỹ thuật', 'harass': 'Quấy rối', 'spam': 'Spam', 'other': 'Khác'
-    };
-
-    async function loadReports(page) {
-        currentReportsPage = page;
-        reportsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Đang tải...</td></tr>';
-        try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`/api/report/admin?page=${page}&limit=10`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            
-            reportsTableBody.innerHTML = '';
-            if (data.reports.length === 0) {
-                reportsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Chưa có báo cáo nào.</td></tr>';
-            } else {
-                data.reports.forEach(report => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${report._id.substring(0, 8)}...</td>
-                        <td>${report.reporterName}</td>
-                        <td><span class="badge badge-${report.category}">${categoryMap[report.category] || report.category}</span></td>
-                        <td>${new Date(report.createdAt).toLocaleDateString()}</td>
-                        <td><span class="badge status-${report.status}">${t('admin_report_status_' + report.status, report.status)}</span></td>
-                        <td>
-                            <button class="btn-action btn-view" data-id="${report._id}"><i class="fas fa-eye"></i> Xem</button>
-                        </td>
-                    `;
-                    reportsTableBody.appendChild(row);
-                });
-            }
-            renderPagination(reportsPagination, data.currentPage, data.totalPages, loadReports);
-            updatePageLanguage(); 
-
-            document.querySelectorAll('.btn-view').forEach(btn => {
-                btn.addEventListener('click', () => openAdminReportModal(btn.dataset.id));
-            });
-
-        } catch (error) {
-            console.error('Lỗi tải báo cáo:', error);
-            reportsTableBody.innerHTML = '<tr><td colspan="6" style="color:red;text-align:center;">Lỗi tải dữ liệu.</td></tr>';
-        }
-    }
-
-    async function openAdminReportModal(id) {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`/api/report/admin/${id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const report = await res.json();
-
-            document.getElementById('editReportId').value = report._id;
-            document.getElementById('detailReportId').textContent = report._id;
-            document.getElementById('detailReporter').textContent = report.reporterName;
-            document.getElementById('detailCategory').textContent = categoryMap[report.category] || report.category;
-            document.getElementById('detailDate').textContent = new Date(report.createdAt).toLocaleString();
-            document.getElementById('detailContentText').textContent = report.content;
-            document.getElementById('detailStatus').value = report.status;
-            document.getElementById('detailAdminNote').value = report.adminNote || '';
-
-            adminReportModal.classList.remove('hidden');
-        } catch (error) {
-            console.error('Lỗi lấy chi tiết báo cáo:', error);
-            alert('Không thể lấy thông tin báo cáo.');
-        }
-    }
-
-    closeAdminReportModal.addEventListener('click', () => adminReportModal.classList.add('hidden'));
-
-    adminReportForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('editReportId').value;
-        const status = document.getElementById('detailStatus').value;
-        const adminNote = document.getElementById('detailAdminNote').value;
-        const token = localStorage.getItem('token');
-
-        try {
-            const res = await fetch(`/api/report/admin/${id}`, {
-                method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ status, adminNote })
-            });
-            if (res.ok) {
-                alert('Cập nhật báo cáo thành công!');
-                adminReportModal.classList.add('hidden');
-                loadReports(currentReportsPage); 
-            } else {
-                alert('Cập nhật thất bại.');
-            }
-        } catch (error) {
-            console.error('Lỗi cập nhật:', error);
-            alert('Lỗi server.');
-        }
-    });
 });
-
-function checkAuth() {
-    if (!document.cookie.includes('admin_token')) {
-        // window.location.href = '/admin-login'; 
-    }
-}
-
 
 function setupTabs() {
     const tabs = document.querySelectorAll('.nav-item');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            if (tab.classList.contains('logout')) return; 
+            if (tab.classList.contains('logout') || tab.classList.contains('link-home')) return; 
             
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
@@ -303,7 +176,6 @@ async function loadStats() {
         if(el('onlineUsers')) el('onlineUsers').innerText = data.onlineUsers || 0;
         if(el('totalUsers')) el('totalUsers').innerText = data.totalUsers || 0;
         if(el('totalReports')) el('totalReports').innerText = data.totalReports || 0;
-        
     }
 }
 
@@ -419,7 +291,6 @@ function renderUsersTable(users) {
     }
 
     tbody.innerHTML = users.map(u => {
-        
         let historyHtml = 'Chưa có.';
         if (u.playHistory && u.playHistory.length > 0) {
             const recentHistory = u.playHistory.slice(-5).reverse(); 
@@ -536,7 +407,7 @@ function renderReportsTable(reports) {
                 <td>${formatDateTime(r.createdAt)}</td>
                 <td><span class="badge status-${stat.class}">${stat.text}</span></td>
                 <td>
-                    <button class="btn-action btn-view edit" data-id="${r._id}" data-type="report" title="Xem chi tiết"><i class="fas fa-eye"></i> Xem</button>
+                    <button class="action-btn edit" data-id="${r._id}" data-type="report" title="Xem chi tiết"><i class="fas fa-eye"></i> Xem</button>
                 </td>
             </tr>
         `;
@@ -591,6 +462,19 @@ function setupTableDelegation() {
             }
         });
     }
+
+    const reportsList = el('adminReportsList');
+    if (reportsList) {
+        reportsList.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const id = btn.dataset.id;
+
+            if (btn.classList.contains('edit')) { 
+                openReportModal(id);
+            } 
+        });
+    }
 }
 
 
@@ -604,6 +488,11 @@ async function deleteItem(type, id) {
                    
     const res = await fetchApi(endpoint, { method: 'DELETE' });
     if(res) logActivity(`Đã xóa/đóng ${type.toUpperCase()} ID: ${id}`, 'success');
+    
+    if (type === 'games') fetchGames('');
+    else if (type === 'rooms') fetchRooms('');
+    else if (type === 'users') fetchUsers('');
+    
     showOverlay(false);
 }
 
@@ -632,28 +521,16 @@ function logoutAdmin() {
       .finally(()=> location.href='/admin-login.html'); 
 }
 
-
 function setupModals() {
-    if(gameModal) {
-        document.querySelectorAll('#gameModal .close-modal, #gameModal .close-modal-btn').forEach(btn => {
-            btn.onclick = () => gameModal.style.display = 'none';
-        });
-    }
-    if(userModal) {
-        document.querySelectorAll('#userModal .close-modal, #userModal .close-modal-btn').forEach(btn => {
-            btn.onclick = () => userModal.style.display = 'none';
-        });
-    }
-    if(addUserModal) {
-        document.querySelectorAll('#addUserModal .close-modal, #addUserModal .close-modal-btn').forEach(btn => {
-            btn.onclick = () => addUserModal.style.display = 'none';
-        });
-    }
-    if(reportModal) {
-        document.querySelectorAll('#reportModal .close-modal, #reportModal .close-modal-btn').forEach(btn => {
-            btn.onclick = () => reportModal.style.display = 'none';
-        });
-    }
+    const modals = ['gameModal', 'userModal', 'addUserModal', 'reportModal'];
+    modals.forEach(id => {
+        const modal = el(id);
+        if(modal) {
+            modal.querySelectorAll('.close-modal, .close-modal-btn').forEach(btn => {
+                btn.onclick = () => modal.style.display = 'none';
+            });
+        }
+    });
 }
 
 function openGameForm(game) {
@@ -702,8 +579,11 @@ async function saveGame(e) {
         body: JSON.stringify(payload)
     });
     
-    if(res) logActivity(`Game ${payload.id} đã được lưu thành công.`, 'success');
-    if (gameModal) gameModal.style.display = 'none';
+    if(res) {
+        logActivity(`Game ${payload.id} đã được lưu thành công.`, 'success');
+        if (gameModal) gameModal.style.display = 'none';
+        fetchGames(''); 
+    }
     showOverlay(false);
 }
 
@@ -746,8 +626,11 @@ async function saveUser(e) {
         body: JSON.stringify(payload)
     });
     
-    if(res) logActivity(`User ${res.username} đã được cập nhật thành công.`, 'success');
-    if (userModal) userModal.style.display = 'none';
+    if(res) {
+        logActivity(`User ${res.username} đã được cập nhật.`, 'success');
+        if (userModal) userModal.style.display = 'none';
+        fetchUsers('');
+    }
     showOverlay(false);
 }
 
@@ -810,7 +693,7 @@ async function openReportModal(reportId) {
         el('detailContentText').textContent = report.content;
         
         el('detailStatus').value = report.status;
-        el('detailAdminNote').value = report.adminNote || '';
+        el('detailAdminNote').value = report.adminNote || report.note || '';
 
         if (reportModal) reportModal.style.display = 'block';
     } catch (e) {
@@ -820,7 +703,7 @@ async function openReportModal(reportId) {
         showOverlay(false);
     }
 }
-Date
+
 async function saveReport(e) {
     e.preventDefault();
     showOverlay(true);
@@ -840,12 +723,12 @@ async function saveReport(e) {
             body: JSON.stringify(payload)
         });
         
-        if(res && res.ok) {
+        if(res && (res.ok || res.report)) {
             logActivity(`Báo cáo ${reportId} đã được cập nhật.`, 'success');
             if (reportModal) reportModal.style.display = 'none';
             fetchReports(el('reportsSearch')?.value || '');
         } else {
-            const msg = res?.error || 'Lỗi không xác định';
+            const msg = res?.message || 'Lỗi không xác định';
             alert('Cập nhật thất bại: ' + msg);
         }
     } catch (error) {
@@ -855,6 +738,7 @@ async function saveReport(e) {
         showOverlay(false);
     }
 }
+
 function logActivity(message, type = 'info') {
     const logList = el('activityLog');
     if (!logList) return;
@@ -885,4 +769,3 @@ function debounce(func, wait) {
         timeout = setTimeout(() => func.apply(this, args), wait);
     };
 }
-

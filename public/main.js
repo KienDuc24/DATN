@@ -43,11 +43,21 @@ function groupGames(games) {
     
     gamesByCategory = {};
     allGames.forEach(game => {
-        const cat = getGameCategory(game, currentLang); 
-        if (!gamesByCategory[cat]) {
-            gamesByCategory[cat] = [];
+        const catString = getGameCategory(game, currentLang); 
+        
+        if (catString) {
+            const categories = catString.split(',');
+            categories.forEach(c => {
+                const cat = c.trim(); 
+                
+                if (cat) { 
+                    if (!gamesByCategory[cat]) {
+                        gamesByCategory[cat] = [];
+                    }
+                    gamesByCategory[cat].push(game);
+                }
+            });
         }
-        gamesByCategory[cat].push(game);
     });
 
     if (typeof rerenderAllSliders === 'function') {

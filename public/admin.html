@@ -376,6 +376,47 @@
         </div>
     </form>
 </div>
+
+<div id="reportModal" class="popup-modal wide" style="display:none; max-width: 600px;">
+    <span class="close-modal">&times;</span>
+    <h2>Chi tiết Báo cáo</h2>
+    
+    <div class="report-details" style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+        <p><strong>ID:</strong> <span id="detailReportId"></span></p>
+        <p><strong>Người gửi:</strong> <span id="detailReporter" style="color: var(--accent);"></span></p>
+        <p><strong>Danh mục:</strong> <span id="detailCategory"></span></p>
+        <p><strong>Ngày gửi:</strong> <span id="detailDate"></span></p>
+        
+        <div style="margin-top: 10px;">
+            <strong>Nội dung:</strong>
+            <div id="detailContentText" style="background: var(--bg-dark); padding: 10px; border-radius: 6px; margin-top: 5px; white-space: pre-wrap; border: 1px solid var(--border-dark);"></div>
+        </div>
+    </div>
+
+    <form id="reportForm" class="auth-form" style="text-align:left;">
+        <input type="hidden" id="editReportId">
+        
+        <div class="form-group">
+            <label for="detailStatus">Trạng thái xử lý:</label>
+            <select id="detailStatus">
+                <option value="pending">Đang chờ</option>
+                <option value="reviewed">Đang xem xét</option>
+                <option value="resolved">Đã giải quyết</option>
+                <option value="rejected">Từ chối</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="detailAdminNote">Ghi chú của Admin:</label>
+            <textarea id="detailAdminNote" rows="3" placeholder="Nhập ghi chú xử lý..."></textarea>
+        </div>
+
+        <div class="form-actions" style="margin-top:20px; text-align:right;">
+            <button type="button" class="btn btn-cancel close-modal-btn">Đóng</button>
+            <button type="submit" class="btn btn-save">Cập nhật Báo cáo</button>
+        </div>
+    </form>
+</div>
 <div id="adminOverlay" class="admin-overlay" style="display:none;">
     <div class="spinner"></div>
   </div>

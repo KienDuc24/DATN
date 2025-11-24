@@ -2,10 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const Report = require('../models/Report');
 
 module.exports = function(io) {
   
-  // --- STATS (Fix lỗi không hiển thị tổng) ---
   router.get('/stats', async (req, res) => {
       try {
           const stats = await adminController.getStats();
@@ -15,12 +15,11 @@ module.exports = function(io) {
       }
   });
 
-  // --- USER ---
   router.get('/users', async (req, res) => {
     try {
       const q = req.query.q;
       const page = parseInt(req.query.page) || 1;
-      const limit = 10; // Cố định 10 item/trang
+      const limit = 10; 
       
       let query = {};
       if (q) {
@@ -33,21 +32,16 @@ module.exports = function(io) {
     } catch (e) { res.status(500).json({ message: e.message }); }
   });
   
-  // BỔ SUNG: Route TẠO USER MỚI (POST)
   router.post('/users', async (req, res) => {
       try {
           const newUser = await adminController.createUser(req.body);
           io.emit('admin-users-changed'); 
-          // Trả về 201 Created
           res.status(201).json({ ok: true, user: newUser, message: 'User created successfully' });
       } catch(e) { 
-          // 400 Bad Request cho lỗi nghiệp vụ (ví dụ: username đã tồn tại)
           res.status(400).json({ message: e.message }); 
       }
   });
-  // KẾT THÚC BỔ SUNG
 
-  // Route SỬA USER (PUT)
   router.put('/users/:id', async (req, res) => {
      try {
         const u = await adminController.updateUser(req.params.id, req.body);
@@ -64,7 +58,6 @@ module.exports = function(io) {
   });
 
 
-  // --- ROOMS ---
   router.get('/rooms', async (req, res) => {
     try {
       const q = req.query.q;
@@ -81,7 +74,6 @@ module.exports = function(io) {
     } catch (e) { res.status(500).json({ message: e.message }); }
   });
 
-  // (Route DELETE Room giữ nguyên)
   router.delete('/rooms/:id', async (req, res) => {
       try {
         await adminController.deleteRoom(req.params.id);
@@ -91,7 +83,6 @@ module.exports = function(io) {
   });
 
 
-  // --- GAMES ---
   router.get('/games', async (req, res) => {
     try {
         const q = req.query.q;
@@ -108,7 +99,6 @@ module.exports = function(io) {
     } catch (e) { res.status(500).json({ message: e.message }); }
   });
 
-  // (Các route POST, PUT, DELETE, SYNC Game giữ nguyên)
   router.post('/games', async (req, res) => {
       try { await adminController.createGame(req.body); io.emit('admin-games-changed'); res.status(201).json({ok:true}); } catch(e){ res.status(500).json({message:e.message}); }
   });
@@ -120,6 +110,65 @@ module.exports = function(io) {
   });
   router.post('/games/sync', async (req, res) => {
       try { const r = await adminController.syncGames(req.body); io.emit('admin-games-changed'); res.json(r); } catch(e){ res.status(500).json({message:e.message}); }
+  });
+
+  router.get('/reports', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = 10;
+        const skip = (page - 1) * limit;
+        
+        const q = req.query.q;
+        let query = {};
+        if (q) {
+             query = { $or: [{ reporterName: { $regex: q, $options: 'i' } }, { content: { $regex: q, $options: 'i' } }] };
+        }
+
+        const total = await Report.countDocuments(query);
+        const data = await Report.find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        res.json({ 
+            data, 
+            total, 
+            page, 
+            pages: Math.ceil(total / limit) 
+        });
+    } catch (e) { 
+        console.error(e);
+        res.status(500).json({ message: e.message }); 
+    }
+  });
+
+  router.get('/reports/:id', async (req, res) => {
+      try {
+          const report = await Report.findById(req.params.id);
+          if (!report) return res.status(404).json({ message: 'Report not found' });
+          res.json(report);
+      } catch (e) { res.status(500).json({ message: e.message }); }
+  });
+
+  router.put('/reports/:id', async (req, res) => {
+      try {
+          const { status, adminNote } = req.body;
+          const updated = await Report.findByIdAndUpdate(
+              req.params.id, 
+              { status, note: adminNote }, 
+              { new: true }
+          );
+          io.emit('admin-reports-changed'); 
+          res.json({ ok: true, report: updated });
+      } catch (e) { res.status(500).json({ message: e.message }); }
+  });
+
+  router.delete('/reports/:id', async (req, res) => {
+      try {
+          await Report.findByIdAndDelete(req.params.id);
+          io.emit('admin-reports-changed');
+          res.json({ ok: true });
+      } catch (e) { res.status(500).json({ message: e.message }); }
   });
 
   return router;
