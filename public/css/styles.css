@@ -524,3 +524,107 @@ footer {
     max-height: 50px; 
 }
 
+.report-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6); /* Màu nền mờ */
+    display: none; /* Ẩn mặc định */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none; /* Ẩn modal */
+}
+
+.modal-content {
+    background: #20232a; /* Màu nền modal */
+    color: #fff; /* Màu chữ */
+    padding: 20px;
+    border-radius: 12px;
+    width: 90%; /* Chiều rộng modal */
+    max-width: 400px; /* Giới hạn chiều rộng */
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); /* Đổ bóng */
+    animation: fadeIn 0.3s ease-in-out; /* Hiệu ứng xuất hiện */
+}
+
+.modal-content h2 {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ff9800; /* Màu tiêu đề */
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.modal-content label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 1rem;
+    color: #ccc; /* Màu chữ nhạt */
+}
+
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    border: 1px solid #444; /* Viền input */
+    background: #181c23; /* Nền input */
+    color: #fff; /* Màu chữ */
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.modal-content textarea {
+    resize: none; /* Không cho phép thay đổi kích thước */
+}
+
+.modal-content button {
+    width: 100%;
+    padding: 12px;
+    background: #ff9800; /* Màu nền nút */
+    border: none;
+    border-radius: 8px;
+    color: #fff; /* Màu chữ */
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.modal-content button:hover {
+    background: #e68900; /* Màu nền khi hover */
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #ff9800; /* Màu nút đóng */
+    cursor: pointer;
+}
+
+.close-btn:hover {
+    color: #e68900; /* Màu nút đóng khi hover */
+}
+
+/* Hiệu ứng xuất hiện modal */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

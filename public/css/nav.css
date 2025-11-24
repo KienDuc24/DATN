@@ -1,15 +1,15 @@
-/* public/css/nav.css (ĐÃ SỬA) */
-/* --- Sidebar (Mobile: Ẩn) --- */
 .sidebar {
   position: fixed;
-  top: 0; left: 0; bottom: 0;
-  width: 80vw; /* Rộng hơn trên mobile */
+  top: 0; 
+  left: 0; 
+  bottom: 0;
+  width: 80vw;
   min-width: 210px;
   max-width: 280px;
   background: #20232a;
   color: #fff;
   z-index: 1001;
-  transform: translateX(-100%); /* Ẩn mặc định */
+  transform: translateX(-100%); 
   transition: transform 0.3s cubic-bezier(.68,-0.55,.27,1.55);
   box-shadow: 2px 0 16px #0006;
   display: flex;
@@ -18,7 +18,6 @@
 }
 .sidebar.show { 
   transform: translateX(0); 
-  
 }
 .sidebar-logo {
   display: flex;
@@ -35,7 +34,6 @@
 }
 
 .sidebar-logo img {
-  /* SỬA: Tăng kích thước logo trong nav */
   width: 36px; 
   height: 36px; 
   border-radius: 8px;
@@ -103,13 +101,11 @@
 }
 @keyframes fadeIn { from { opacity: 0;} to { opacity: 1;} }
 
-/* --- Header (Mobile First) --- */
 .header-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  /* SỬA: Tăng padding để header to hơn */
   padding: 12px 2vw;
   background: #262930;
 }
@@ -117,7 +113,6 @@
   background: none;
   border: none;
   color: #ff9800;
-  /* SỬA: Tăng kích thước icon */
   font-size: 1.8rem; 
   cursor: pointer;
   margin-right: 4px;
@@ -128,7 +123,6 @@
 .sidebar-toggle:hover { color: #43cea2; }
 
 .logo-animate {
-  /* SỬA: Tăng kích thước logo */
   width: 36px;
   height: 36px;
   margin-right: 5px;
@@ -138,7 +132,6 @@
 .header-title {
   font-family: 'Pacifico', cursive;
   color: #ff9800;
-  /* SỬA: Tăng kích thước font */
   font-size: clamp(1.2rem, 4vw, 1.5rem);
   margin: 0 8px 0 0;
   letter-spacing: 1px;
@@ -146,16 +139,14 @@
   line-height: 1;
 }
 
-/* --- Search (Mobile: Ẩn thanh, hiện nút) --- */
 .search-bar.search-bar-center {
-  display: none; /* Ẩn mặc định */
+  display: none;
 }
 .search-toggle {
-  display: flex; /* Hiện mặc định */
+  display: flex; 
   background: #ff9800;
   border: none;
   border-radius: 50%;
-  /* SỬA: Tăng kích thước nút search */
   width: 40px;
   height: 40px;
   align-items: center;
@@ -172,20 +163,19 @@
   color: #23272f;
 }
 
-/* --- SỬA LOGIC CĂN GIỮA SEARCH MOBILE --- */
 .header-main.mobile-searching .logo-animate,
 .header-main.mobile-searching .header-title,
-.header-main.mobile-searching .sidebar-toggle { /* THÊM: Ẩn cả nút hamburger */
+.header-main.mobile-searching .sidebar-toggle { 
   display: none !important;
 }
 .header-main.mobile-searching .search-bar.search-bar-center {
   display: flex !important;
-  flex: 1 1 90vw; /* SỬA: Chiếm 90% */
-  max-width: 90vw; /* SỬA: Tối đa 90% */
-  margin: 0 auto; /* SỬA: Căn giữa */
+  flex: 1 1 90vw; 
+  max-width: 90vw; 
+  margin: 0 auto; 
   background: #23272f;
   border-radius: 18px;
-  height: 40px; /* SỬA: Tăng chiều cao */
+  height: 40px; 
   z-index: 100;
 }
 .header-main.mobile-searching .search-toggle,
@@ -195,16 +185,14 @@
 .header-main.mobile-searching .search-bar input {
   font-size: 1rem;
   padding: 0 10px;
-  height: 38px; /* SỬA: Tăng chiều cao */
+  height: 38px; 
 }
 .header-main.mobile-searching .search-bar button {
   font-size: 1rem;
-  height: 40px; /* SỬA: Tăng chiều cao */
+  height: 40px; 
   padding: 0 10px;
   border-radius: 0 16px 16px 0;
 }
-
-/* --- Auth Buttons (Mobile) --- */
 .header-auth-btns {
   display: flex;
   gap: 4px;
@@ -216,7 +204,6 @@
   color: #fff;
   border: none;
   border-radius: 6px;
-  /* SỬA: Tăng kích thước nút */
   padding: 8px 14px;
   font-size: 1rem;
   font-weight: 700;
@@ -255,6 +242,9 @@
     gap: 8px;
 }
 
+.sidebar-auth{
+  flex: 1;
+}
 
 .sidebar-footer a {
     color: #ff9800;

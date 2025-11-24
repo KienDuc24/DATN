@@ -36,12 +36,12 @@
       </div>
 
       <div class="sidebar-auth" id="sidebarAuthBtns">
-        <button class="auth-btn" data-i18n="login" onclick="openAuthModal('login')">Login</button>
-        <button class="auth-btn" data-i18n="register" onclick="openAuthModal('register')">Register</button>
+        <button class="auth-btn" data-i18n="login" onclick="openAuthModal('login')"></button>
+        <button class="auth-btn" data-i18n="register" onclick="openAuthModal('register')"></button>
       </div>
       <div class="sidebar-footer">
-        <a href="mailto:support@campinggame.com" id="navContactBtn" data-lang-key="nav_contact">Liên hệ</a>
-        <a href="#" id="navReportBtn" data-lang-key="nav_report">Báo cáo</a>
+        <a href="mailto:support@campinggame.com" id="navContactBtn" data-i18n="nav_contact"></a>
+        <a id="reportBtn" data-i18n="nav_report"></a>
       </div>
 
   </aside>
@@ -236,22 +236,20 @@
   <div id="reportModal" class="modal hidden">
     <div class="modal-content">
         <button id="closeReportModal" class="close-btn">&times;</button>
-        <h2>${LANGS[currentLang]?.report_title || 'Gửi Báo Cáo'}</h2>
+        <h2></h2> 
         <form id="reportForm">
-            <label for="reportUsername">${LANGS[currentLang]?.report_username || 'Tên người báo cáo'}:</label>
+            <label for="reportUsername"></label>
             <input id="reportUsername" type="text" readonly>
-            <label for="reportAnon">
-                <input id="reportAnon" type="checkbox"> ${LANGS[currentLang]?.report_anon || 'Báo cáo ẩn danh'}
-            </label>
-            <label for="reportCategory">${LANGS[currentLang]?.report_category || 'Danh mục'}:</label>
+            <label for="reportAnon" type="checkbox"></label>
+            <label for="reportCategory"></label>
             <select id="reportCategory">
-                <option value="bug">${LANGS[currentLang]?.report_bug || 'Lỗi hệ thống'}</option>
-                <option value="feedback">${LANGS[currentLang]?.report_feedback || 'Góp ý'}</option>
-                <option value="other">${LANGS[currentLang]?.report_other || 'Khác'}</option>
+                <option value="bug">Lỗi hệ thống</option>
+                <option value="feedback">Góp ý</option>
+                <option value="other">Khác</option>
             </select>
-            <label for="reportContent">${LANGS[currentLang]?.report_content || 'Nội dung'}:</label>
+            <label for="reportContent"></label>
             <textarea id="reportContent" rows="4"></textarea>
-            <button type="submit">${LANGS[currentLang]?.report_submit || 'Gửi Báo Cáo'}</button>
+            <button type="submit"></button>
         </form>
     </div>
   </div>
@@ -267,10 +265,10 @@
         <span>Camping Game</span>
       </div>
       <div class="footer-links">
-        <a href="mailto:support@campinggame.com" data-i18n="footer_contact">Liên hệ với chúng tôi</a>
+        <a href="mailto:support@campinggame.com" data-i18n="footer_contact"></a>
       </div>
       <div class="footer-links">
-        <a id="Report" data-i18n="footer_report_issue">Báo cáo vấn đề</a>
+        <a id="reportBtn" data-i18n="footer_report_issue"></a>
       </div>
       
       <div class="footer-copyright">

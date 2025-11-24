@@ -491,6 +491,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportAnonCheckbox = document.getElementById('reportAnon');
     const reportCategory = document.getElementById('reportCategory');
     const reportContent = document.getElementById('reportContent');
+    const reportTitle = reportModal.querySelector('h2');
+    const reportUsernameLabel = reportModal.querySelector('label[for="reportUsername"]');
+    const reportAnonLabel = reportModal.querySelector('label[for="reportAnon"]');
+    const reportCategoryLabel = reportModal.querySelector('label[for="reportCategory"]');
+    const reportContentLabel = reportModal.querySelector('label[for="reportContent"]');
+    const reportSubmitBtn = reportModal.querySelector('button[type="submit"]');
+
+    reportTitle.innerText = LANGS[currentLang]?.report_title || 'Gửi Báo Cáo';
+    reportUsernameLabel.innerText = LANGS[currentLang]?.report_username || 'Tên người báo cáo:';
+    reportAnonLabel.innerHTML = `<input id="reportAnon" type="checkbox"> ${LANGS[currentLang]?.report_anon || 'Báo cáo ẩn danh'}`;
+    reportCategoryLabel.innerText = LANGS[currentLang]?.report_category || 'Danh mục:';
+    reportContentLabel.innerText = LANGS[currentLang]?.report_content || 'Nội dung:';
+    reportSubmitBtn.innerText = LANGS[currentLang]?.report_submit || 'Gửi Báo Cáo';
 
     if (reportBtn) {
         reportBtn.addEventListener('click', () => {
@@ -541,6 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    
     fetchLang();
     fetchGames();
 
