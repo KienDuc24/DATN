@@ -508,7 +508,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (anonLabel.lastChild.nodeType === Node.TEXT_NODE) {
         anonLabel.lastChild.nodeValue = anonText;
     } else {
-        anonLabel.appendChild(document.createTextNode(anonText));
+        if (!anonLabel.lastChild) {
+             anonLabel.textContent = anonText;
+        } else {
+             anonLabel.appendChild(document.createTextNode(anonText));
+        }
     }
 
     reportCategoryLabel.innerText = LANGS[currentLang]?.report_label_category || 'Danh mục:';
