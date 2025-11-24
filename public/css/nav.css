@@ -17,7 +17,8 @@
   padding-top: 10px;
 }
 .sidebar.show { 
-  transform: translateX(0); /* Hiện khi có class .show */
+  transform: translateX(0); 
+  
 }
 .sidebar-logo {
   display: flex;
@@ -244,4 +245,22 @@
   outline: none;
   cursor: pointer;
   margin-top: 4px;
+}
+
+.sidebar-footer {
+    padding: 16px;
+    display: flex;
+    flex-wrap: wrap; 
+    justify-content: center; 
+    gap: 8px;
+}
+
+
+.sidebar-footer a {
+    color: #ff9800;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    text-align: center;
+    transition: color 0.2s;
 }

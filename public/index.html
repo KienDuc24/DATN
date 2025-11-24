@@ -18,34 +18,34 @@
   </script>
 </head>
 <body>
-  <aside class="sidebar" id="sidebar">
+  <aside class="sidebar" id="sidebar" style="height: 100vh;">
     <div class="sidebar-logo">
       <img src="img/fav.svg" alt="Logo" style="width: 36px; height: 36px;" />
       <span>Camping Game</span>
     </div>
     <nav>
-      <a href="#all" data-i18n="all"><span class="icon">🎮</span> All Games</a>
-      <a href="#featured" data-i18n="featured"><span class="icon">🔥</span> Featured Games</a>
+      <a href="#all" data-i18n="all"><span class="icon">🎮</span> </a>
+      <a href="#featured" data-i18n="featured"><span class="icon">🔥</span> </a>
       <a href="#category" data-i18n="category"><span class="icon">📂</span> </a>
 
-      <div class="nav-links">
-        <a href="/" data-lang-key="nav_home">Trang chủ</a>
-        <a href="/#featured-games" data-lang-key="nav_games">Trò chơi</a>
-        <a href="#" id="navContactBtn" data-lang-key="nav_contact">Liên hệ</a>
-        <a href="#" id="navReportBtn" data-lang-key="nav_report">Báo cáo</a>
-      </div>
-    </nav>
-    <div class="sidebar-auth" id="sidebarAuthBtns">
-      <button class="auth-btn" data-i18n="login" onclick="openAuthModal('login')">Login</button>
-      <button class="auth-btn" data-i18n="register" onclick="openAuthModal('register')">Register</button>
-    </div>
-    <div class="sidebar-lang">
+      <div class="sidebar-lang">
       <select id="langSelect" onchange="setLang(this.value)">
         <option value="vi">Tiếng Việt</option>
         <option value="en">English</option>
       </select>
-    </div>
+      </div>
+
+      <div class="sidebar-auth" id="sidebarAuthBtns">
+        <button class="auth-btn" data-i18n="login" onclick="openAuthModal('login')">Login</button>
+        <button class="auth-btn" data-i18n="register" onclick="openAuthModal('register')">Register</button>
+      </div>
+      <div class="sidebar-footer">
+        <a href="mailto:support@campinggame.com" id="navContactBtn" data-lang-key="nav_contact">Liên hệ</a>
+        <a href="#" id="navReportBtn" data-lang-key="nav_report">Báo cáo</a>
+      </div>
+
   </aside>
+</nav>
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
   <header>
     <div class="header-main">
@@ -230,6 +230,29 @@
         <input id="inputJoinRoomCode" placeholder="Nhập mã phòng">
         <button id="confirmJoinRoomBtn">Vào phòng</button>
       </div>
+    </div>
+  </div>
+
+  <div id="reportModal" class="modal hidden">
+    <div class="modal-content">
+        <button id="closeReportModal" class="close-btn">&times;</button>
+        <h2>${LANGS[currentLang]?.report_title || 'Gửi Báo Cáo'}</h2>
+        <form id="reportForm">
+            <label for="reportUsername">${LANGS[currentLang]?.report_username || 'Tên người báo cáo'}:</label>
+            <input id="reportUsername" type="text" readonly>
+            <label for="reportAnon">
+                <input id="reportAnon" type="checkbox"> ${LANGS[currentLang]?.report_anon || 'Báo cáo ẩn danh'}
+            </label>
+            <label for="reportCategory">${LANGS[currentLang]?.report_category || 'Danh mục'}:</label>
+            <select id="reportCategory">
+                <option value="bug">${LANGS[currentLang]?.report_bug || 'Lỗi hệ thống'}</option>
+                <option value="feedback">${LANGS[currentLang]?.report_feedback || 'Góp ý'}</option>
+                <option value="other">${LANGS[currentLang]?.report_other || 'Khác'}</option>
+            </select>
+            <label for="reportContent">${LANGS[currentLang]?.report_content || 'Nội dung'}:</label>
+            <textarea id="reportContent" rows="4"></textarea>
+            <button type="submit">${LANGS[currentLang]?.report_submit || 'Gửi Báo Cáo'}</button>
+        </form>
     </div>
   </div>
 

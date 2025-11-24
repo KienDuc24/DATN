@@ -38,7 +38,9 @@ async function fetchGames() {
 function groupGames(games) {
     const sorted = sortGamesLogic(games, 'newest');
     allGames = sorted; 
+    
     featuredGames = allGames.filter(g => g.featured === true); 
+    
     gamesByCategory = {};
     allGames.forEach(game => {
         const cat = getGameCategory(game, currentLang); 
@@ -47,6 +49,7 @@ function groupGames(games) {
         }
         gamesByCategory[cat].push(game);
     });
+
     if (typeof rerenderAllSliders === 'function') {
         rerenderAllSliders();
     }
@@ -106,8 +109,11 @@ function setLang(lang) {
     if (!LANGS[lang]) lang = 'vi'; 
     currentLang = lang;
     localStorage.setItem('lang', lang);
+    
     if (typeof updateLangUI === 'function') updateLangUI(); 
+    
     if (allGames.length > 0) groupGames(allGames);
+    
     const langSelect = document.getElementById('langSelect');
     if(langSelect) langSelect.value = lang;
 }
@@ -116,7 +122,7 @@ function searchGames() {
     const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
     
     if (keyword.length < 2) {
-        if (typeof hideSearchResults === 'function') hideSearchResults();
+        if (typeof hideSearchResults === 'function') hideSearchResults(); 
         return;
     }
     
@@ -141,7 +147,7 @@ function getActiveUsername() {
 
 function handleGameClick(gameId, gameName) {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.username && !user.isGuest) { 
+    if (!user.username && !user.isGuest) {
         openAuthModal('login');
         return;
     }
@@ -151,8 +157,9 @@ function handleGameClick(gameId, gameName) {
     if (game && game.isComingSoon) {
         const msg = (LANGS[currentLang] && LANGS[currentLang].game_developing) || "Game này đang được phát triển!";
         alert(msg);
-        return; 
+        return;
     }
+  
 
     const modal = document.getElementById('roomModal');
     if (!modal) return;
@@ -212,6 +219,7 @@ function handleGameClick(gameId, gameName) {
     };
     modal.querySelector('#confirmJoinRoomBtn').onclick = handleJoinRoom;
 }
+
 async function handleCreateRoom() {
     const gameIdLocal = window.selectedGameId;
     const gameNameLocal = window.selectedGameName;
@@ -260,6 +268,7 @@ async function handleCreateRoom() {
       alert('Lỗi khi tạo phòng: ' + (err && err.message));
     }
 }
+
 async function handleJoinRoom() {
     const modal = document.getElementById('roomModal');
     const code = modal.querySelector('#inputJoinRoomCode').value.trim().toUpperCase();
@@ -327,44 +336,30 @@ async function handleLogout() {
 
 async function handleUpdateProfile(e) {
     e.preventDefault();
-    const displayNameInput = document.getElementById('settings-displayName');
-    const emailInput = document.getElementById('settings-email');
-    const displayName = displayNameInput.value.trim(); 
-    const email = emailInput.value.trim(); 
+    const displayName = document.getElementById('settings-displayName').value;
+    const email = document.getElementById('settings-email').value;
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-
+    
     if (!user.username || user.isGuest) return alert('Lỗi: Bạn phải đăng nhập để cập nhật hồ sơ.');
-
-    const updateData = {
-        username: user.username 
-    };
-
-    if (displayName) {
-        updateData.displayName = displayName;
-    }
-    if (email) {
-        updateData.email = email;
-    }
-
-    if (Object.keys(updateData).length <= 1) {
-        alert("Vui lòng nhập thông tin cần cập nhật (Tên hiển thị hoặc Email).");
-        return;
-    }
-
+    
     try {
         const res = await fetch(`${API_BASE_URL}/api/user`, { 
-            method: 'PUT',
-            headers: {
+            method: 'PUT', 
+            headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            body: JSON.stringify(updateData)
+            body: JSON.stringify({ 
+                username: user.username,
+                displayName: displayName, 
+                email: email 
+            })
         });
-
+        
         if (!res.ok) {
             const contentType = res.headers.get("content-type");
             let errorMsg = `Lỗi ${res.status}: ${res.statusText}.`;
-
+            
             if (contentType && contentType.indexOf("application/json") !== -1) {
                 const errorData = await res.json();
                 errorMsg = errorData.message || errorMsg;
@@ -373,13 +368,13 @@ async function handleUpdateProfile(e) {
             }
             throw new Error(errorMsg);
         }
-
+        
         const updatedUser = await res.json();
-
-        saveUserToLocal(updatedUser.user);
+        
+        saveUserToLocal(updatedUser.user); 
         document.getElementById('profile-modal').style.display = 'none';
         alert('Cập nhật thông tin thành công!');
-
+        
     } catch (err) {
         console.error("Update profile failed:", err);
         alert(`CẬP NHẬT THẤT BẠI: ${err.message}`);
@@ -418,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saveUserToLocal(guestUser);
         };
     }
-    
+
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
@@ -489,6 +484,62 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Failed to parse Google user from URL", e);
         }
     }
+    const reportBtn = document.getElementById('reportBtn');
+    const reportModal = document.getElementById('reportModal');
+    const reportForm = document.getElementById('reportForm');
+    const reportUsernameInput = document.getElementById('reportUsername');
+    const reportAnonCheckbox = document.getElementById('reportAnon');
+    const reportCategory = document.getElementById('reportCategory');
+    const reportContent = document.getElementById('reportContent');
+
+    if (reportBtn) {
+        reportBtn.addEventListener('click', () => {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user && user.username && !user.isGuest) {
+                reportUsernameInput.value = user.username;
+                reportAnonCheckbox.checked = false;
+            } else {
+                reportUsernameInput.value = LANGS[currentLang]?.report_anon || 'Ẩn danh';
+                reportAnonCheckbox.checked = true;
+            }
+            reportModal.classList.remove('hidden');
+        });
+    }
+
+    const closeReportModal = document.getElementById('closeReportModal');
+    if (closeReportModal) {
+        closeReportModal.addEventListener('click', () => {
+            reportModal.classList.add('hidden');
+        });
+    }
+
+    if (reportForm) {
+        reportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const reporterName = reportAnonCheckbox.checked ? 'Anonymous' : reportUsernameInput.value;
+            const category = reportCategory.value;
+            const content = reportContent.value;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reporterName, category, content })
+                });
+
+                if (res.ok) {
+                    alert(LANGS[currentLang]?.report_success || 'Báo cáo đã được gửi!');
+                    reportModal.classList.add('hidden');
+                } else {
+                    const data = await res.json();
+                    alert(data.message || LANGS[currentLang]?.report_error || 'Lỗi gửi báo cáo.');
+                }
+            } catch (err) {
+                console.error('Lỗi gửi báo cáo:', err);
+                alert(LANGS[currentLang]?.report_error || 'Lỗi gửi báo cáo.');
+            }
+        });
+    }
 
     fetchLang();
     fetchGames();
@@ -507,91 +558,10 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Game list updated from admin.');
             fetchGames(); 
         });
-
     }
     
     const settingsForm = document.getElementById('settings-form');
     if (settingsForm) {
         settingsForm.addEventListener('submit', handleUpdateProfile);
-    }
-
-    const reportModal = document.getElementById('reportModal');
-    const navReportBtn = document.getElementById('navReportBtn');
-    const footerReportBtn = document.getElementById('footerReportBtn');
-    const closeReportModalBtn = document.getElementById('closeReportModal');
-    const cancelReportBtn = document.getElementById('cancelReportBtn');
-    const reportForm = document.getElementById('reportForm');
-    const reportUsernameInput = document.getElementById('reportUsername');
-    const reportAnonCheckbox = document.getElementById('reportAnon');
-
-    function openReportModal() {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        if (user && user.username && !user.isGuest) {
-            reportUsernameInput.value = user.username;
-            reportAnonCheckbox.checked = false;
-        } else {
-            reportUsernameInput.value = t('report_anon', 'Ẩn danh');
-            reportAnonCheckbox.checked = true;
-        }
-        updatePageLanguage(); 
-        reportModal.classList.remove('hidden');
-    }
-
-    function closeReportModal() {
-        reportModal.classList.add('hidden');
-        reportForm.reset();
-    }
-
-    if (navReportBtn) navReportBtn.addEventListener('click', (e) => { e.preventDefault(); openReportModal(); });
-    if (footerReportBtn) footerReportBtn.addEventListener('click', (e) => { e.preventDefault(); openReportModal(); });
-
-    if (closeReportModalBtn) closeReportModalBtn.addEventListener('click', closeReportModal);
-    if (cancelReportBtn) cancelReportBtn.addEventListener('click', closeReportModal);
-    window.addEventListener('click', (e) => { if (e.target === reportModal) closeReportModal(); });
-
-    if (reportAnonCheckbox) {
-        reportAnonCheckbox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                reportUsernameInput.value = t('report_anon', 'Ẩn danh');
-            } else {
-                const user = JSON.parse(localStorage.getItem('user') || '{}');
-                reportUsernameInput.value = (user && user.username && !user.isGuest) ? user.username : t('report_anon', 'Ẩn danh');
-            }
-        });
-    }
-
-    if (reportForm) {
-        reportForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const submitBtn = reportForm.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.textContent = t('processing', 'Đang xử lý...');
-
-            const reporterName = reportAnonCheckbox.checked ? 'Anonymous' : reportUsernameInput.value;
-            const category = document.getElementById('reportCategory').value;
-            const content = document.getElementById('reportContent').value;
-
-            try {
-                const response = await fetch('/api/report', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ reporterName, category, content })
-                });
-
-                if (response.ok) {
-                    alert(t('report_success_msg', 'Báo cáo đã được gửi!'));
-                    closeReportModal();
-                } else {
-                    const data = await response.json();
-                    alert(data.error || t('report_error_msg', 'Có lỗi xảy ra.'));
-                }
-            } catch (error) {
-                console.error('Lỗi gửi báo cáo:', error);
-                alert(t('report_error_msg', 'Có lỗi xảy ra.'));
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = t('report_btn_submit', 'Gửi Báo cáo');
-            }
-        });
     }
 });

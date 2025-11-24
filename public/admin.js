@@ -64,9 +64,7 @@ let isEditingReport = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
-    setupTabs();
-    setupNavToggle();
-    
+    setupTabs();    
     const btnAddGame = el('addGameBtn');
     if(btnAddGame) btnAddGame.onclick = () => openGameForm(null);
     
