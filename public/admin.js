@@ -427,7 +427,7 @@ function renderReportsTable(reports) {
                 
                 <td>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn-action edit" data-id="${rp._id}" data-type="report" title="Xem chi tiết" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                        <button class="btn-view-detail edit" data-id="${rp._id}" data-type="report" title="Xem chi tiết">
                             <i class="fas fa-eye"></i>
                         </button>
                         
