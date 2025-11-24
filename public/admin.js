@@ -336,7 +336,7 @@ function renderRoomsTable(rooms) {
             <td><strong>${r.code}</strong></td>
             <td>${r.game?.type || '-'}</td>
             <td>${r.host}</td>
-            <td>${r.players?.length || 0}</td>
+            <td>${r.players}</td>
             <td><span class="badge ${r.status}">${r.status}</span></td>
             <td>${formatDateTime(r.createdAt)}</td>
             <td>
