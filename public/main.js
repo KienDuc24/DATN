@@ -1,6 +1,3 @@
-// public/main.js (FULL VERSION - FINAL - Đã sửa lỗi chặn click)
-
-// --- 1. Khởi tạo & Cấu hình ---
 let allGames = [];
 let featuredGames = [];
 let gamesByCategory = {};
@@ -8,7 +5,6 @@ let sliderPage = { allGames: 0, featured: 0 };
 let LANGS = {};
 let currentLang = localStorage.getItem('lang') || 'vi';
 
-// API & Socket URL
 const API_BASE_URL = window.BASE_API || 'https://datn-socket.up.railway.app';
 const SOCKET_URL = window.SOCKET_URL || 'https://datn-socket.up.railway.app';
 
@@ -21,11 +17,8 @@ const socket = (typeof io === 'function') ? io(SOCKET_URL, {
   reconnectionDelay: 1000
 }) : null;
 
-// --- 2. Tải dữ liệu (Data Fetching) & Xử lý ---
-
-/** Tải danh sách game từ API */
 async function fetchGames() {
-    showLoading(true); // Hàm UI từ script.js
+    showLoading(true); 
     try {
         const res = await fetch(`${API_BASE_URL}/api/games`);
         let data = await res.json();
@@ -42,32 +35,23 @@ async function fetchGames() {
     }
 }
 
-/** Phân nhóm & Sắp xếp Game */
 function groupGames(games) {
-    // Mặc định sắp xếp theo mới nhất
     const sorted = sortGamesLogic(games, 'newest');
     allGames = sorted; 
-    
-    // Lọc game nổi bật
     featuredGames = allGames.filter(g => g.featured === true); 
-    
-    // Phân loại theo category
     gamesByCategory = {};
     allGames.forEach(game => {
-        const cat = getGameCategory(game, currentLang); // Hàm helper từ script.js
+        const cat = getGameCategory(game, currentLang); 
         if (!gamesByCategory[cat]) {
             gamesByCategory[cat] = [];
         }
         gamesByCategory[cat].push(game);
     });
-
-    // Render giao diện (Hàm từ script.js)
     if (typeof rerenderAllSliders === 'function') {
         rerenderAllSliders();
     }
 }
 
-/** Logic sắp xếp */
 function sortGamesLogic(gamesList, method) {
     const games = [...gamesList]; 
     switch (method) {
@@ -88,7 +72,6 @@ function sortGamesLogic(gamesList, method) {
     }
 }
 
-/** Sắp xếp và Render lại (được gọi bởi dropdown HTML) */
 function sortGames(key, selectElement) {
     const method = selectElement.value;
     
@@ -100,7 +83,6 @@ function sortGames(key, selectElement) {
         renderSlider(sorted, 'featuredSlider', 'featured');
     } else if (key.startsWith('cat-')) {
         const catKey = key.replace('cat-', '');
-        // Tìm tên category gốc từ key
         const catName = Object.keys(gamesByCategory).find(k => k.replace(/\s+/g, '-') === catKey);
         if (catName) {
             const sorted = sortGamesLogic(gamesByCategory[catName], method);
@@ -110,7 +92,6 @@ function sortGames(key, selectElement) {
     }
 }
 
-/** Tải file ngôn ngữ */
 async function fetchLang() {
     try {
         const res = await fetch('/lang.json');
@@ -121,28 +102,21 @@ async function fetchLang() {
     }
 }
 
-/** Đặt ngôn ngữ */
 function setLang(lang) {
     if (!LANGS[lang]) lang = 'vi'; 
     currentLang = lang;
     localStorage.setItem('lang', lang);
-    
-    if (typeof updateLangUI === 'function') updateLangUI(); // Hàm UI từ script.js
-    
-    // Cập nhật lại nội dung game (vì category name thay đổi theo ngôn ngữ)
+    if (typeof updateLangUI === 'function') updateLangUI(); 
     if (allGames.length > 0) groupGames(allGames);
-    
-    // Cập nhật select box
     const langSelect = document.getElementById('langSelect');
     if(langSelect) langSelect.value = lang;
 }
 
-/** Tìm kiếm */
 function searchGames() {
     const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
     
     if (keyword.length < 2) {
-        if (typeof hideSearchResults === 'function') hideSearchResults(); // Hàm UI
+        if (typeof hideSearchResults === 'function') hideSearchResults();
         return;
     }
     
@@ -156,41 +130,29 @@ function searchGames() {
     });
     
     if (typeof renderSearchResults === 'function') {
-        renderSearchResults(filtered, keyword); // Hàm UI
+        renderSearchResults(filtered, keyword); 
     }
 }
 
-
-// --- 3. Logic Phòng (Room) & Chuyển hướng ---
-
-/** Lấy tên user */
 function getActiveUsername() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    // Luôn ưu tiên username. Nếu là guest thì username tự sinh.
     return user.username || 'Guest_' + Math.random().toString(36).substring(2, 8);
 }
 
-/** Xử lý khi click vào game card */
 function handleGameClick(gameId, gameName) {
-    // Kiểm tra đăng nhập
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.username && !user.isGuest) { // Nếu chưa đăng nhập gì cả
+    if (!user.username && !user.isGuest) { 
         openAuthModal('login');
         return;
     }
 
-    // --- KIỂM TRA GAME ĐANG PHÁT TRIỂN (isComingSoon) ---
-    // Tìm game trong danh sách đã tải
     const game = allGames.find(g => g.id === gameId);
     
-    // Nếu game tồn tại VÀ có cờ isComingSoon = true
     if (game && game.isComingSoon) {
-        // Lấy thông báo từ file ngôn ngữ, fallback an toàn nếu chưa tải xong
         const msg = (LANGS[currentLang] && LANGS[currentLang].game_developing) || "Game này đang được phát triển!";
         alert(msg);
-        return; // DỪNG LẠI, KHÔNG MỞ MODAL
+        return; 
     }
-    // ----------------------------------------------------
 
     const modal = document.getElementById('roomModal');
     if (!modal) return;
@@ -216,7 +178,6 @@ function handleGameClick(gameId, gameName) {
         `;
     }
     
-    // Render Modal Content đầy đủ
     modal.innerHTML = `
       <div class="modal-content">
         <button class="close-btn" id="closeRoomModal" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:1.7rem;color:#ff9800;cursor:pointer;z-index:2;">&times;</button>
@@ -243,7 +204,6 @@ function handleGameClick(gameId, gameName) {
     
     modal.style.display = 'flex';
 
-    // Gán sự kiện
     modal.querySelector('#closeRoomModal').onclick = () => modal.style.display = 'none';
     modal.querySelector('#createRoomBtn').onclick = handleCreateRoom;
     modal.querySelector('#joinRoomBtn').onclick = () => {
@@ -252,8 +212,6 @@ function handleGameClick(gameId, gameName) {
     };
     modal.querySelector('#confirmJoinRoomBtn').onclick = handleJoinRoom;
 }
-
-/** Gọi API tạo phòng */
 async function handleCreateRoom() {
     const gameIdLocal = window.selectedGameId;
     const gameNameLocal = window.selectedGameName;
@@ -268,7 +226,7 @@ async function handleCreateRoom() {
     }
     
     const payload = {
-      player: username, // Gửi username lên server
+      player: username, 
       game: gameIdLocal,
       gameType: gameTypeLocal,
       role: roleLocal
@@ -289,7 +247,6 @@ async function handleCreateRoom() {
       const data = await res.json();
       const roomCode = data.roomCode || (data.room && data.room.code);
       
-      // Chuyển hướng: Truyền username qua URL
       const qs = new URLSearchParams({
         code: roomCode,
         gameId: gameIdLocal,
@@ -303,8 +260,6 @@ async function handleCreateRoom() {
       alert('Lỗi khi tạo phòng: ' + (err && err.message));
     }
 }
-
-/** Gọi API tham gia phòng */
 async function handleJoinRoom() {
     const modal = document.getElementById('roomModal');
     const code = modal.querySelector('#inputJoinRoomCode').value.trim().toUpperCase();
@@ -343,10 +298,6 @@ async function handleJoinRoom() {
     }
 }
 
-
-// --- 4. Logic Xác thực (Authentication) ---
-
-/** Lưu user vào LocalStorage và cập nhật UI */
 function saveUserToLocal(user) {
     localStorage.setItem('user', JSON.stringify(user));
     showUserInfo(user); 
@@ -356,7 +307,6 @@ function saveUserToLocal(user) {
     }
 }
 
-/** Xử lý Đăng xuất (Đảm bảo cleanup và chuyển hướng sạch sẽ) */
 async function handleLogout() {
     showLoading(true);
     try {
@@ -371,61 +321,67 @@ async function handleLogout() {
         localStorage.removeItem('token');
         hideUserInfo(); 
         showLoading(false);
-        // Chuyển hướng về trang chủ chính
         window.location.href = "/index.html"; 
     }
 }
 
-
-/** Xử lý Cập nhật Profile (FIX LỖI 404 API) */
 async function handleUpdateProfile(e) {
     e.preventDefault();
-    const displayName = document.getElementById('settings-displayName').value;
-    const email = document.getElementById('settings-email').value;
+    const displayNameInput = document.getElementById('settings-displayName');
+    const emailInput = document.getElementById('settings-email');
+    const displayName = displayNameInput.value.trim(); 
+    const email = emailInput.value.trim(); 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    
+
     if (!user.username || user.isGuest) return alert('Lỗi: Bạn phải đăng nhập để cập nhật hồ sơ.');
-    
+
+    const updateData = {
+        username: user.username 
+    };
+
+    if (displayName) {
+        updateData.displayName = displayName;
+    }
+    if (email) {
+        updateData.email = email;
+    }
+
+    if (Object.keys(updateData).length <= 1) {
+        alert("Vui lòng nhập thông tin cần cập nhật (Tên hiển thị hoặc Email).");
+        return;
+    }
+
     try {
-        const res = await fetch(`${API_BASE_URL}/api/user`, { // Đảm bảo gọi PUT /api/user
-            method: 'PUT', 
-            headers: { 
+        const res = await fetch(`${API_BASE_URL}/api/user`, { 
+            method: 'PUT',
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            body: JSON.stringify({ 
-                username: user.username,
-                displayName: displayName, 
-                email: email 
-            })
+            body: JSON.stringify(updateData)
         });
-        
+
         if (!res.ok) {
-            // Xử lý nếu phản hồi không thành công (400, 404, 500)
             const contentType = res.headers.get("content-type");
             let errorMsg = `Lỗi ${res.status}: ${res.statusText}.`;
-            
+
             if (contentType && contentType.indexOf("application/json") !== -1) {
-                // Nếu là JSON, đọc thông báo lỗi từ server
                 const errorData = await res.json();
                 errorMsg = errorData.message || errorMsg;
             } else {
-                // Nếu là HTML (như lỗi 404/500 mặc định), báo lỗi API không tìm thấy
                 throw new Error(`API ${res.status} Lỗi: Endpoint cập nhật hồ sơ không tìm thấy hoặc Server bị lỗi.`);
             }
             throw new Error(errorMsg);
         }
-        
-        // Nếu thành công, phản hồi là JSON
+
         const updatedUser = await res.json();
-        
-        saveUserToLocal(updatedUser.user); 
+
+        saveUserToLocal(updatedUser.user);
         document.getElementById('profile-modal').style.display = 'none';
         alert('Cập nhật thông tin thành công!');
-        
+
     } catch (err) {
         console.error("Update profile failed:", err);
-        // Hiển thị thông báo lỗi rõ ràng hơn
         alert(`CẬP NHẬT THẤT BẠI: ${err.message}`);
     }
 }
@@ -440,14 +396,10 @@ function openSettingsModal() {
     document.getElementById('profile-modal').style.display = 'flex';
 }
 
-// --- 5. Khởi chạy (Initialization) ---
 document.addEventListener('DOMContentLoaded', () => {
-    
-    // Logout
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
     
-    // Login Google
     const googleLoginBtn = document.getElementById('googleLoginBtn');
     if (googleLoginBtn) {
         googleLoginBtn.onclick = () => {
@@ -455,7 +407,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     
-    // Login Guest
     const anonymousLoginBtn = document.getElementById('anonymousLoginBtn');
     if (anonymousLoginBtn) {
         anonymousLoginBtn.onclick = () => {
@@ -468,7 +419,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     
-    // Login Normal
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
@@ -493,7 +443,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Register Normal
     const regForm = document.getElementById('registerForm');
     if (regForm) {
         regForm.addEventListener('submit', async (e) => {
@@ -522,7 +471,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Check Session
     const userStr = localStorage.getItem('user');
     if (userStr) {
         try {
@@ -530,7 +478,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch {}
     }
 
-    // Google Callback
     const params = new URLSearchParams(window.location.search);
     if (params.has('user')) {
         try {
@@ -543,11 +490,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Load Data
     fetchLang();
     fetchGames();
 
-    // Socket Listeners
     if (socket) {
         socket.on('connect', () => {
             console.log('Socket connected:', socket.id);
@@ -558,15 +503,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // --- QUAN TRỌNG: Lắng nghe thay đổi từ Admin ---
         socket.on('admin-games-changed', () => {
             console.log('Game list updated from admin.');
-            fetchGames(); // Tải lại danh sách game
+            fetchGames(); 
         });
-        // ----------------------------------------------
+
     }
     
-    // Settings
     const settingsForm = document.getElementById('settings-form');
     if (settingsForm) {
         settingsForm.addEventListener('submit', handleUpdateProfile);
