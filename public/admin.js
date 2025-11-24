@@ -823,34 +823,6 @@ async function openReportModal(reportId) {
     }
 }
 
-async function openReportModal(reportId) {
-    isEditingReport = true;
-    showOverlay(true);
-    try {
-        const report = await fetchApi(API_ENDPOINTS.REPORT_ID(reportId));
-        if (!report) throw new Error('Không thể tải thông tin báo cáo');
-
-        const cat = categoryMap[report.category] || { text: report.category };
-
-        el('editReportId').value = report._id;
-        el('detailReportId').textContent = report._id;
-        el('detailReporter').textContent = report.reporterName;
-        el('detailCategory').textContent = cat.text;
-        el('detailDate').textContent = new Date(report.createdAt).toLocaleString('vi-VN');
-        el('detailContentText').textContent = report.content;
-        
-        el('detailStatus').value = report.status;
-        el('detailAdminNote').value = report.adminNote || '';
-
-        if (reportModal) reportModal.style.display = 'block';
-    } catch (e) {
-        console.error(e);
-        alert('Lỗi khi mở báo cáo: ' + e.message);
-    } finally {
-        showOverlay(false);
-    }
-}
-
 async function saveReport(e) {
     e.preventDefault();
     showOverlay(true);
