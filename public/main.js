@@ -505,14 +505,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const anonLabel = reportModal.querySelector('label[for="reportAnon"]');
     const anonText = " " + (LANGS[currentLang]?.report_anon || 'Báo cáo ẩn danh');
-    if (anonLabel.lastChild.nodeType === Node.TEXT_NODE) {
+
+    if (anonLabel.lastChild && anonLabel.lastChild.nodeType === Node.TEXT_NODE) {
         anonLabel.lastChild.nodeValue = anonText;
     } else {
-        if (!anonLabel.lastChild) {
-             anonLabel.textContent = anonText;
-        } else {
-             anonLabel.appendChild(document.createTextNode(anonText));
-        }
+        anonLabel.textContent = anonText; 
     }
 
     reportCategoryLabel.innerText = LANGS[currentLang]?.report_label_category || 'Danh mục:';
