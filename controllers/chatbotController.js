@@ -115,7 +115,7 @@ async function answerRuleQuestion(req, res) {
                 + langInstruction;
 
             const model = genAI.getGenerativeModel({ 
-                model: 'gemini-2.5-flash-preview-09-2025',
+                model: "gemini-1.5-pro",
                 systemInstruction: { parts: [{ text: systemInstruction }] },
             });
 

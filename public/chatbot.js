@@ -396,7 +396,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 aiReply = aiReply.replace(expressionMatch[0], '').trim(); // Xóa tag khỏi tin nhắn hiển thị
             }
             
-            const fallbackMsg = lang === 'vi' ? "Xin lỗi, tôi không hiểu câu hỏi." : "Sorry, I didn't understand the question.";
+            const fallbackMsg = lang === 'vi' ? "Xin lỗi, Catmi không hiểu câu hỏi." : "Sorry, Catmi didn't understand the question.";
             
             // Hiển thị tin nhắn của Bot với biểu cảm đã trích xuất
             addMessageToUI("bot", aiReply || fallbackMsg, true, expressionKeyForReply); 
@@ -404,7 +404,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             console.error("Chat error:", error);
             if(document.body.contains(loadingDiv)) messagesArea.removeChild(loadingDiv);
-            const errMsg = getCurrentLang() === 'vi' ? "Lỗi kết nối." : "Connection error.";
+            const errMsg = getCurrentLang() === 'vi' ? "Catmi đang bận." : "Catmi is busy.";
             // Hiển thị lỗi với biểu cảm khó chịu
             addMessageToUI("bot", errMsg, false, 'annoyed'); 
         } finally {
