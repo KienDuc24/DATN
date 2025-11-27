@@ -93,7 +93,7 @@
       
       listEl.innerHTML = sortedList.map(player => {
         const p_name = player.name;
-        const p_displayName = player.displayName || p_name; 
+        const p_displayName = player.players.find(p => p.name === username)?.displayName  ; 
         const isPlayerHost = (p_name === host);
         const avatarUrl = getAvatarUrl(p_name);
 
