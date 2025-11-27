@@ -1,14 +1,14 @@
 [
   {
     "name": {
-      "vi": "Draw",
-      "en": "Draw"
+      "vi": "Vẽ và Đoán",
+      "en": "Draw and Guess"
     },
     "desc": {
-      "vi": "Họa sĩ tài ba trở lại! Vẽ vui và sáng tạo! 😆",
-      "en": "The artist is back! Draw and have fun! 😆"
+      "vi": "Cùng bạn bè tham gia vẽ theo và đoán theo từ khóa. Xem ai có nhanh và vẽ đẹp nhất nhé!",
+      "en": "Join friends to draw and guess keywords. See who is the fastest and best at drawing!"
     },
-    "players": "3+",
+    "players": "2-10",
     "id": "Draw",
     "category": {
       "vi": "Vẽ, Đoán chữ",

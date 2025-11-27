@@ -1,18 +1,18 @@
 [
   {
     "name": {
-      "vi": "Truth or Dare",
+      "vi": "Sự thật hay thử thách",
       "en": "Truth or Dare"
     },
     "desc": {
-      "vi": "Hé lộ bí mật, dám chơi dám chịu! Thử thách bất ngờ! 😈",
-      "en": "Reveal secrets, dare to play, dare to accept! Unexpected challenges! 😈"
+      "vi": "Những sự thật thầm kín, những thử thách độc đáo. Cùng nhau chia sẻ và khám phá!",
+      "en": "Secrets and unique challenges. Share and explore together!"
     },
-    "players": "4+",
+    "players": "2-10",
     "id": "ToD",
     "category": {
-      "vi": "Đoán chữ",
-      "en": "Word Guess"
+      "vi": "Sự thật hay thử thách",
+      "en": "Truth or Dare"
     }
   }
 ]
