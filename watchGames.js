@@ -73,7 +73,8 @@ function setupGameWatcher() {
       .on('unlink', updateGamesJson)
       .on('addDir', updateGamesJson)
       .on('unlinkDir', updateGamesJson);
-    updateGamesJson();
+
+    return updateGamesJson;
 }
 
 module.exports = setupGameWatcher;
