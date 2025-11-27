@@ -1,8 +1,8 @@
 (function() {
-  const BASE_API_URL = 'https://datn-socket.up.railway.app'; 
-  window.__chatbot_API_BASE__ = BASE_API_URL; 
+  const API_BASE_URL= 'https://datn-socket.up.railway.app'; 
+  window.__chatbot_API_BASE__ = API_BASE_URL; 
 
-  const socket = io(BASE_API_URL, { 
+  const socket = io(API_BASE_URL, { 
     path: '/socket.io',
     transports: ['websocket', 'polling'] 
   });

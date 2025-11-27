@@ -1,5 +1,3 @@
-// controllers/gameController.js (File mới)
-
 const Game = require('../models/Game');
 
 exports.getAllPublicGames = async (req, res) => {

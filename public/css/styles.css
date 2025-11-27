@@ -689,7 +689,6 @@ gap: 1rem;
     border-color: #ff9800;
 }
 
-/* Checkbox ẩn danh */
 #reportModal input[type="checkbox"] {
     width: 18px;
     height: 18px;

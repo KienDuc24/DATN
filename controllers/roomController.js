@@ -1,9 +1,6 @@
-// controllers/roomController.js (File mới)
-
 const mongoose = require('mongoose');
 const Room = require('../models/Room');
 
-// Hàm tạo mã phòng (chuyển từ roomRoutes.js)
 function generateRoomCode() {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const letter = letters.charAt(Math.floor(Math.random() * letters.length));
@@ -11,7 +8,6 @@ function generateRoomCode() {
   return `${letter}${number}`;
 }
 
-// Logic tạo phòng (chuyển từ roomRoutes.js)
 exports.createRoom = async (req, res) => {
   const { player, game, gameType, role } = req.body;
 
@@ -26,7 +22,7 @@ exports.createRoom = async (req, res) => {
     host: player,
     players: [{ name: player }],
     game: { gameId: game, type: gameType },
-    status: 'open' // Thêm status 'open' khi tạo phòng
+    status: 'open' 
   });
 
   try {
@@ -47,7 +43,6 @@ exports.createRoom = async (req, res) => {
   }
 };
 
-// Logic kiểm tra phòng (chuyển từ roomRoutes.js)
 exports.checkRoom = async (req, res) => {
   const { code, gameId } = req.query;
 
@@ -75,7 +70,6 @@ exports.checkRoom = async (req, res) => {
   }
 };
 
-// Logic tham gia phòng (chuyển từ roomRoutes.js)
 exports.joinRoom = async (req, res, next) => {
   try {
     const { player, code, gameId } = req.body || {};
@@ -84,7 +78,7 @@ exports.joinRoom = async (req, res, next) => {
     }
 
     const room = await Room.findOneAndUpdate(
-      { code, 'game.gameId': gameId, status: 'open' }, // Chỉ join nếu status là 'open'
+      { code, 'game.gameId': gameId, status: 'open' }, 
       { $addToSet: { players: { name: player } } },
       { new: true }
     ).select('code game players');

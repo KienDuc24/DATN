@@ -310,7 +310,6 @@ h1 {
   to { opacity: 1; transform: translate(-50%, -50%); }
 }
 
-/* Hiệu ứng nổi lên khi hover card */
 .game-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -319,7 +318,6 @@ h1 {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
-/* Hiệu ứng fade-in cho popup */
 @keyframes fadeInScale {
   0% {
     opacity: 0;

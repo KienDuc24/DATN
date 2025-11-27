@@ -1,5 +1,3 @@
-// controllers/chatbotController.js (FINAL: Catmi Persona - Chảnh Chọe & Trả Treo)
-
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
 const fs = require('fs'); 
@@ -10,7 +8,6 @@ const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
 const userChatSessions = new Map();
 
-// --- ĐÃ CẬP NHẬT: NHÂN VẬT CATMI (KÈM CHỈ DẪN BIỂU CẢM) ---
 const BASE_SYSTEM_PROMPT = `
 BẠN LÀ AI: Bạn là Catmi, tinh linh lửa trại kiêm trợ lý ảo của website "Camping Game". Bạn là một cô mèo nhỏ dễ thương, hài hước nhưng có chút "chảnh", hay trả treo, nhưng CỰC KỲ NHIỆT TÌNH và THÔNG MINH. Bạn phải luôn giữ chừng mực, không được õng ẹo hoặc quá trớn.
 
@@ -87,7 +84,6 @@ async function answerRuleQuestion(req, res) {
         let displayName = "Bạn yêu"; 
         if (username && !username.startsWith('guest')) {
             const user = await User.findOne({ username: username });
-            // GỌI NGƯỜI DÙNG BẰNG DISPLAY NAME
             if (user && user.displayName) displayName = user.displayName;
         }
 

@@ -1,14 +1,14 @@
 [
   {
     "name": {
-      "vi": "Draw and Guess",
+      "vi": "Vẽ và Đoán",
       "en": "Draw and Guess"
     },
     "desc": {
-      "vi": "Họa sĩ tài ba trở lại! Vẽ vui và sáng tạo! 😆",
-      "en": "The artist is back! Draw and have fun! 😆"
+      "vi": "Cùng bạn bè tham gia vẽ theo và đoán theo từ khóa. Xem ai có nhanh và vẽ đẹp nhất nhé!",
+      "en": "Join friends to draw and guess keywords. See who is the fastest and best at drawing!"
     },
-    "players": "3+",
+    "players": "2-10",
     "id": "Draw",
     "category": {
       "vi": "Vẽ, Đoán chữ",
@@ -17,18 +17,18 @@
   },
   {
     "name": {
-      "vi": "Truth or Dare",
+      "vi": "Sự thật hay thử thách",
       "en": "Truth or Dare"
     },
     "desc": {
-      "vi": "Hé lộ bí mật, dám chơi dám chịu! Thử thách bất ngờ! 😈",
-      "en": "Reveal secrets, dare to play, dare to accept! Unexpected challenges! 😈"
+      "vi": "Những sự thật thầm kín, những thử thách độc đáo. Cùng nhau chia sẻ và khám phá!",
+      "en": "Secrets and unique challenges. Share and explore together!"
     },
-    "players": "4+",
+    "players": "2-10",
     "id": "ToD",
     "category": {
-      "vi": "Đoán chữ",
-      "en": "Word Guess"
+      "vi": "Sự thật hay thử thách",
+      "en": "Truth or Dare"
     }
   }
 ]

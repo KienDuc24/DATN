@@ -1,38 +1,19 @@
-/* public/css/responsive.css (ĐÃ SỬA: Tăng margin-bottom cho section title) */
-
-/* ========================================
- * Breakpoint: Tablet
- * (Từ 700px trở lên)
- * ========================================
- */
 @media (min-width: 700px) {
-  
-  /* --- SỬA 1: XÓA CÁC KHỐI ÉP HIỆN NAV --- */
-  /* .sidebar-toggle { display: none; } (ĐÃ XÓA) */
-  /* .sidebar { transform: translateX(0); width: 210px; } (ĐÃ XÓA) */
-  /* .sidebar-overlay { display: none; } (ĐÃ XÓA) */
-
-  /* --- SỬA 2: HEADER (To hơn và full-width) --- */
   .header-main {
-    /* SỬA: Tăng padding */
     padding: 18px 24px 14px 24px; 
     gap: 20px;
-    /* SỬA: Xóa margin-left để header full-width */
     margin-left: 0; 
   }
   .logo-animate {
-    /* SỬA: Tăng kích thước logo */
     width: 48px;
     height: 48px;
     margin-right: 8px;
   }
   .header-title {
-    /* SỬA: Tăng kích thước font */
     font-size: clamp(1.8rem, 3vw, 2.2rem); 
     margin: 0 24px 0 0;
   }
   
-  /* --- Search (Tablet) --- */
   .search-bar.search-bar-center {
     display: flex; 
     flex: 1 1 500px;
@@ -41,7 +22,6 @@
     margin: 0 auto;
     background: #23272f;
     border-radius: 24px;
-    /* SỬA: Tăng chiều cao */
     height: 44px;
     box-shadow: 0 2px 8px #0002;
   }
@@ -53,7 +33,6 @@
     font-size: 1rem;
     outline: none;
     flex: 1;
-    /* SỬA: Tăng chiều cao */
     height: 42px;
   }
   .search-bar button {
@@ -64,7 +43,7 @@
     padding: 0 16px;
     font-size: 1.2rem;
     cursor: pointer;
-    /* SỬA: Tăng chiều cao */
+
     height: 44px;
     display: flex;
     align-items: center;
@@ -79,56 +58,37 @@
     display: none; 
   }
   
-  /* --- Auth Buttons (Tablet) --- */
   .header-auth-btns {
     gap: 12px;
     margin-left: auto;
   }
   .auth-btn {
-    /* SỬA: Tăng kích thước nút */
+
     padding: 10px 24px;
     font-size: 1.05rem;
     border-radius: 12px;
   }
-  /* --- KẾT THÚC SỬA HEADER DESKTOP --- */
 
-  
-  /* --- SỬA 3: MAIN CONTENT (RỘNG 65vw VÀ CĂN GIỮA) --- */
   .main-content {
     padding: 28px 18px 24px 18px;
-    
-    /* 1. Đặt chiều rộng */
-    width: 65vw;
-    
-    /* 2. Căn giữa (margin-left: auto hoạt động vì nav đã bị ẩn) */
+    width: 65vw;    
     margin-left: auto;
-    margin-right: auto;
-    
-    /* 3. Đặt max-width để tránh lỗi trên màn hình quá rộng */
+    margin-right: auto;   
     max-width: 1400px; 
-    
-    /* (Xóa margin-left: 210px) */
   }
-  /* --- KẾT THÚC SỬA MAIN CONTENT --- */
-
-
   .section-title-row {
     flex-direction: row; 
     align-items: center;
-    /* SỬA: Tăng margin-bottom lên 28px */
     margin: 28px 0 28px 0; 
   }
   .section-title {
     font-size: 1.18rem;
   }
 
-  /* --- Game Card (Tablet) --- */
   .games-slider-scroll .game-card {
     flex-basis: calc(25% - 9px);
     flex-shrink: 0;
     flex-grow: 0;
-    
-    /* Đặt min-width cho màn hình nhỏ */
     min-width: 180px; 
     flex-basis: 180px; 
     min-width: 180px;
@@ -148,15 +108,12 @@
     padding: 2px 8px;
   }
 
-  /* --- SỬA 4: FOOTER (RỘNG 65vw VÀ CĂN GIỮA) --- */
   .footer-content {
     flex-direction: row; 
     gap: 16px;
     padding: 18px 32px 8px 32px;
   }
-  /* --- KẾT THÚC SỬA FOOTER --- */
 
-  /* --- Modals (Tablet) --- */
   #roomModal .modal-content {
     width: 100%;
     max-width: 400px;
@@ -165,7 +122,6 @@
   #roomModal input {
     margin-bottom: 15px;
   }
-  
   #auth-modal .auth-modal-content {
     min-width: 320px;
   }

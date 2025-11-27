@@ -148,7 +148,7 @@ async function fetchApi(url, options = {}) {
     try {
         const res = await fetch(url, options);
         if (res.status === 401 || res.status === 403) {
-            window.location.href = '/admin-login';
+            window.location.href = '/admin-login.html';
             return null;
         }
         return await res.json();
@@ -402,7 +402,6 @@ function renderReportsTable(reports) {
     if (!tbody) return;
 
     if (!reports.length) {
-        // HTML có 7 cột, nên colspan phải là 7
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Không có báo cáo</td></tr>`;
         return;
     }
@@ -411,7 +410,6 @@ function renderReportsTable(reports) {
         const cat = categoryMap[rp.category] || { text: rp.category, class: 'default' };
         const stat = statusMap[rp.status] || { text: rp.status, class: 'default' };
         
-        // Cắt ngắn nội dung nếu quá dài
         const shortContent = rp.content.length > 30 ? rp.content.substring(0, 30) + '...' : rp.content;
 
         return `

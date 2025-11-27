@@ -1,4 +1,3 @@
-// models/Game.js
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
@@ -8,7 +7,7 @@ const LangSchema = new Schema({
 }, { _id: false });
 
 const gameSchema = new Schema({
-  id: { // Mã nghiệp vụ (ví dụ: "Draw", "ToD")
+  id: { 
     type: String,
     required: true,
     unique: true,
@@ -22,10 +21,9 @@ const gameSchema = new Schema({
     type: Boolean,
     default: false, 
   },
-  // --- THÊM MỚI: Cờ đánh dấu game đang phát triển ---
   isComingSoon: {
     type: Boolean,
-    default: true // Mặc định là True (chưa chơi được)
+    default: true 
   }
 }, { timestamps: true });
 

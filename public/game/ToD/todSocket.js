@@ -1,5 +1,3 @@
-// public/game/ToD/todSocket.js
-
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -115,11 +113,9 @@ module.exports = (socket, io) => {
 
       socket.join(roomCode);
       
-      // --- LƯU MAP (CÓ DISPLAY NAME) ---
       const pInfo = room.players.find(p => p.name === playerName);
       const dName = pInfo ? (pInfo.displayName || pInfo.name) : playerName;
       gameSocketMap.set(socket.id, { player: playerName, displayName: dName, code: roomCode });
-      // ---------------------------------
 
       getRoomState(roomCode);
       const playersWithAvt = await attachAvatarsToPlayers(room.players);
@@ -248,7 +244,6 @@ module.exports = (socket, io) => {
         }
         await room.save();
         if (!player.startsWith('guest_')) {
-            // FIX: Chuyển status trực tiếp về offline và xóa socketId
             await User.findOneAndUpdate({ username: player }, { status: 'offline', socketId: null });
             io.emit('admin-user-status-changed');
         }

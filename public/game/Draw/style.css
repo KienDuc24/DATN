@@ -1,4 +1,4 @@
-/* public/game/DrawGuess/style.css (FIX LỖI CUỘN CHAT VÀ RESIZE) */
+
 
 @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600;700&display=swap');
 
@@ -29,7 +29,6 @@ body {
     background-color: var(--bg-dark);
 }
 
-/* KHU VỰC HEADER NẰM TRÊN CÙNG */
 .game-top-bar {
     z-index: 10;
     width: 95%;
@@ -65,7 +64,6 @@ body {
 }
 
 
-/* KHUNG CHÍNH GAME (Playground Container) */
 .playground-container {
     position: relative;
     z-index: 1;
@@ -82,7 +80,6 @@ body {
     margin-bottom: 20px;
 }
 
-/* VÙNG GAME CHÍNH */
 .game-main {
     display: grid;
     grid-template-columns: 3fr 1fr; 
@@ -91,7 +88,6 @@ body {
     min-height: 70vh;
 }
 
-/* Thanh thông tin phòng mới */
 .room-info-bar {
     grid-column: 1 / -1; 
     display: flex;
@@ -101,7 +97,6 @@ body {
     border-bottom: 1px dashed var(--border-color);
 }
 
-/* Khu vực Canvas */
 .canvas-section {
     background-color: var(--card-bg);
     border-radius: var(--border-radius);
@@ -166,7 +161,6 @@ body {
     cursor: crosshair;
 }
 
-/* --- THANH CÔNG CỤ VẼ MỚI --- */
 .drawing-tools {
     display: flex;
     gap: 15px;
@@ -238,7 +232,6 @@ body {
     display: none;
 }
 
-/* Sidebar */
 .game-sidebar {
     display: flex;
     flex-direction: column;
@@ -260,7 +253,6 @@ body {
     padding-bottom: 5px;
 }
 
-/* Bảng điểm (Score Grid - Hiển thị dọc, có cuộn) */
 #scoreGrid {
     display: flex;
     flex-direction: column;
@@ -329,7 +321,6 @@ body {
     text-align: right;
 }
 
-/* Chat */
 .chat-section {
     background-color: var(--card-bg);
     border-radius: var(--border-radius);
@@ -339,13 +330,13 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    /* FIX LỖI: Thêm overflow: hidden để ngăn con làm tràn */
+
     overflow: hidden; 
 }
 #chatMessages {
     flex-grow: 1;
     min-height: 150px;
-    /* SỬA LỖI: Thêm max-height để cuộn */
+
     max-height: 250px; 
     overflow-y: auto;
     background-color: var(--bg-medium);
@@ -375,7 +366,6 @@ body {
     cursor: pointer;
 }
 
-/* Responsive adjustments */
 @media (max-width: 1024px) {
     .game-main {
         grid-template-columns: 1fr;

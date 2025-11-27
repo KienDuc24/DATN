@@ -1,11 +1,9 @@
-// controllers/userController.js (FULL CODE - FINAL)
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto'); // Thêm cái này
-const sendEmail = require('../services/sendEmail'); // Thêm cái này
+const crypto = require('crypto');
+const sendEmail = require('../services/sendEmail'); 
 
-// --- Helper ---
 function sanitizeUser(user) {
   if (!user) return null;
   const u = user.toObject ? user.toObject() : Object.assign({}, user);
@@ -13,8 +11,6 @@ function sanitizeUser(user) {
   delete u.passwordHash;
   return u;
 }
-
-// === 1. LOGIC AUTH ===
 
 exports.registerUser = async (req, res) => {
   try {
@@ -85,7 +81,6 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-// 1. Gửi yêu cầu quên mật khẩu
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -98,16 +93,13 @@ exports.forgotPassword = async (req, res) => {
        return res.status(400).json({ message: 'Tài khoản này dùng Google, không thể đổi mật khẩu.' });
     }
 
-    // Tạo token
     const resetToken = crypto.randomBytes(20).toString('hex');
 
-    // Lưu vào DB (Hết hạn sau 10 phút)
     user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
     user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; 
 
     await user.save();
 
-    // Tạo Link reset (Trỏ về file reset.html ở Frontend)
     const frontendURL = process.env.FRONTEND_URL || 'https://datn-smoky.vercel.app';
     const resetUrl = `${frontendURL}/reset.html?token=${resetToken}`;
 
@@ -137,22 +129,19 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// 2. Đặt lại mật khẩu mới
 exports.resetPassword = async (req, res) => {
   try {
-    // Mã hóa token gửi lên để so sánh với DB
     const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
 
     const user = await User.findOne({
       resetPasswordToken,
-      resetPasswordExpires: { $gt: Date.now() } // Kiểm tra còn hạn không
+      resetPasswordExpires: { $gt: Date.now() } 
     });
 
     if (!user) {
       return res.status(400).json({ message: 'Token không hợp lệ hoặc đã hết hạn.' });
     }
 
-    // Đặt mật khẩu mới
     user.password = await bcrypt.hash(req.body.password, 10);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
@@ -166,24 +155,20 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-// 3. Lấy thông tin user từ token (trước khi đặt lại mật khẩu)
 exports.getResetInfo = async (req, res) => {
   try {
     const token = req.params.token;
-    // Mã hóa token từ URL để so sánh với token đã mã hóa trong DB
     const resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
 
     const user = await User.findOne({
       resetPasswordToken,
-      resetPasswordExpires: { $gt: Date.now() } // Kiểm tra còn hạn
+      resetPasswordExpires: { $gt: Date.now() } 
     });
 
     if (!user) {
       return res.status(400).json({ valid: false, message: 'Token không hợp lệ hoặc đã hết hạn.' });
     }
 
-    // Trả về thông tin công khai (tên hiển thị hoặc email/username)
-    // Ưu tiên hiển thị email hoặc username
     const accountName = user.email || user.username;
 
     res.status(200).json({ 
@@ -197,8 +182,6 @@ exports.getResetInfo = async (req, res) => {
     res.status(500).json({ message: 'Lỗi Server' });
   }
 };
-
-// === 2. LOGIC USER ===
 
 exports.getUserByUsername = async (req, res) => {
   const username = req.params.username || req.query.username;
@@ -226,12 +209,8 @@ exports.updateUser = async (req, res) => {
     if (Object.keys(allowed).length === 0) {
       return res.status(400).json({ ok: false, message: 'no updatable fields' });
     }
-
-    // Cập nhật user
     const updated = await User.findOneAndUpdate(query, { $set: allowed }, { new: true }).select('-password -passwordHash');
     
-    // (ĐÃ XÓA LOGIC CẬP NHẬT ROOM Ở ĐÂY)
-
     if (!updated) return res.status(404).json({ ok: false, message: 'User not found' });
 
     return res.json({ ok: true, user: sanitizeUser(updated) });

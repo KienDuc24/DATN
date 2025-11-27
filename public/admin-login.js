@@ -1,16 +1,12 @@
-// public/admin-login.js
-
-// SỬA LỖI: Bọc toàn bộ code trong sự kiện này
 document.addEventListener('DOMContentLoaded', function() {
   
-  const BASE_API_URL = 'https://datn-socket.up.railway.app';
+  const API_BASE_URL = window.API_BASE_URL || 'https://datn-socket.up.railway.app';
   const loginBtn = document.getElementById('login');
   const passInput = document.getElementById('p');
   const userIpnut = document.getElementById('u');
   const toggleBtn = document.getElementById('togglePass');
   const icon = toggleBtn.querySelector('i');
   
-  // Gán sự kiện
   loginBtn.addEventListener('click', handleLogin);
   
   passInput.addEventListener('keypress', function(e) {
@@ -31,7 +27,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
   });
 
-  // Hàm xử lý đăng nhập
   async function handleLogin() {
     const u = userIpnut.value.trim();
     const p = passInput.value;
@@ -44,16 +39,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     try {
-      const res = await fetch(`${BASE_API_URL}/admin/login`, { 
+      const res = await fetch(`${API_BASE_URL}/admin/login`, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: u, password: p }),
-        credentials: 'include' // Gửi cookie
+        credentials: 'include'
       });
       
       const j = await res.json();
       if (res.ok && j.ok) {
-        location.href = '/admin.html'; // Chuyển hướng
+        location.href = '/admin.html'; 
       } else {
         msg.textContent = j.message || 'Login failed';
       }

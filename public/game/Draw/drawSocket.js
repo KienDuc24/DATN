@@ -1,5 +1,3 @@
-// public/game/Draw/drawSocket.js
-
 const fs = require('fs');
 const path = require('path');
 const Room = require('../../../models/Room'); 
@@ -150,13 +148,10 @@ module.exports = (socket, io) => {
 
             socket.join(roomCode);
             
-            // --- LƯU DISPLAY NAME VÀO SOCKET MAP ---
-            // Tìm displayName trong DB hoặc Room
             const playerInRoom = room.players.find(p => p.name === player.name);
             const dName = playerInRoom ? (playerInRoom.displayName || playerInRoom.name) : player.name;
             
             gameSocketMap.set(socket.id, { player: player.name, displayName: dName, code: roomCode });
-            // ---------------------------------------
 
             getRoomState(roomCode);
             const playersWithAvt = await attachAvatarsToPlayers(room.players);
@@ -231,7 +226,7 @@ module.exports = (socket, io) => {
     socket.on('disconnect', async () => {
         const userInfo = gameSocketMap.get(socket.id);
         if (!userInfo) return; 
-        const { player, code, displayName } = userInfo; // Lấy displayName
+        const { player, code, displayName } = userInfo; 
         gameSocketMap.delete(socket.id); 
 
         try {
@@ -252,7 +247,6 @@ module.exports = (socket, io) => {
             }
             await room.save();
             if (!player.startsWith('guest_')) {
-                // FIX: Chuyển status trực tiếp về offline và xóa socketId
                 await User.findOneAndUpdate({ username: player }, { status: 'offline', socketId: null });
                 io.emit('admin-user-status-changed');
             }
@@ -261,7 +255,6 @@ module.exports = (socket, io) => {
             io.to(code).emit(`${GAME_ID}-room-update`, { state, room: { code: room.code, host: newHost, players: playersWithAvt } });
             io.emit('admin-rooms-changed'); 
             
-            // Gửi tin nhắn với Display Name
             const nameToShow = displayName || player;
             io.to(code).emit(`${GAME_ID}-chat-message`, { 
                 player: 'Hệ thống', message: `${nameToShow} đã rời phòng.`, type: 'msg-system' 
@@ -299,7 +292,6 @@ module.exports = (socket, io) => {
                     io.to(roomCode).emit('update-players', { list: room.players, host: newHostName });
                     io.emit('admin-rooms-changed');
                     
-                    // Lấy displayName của Host mới để thông báo
                     const newHostObj = room.players.find(p => p.name === newHostName);
                     const newHostDisplay = newHostObj ? (newHostObj.displayName || newHostName) : newHostName;
                     

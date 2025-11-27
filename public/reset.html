@@ -73,7 +73,7 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://datn-socket.up.railway.app'; 
+        const API_BASE_URL = window.API_BASE_URL || 'https://datn-socket.up.railway.app';
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         
@@ -86,7 +86,6 @@
         const confirmPass = document.getElementById('confirmPass');
         const toggleBtn = document.getElementById('togglePassBtn');
 
-        // --- Kiểm tra token ---
         if (!token) {
             msg.style.color = '#ff4757';
             msg.innerText = 'Liên kết không hợp lệ (thiếu token).';
@@ -111,7 +110,6 @@
                 });
         }
 
-        // --- Logic ẩn/hiện mật khẩu ---
         if (toggleBtn) {
             toggleBtn.addEventListener('click', () => {
                 const isPassword = newPass.type === 'password';
@@ -121,7 +119,6 @@
             });
         }
 
-        // --- Xử lý đổi mật khẩu ---
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const p1 = newPass.value;

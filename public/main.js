@@ -5,10 +5,8 @@ let sliderPage = { allGames: 0, featured: 0 };
 let LANGS = {};
 let currentLang = localStorage.getItem('lang') || 'vi';
 
-const API_BASE_URL = window.BASE_API || 'https://datn-socket.up.railway.app';
-const SOCKET_URL = window.SOCKET_URL || 'https://datn-socket.up.railway.app';
-
-const socket = (typeof io === 'function') ? io(SOCKET_URL, {
+const API_BASE_URL = window.API_BASE_URL || 'https://datn-socket.up.railway.app';
+const socket = (typeof io === 'function') ? io(API_BASE_URL, {
   path: '/socket.io',
   transports: ['polling', 'websocket'],
   withCredentials: true,
@@ -211,7 +209,7 @@ function handleGameClick(gameId, gameName) {
           </button>
         </div>
         <div id="joinRoomBox" style="display:none;margin-top:18px;text-align:center;width:100%;">
-          <input id="inputJoinRoomCode" placeholder="${LANGS[currentLang]?.room_input_placeholder || 'Nhập mã phòng'}" style="padding:8px 12px;border-radius:8px;border:1.5px solid #ffd54f;margin-bottom:8px;font-size:1rem;width:100%;box-sizing:border-box;">
+          <input id="inputJoinRoomCode" placeholder="${LANGS[currentLang]?.room_input_placeholder || 'Nhập mã phòng'}" style="padding:8px 12px; background-color:#fff;border-radius:8px;border:1.5px solid #ffd54f;margin-bottom:8px;font-size:1rem;width:100%;box-sizing:border-box; color:#bb6c06;" />
           <button id="confirmJoinRoomBtn" style="padding:8px 18px;border-radius:8px;background:#ff9800;color:#fff;font-weight:600;width:100%;">
             ${LANGS[currentLang]?.room_enter || 'Vào phòng'}
           </button>

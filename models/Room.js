@@ -1,5 +1,3 @@
-// models/Room.js (CẦN SỬA)
-
 const mongoose = require('mongoose');
 
 const playerSchema = new mongoose.Schema({
@@ -16,13 +14,13 @@ const roomSchema = new mongoose.Schema({
     uppercase: true,
     trim: true
   },
-  host: { // Phải là String để lưu 'guest_xxx' hoặc 'username'
+  host: { 
     type: String, 
     required: true
   },
   players: [playerSchema], 
   game: {
-    gameId: { type: String, required: true }, // Phải là String để lưu 'ToD', 'Draw'
+    gameId: { type: String, required: true }, 
     type: { type: String } 
   },
   status: {

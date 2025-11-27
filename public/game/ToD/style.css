@@ -1,4 +1,4 @@
-/* public/game/ToD/style.css (Đã XÓA style chatbot AI) */
+
 
 :root {
 --bg-dark: #1a1a2e;
@@ -167,7 +167,6 @@ align-items: center;
 transition: all 0.5s ease-in-out;
 cursor: pointer;
 text-align: center;
-/* --- SỬA LỖI: Bỏ transform để CSS Grid căn chỉnh --- */
 }
 
 .player .pic {
@@ -179,7 +178,7 @@ border: 3px solid var(--border-color);
 box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
 transition: all 0.3s ease-in-out;
 background-color: #fff;
-position: relative; /* --- THÊM MỚI: Để định vị vương miện --- */
+position: relative;
 }
 
 .player .pic img {
@@ -188,35 +187,30 @@ height: 100%;
 object-fit: cover;
 }
 
-/* --- THÊM MỚI: Style cho vương miện --- */
 .player .crown {
 position: absolute;
-top: -15px; /* Điều chỉnh vị trí vương miện */
+top: -15px;
 left: 50%;
 transform: translateX(-50%) rotate(15deg);
 font-size: 1.8rem;
 z-index: 10;
 text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-/* Giúp icon không bị chọn (select) khi click */
 -webkit-user-select: none;
 -moz-user-select: none;
 -ms-user-select: none;
 user-select: none;
 }
 
-/* Style cho Host */
 .player.host .pic {
 border-color: var(--accent-green);
 box-shadow: 0 0 15px var(--accent-green);
 }
-/* ---------------------------------- */
 
 .player.you .pic {
 border-color: var(--accent-yellow);
 box-shadow: 0 0 15px var(--accent-yellow);
 }
 
-/* Style cho Host VÀ LÀ BẠN (ghi đè viền xanh) */
 .player.host.you .pic {
 border-color: var(--accent-yellow);
 box-shadow: 0 0 15px var(--accent-yellow);
@@ -229,7 +223,7 @@ box-shadow: 0 0 15px var(--accent-yellow);
 }
 .player.asked .pic {
 border-color: var(--accent-orange);
-transform: scale(1.15); /* SỬA: Xóa bỏ translate */
+transform: scale(1.15);
 animation: glowing 1.5s infinite ease-in-out;
 }
 
@@ -248,7 +242,7 @@ max-width: 100px;
 }
 
 .player:hover .pic {
-transform: scale(1.1); /* SỬA: Xóa bỏ translate */
+transform: scale(1.1);
 }
 
 .campfire {
@@ -407,7 +401,6 @@ transition: all 0.3s ease;
 margin-top: 0.5rem;
 }
 
-/* XÓA BỎ: Toàn bộ style cho .ai-tools-icon và .ai-chatbot */
 
 @media (max-width: 992px) {
 .game-header { padding: 0.5rem; }

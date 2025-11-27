@@ -1,7 +1,7 @@
 (() => {
-  const SOCKET_URL = "https://datn-socket.up.railway.app";
-  window.__SOCKET_URL__ = SOCKET_URL;
-  window.socket = window.socket || (window.io && io(SOCKET_URL, { transports: ['websocket'], secure: true }));
+  const API_BASE_URL = window.API_BASE_URL || 'https://datn-socket.up.railway.app';
+  window.__API_BASE_URL__ = API_BASE_URL;
+  window.socket = window.socket || (window.io && io(API_BASE_URL, { transports: ['websocket'], secure: true }));
 
   const url = new URL(window.location.href);
   const params = new URLSearchParams(url.search);

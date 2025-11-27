@@ -48,7 +48,6 @@ fs.readdirSync(gameRoot).forEach(sub => {
     const info = getGameInfo(gameFolder);
     if (info) {
       games.push(info);
-      // Hiển thị tên theo ngôn ngữ nếu là object
       const nameStr = typeof info.name === 'object'
         ? (info.name.vi || info.name.en || Object.values(info.name)[0])
         : info.name;

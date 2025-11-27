@@ -1,7 +1,8 @@
 (() => {
     const GAME_ID = 'DG';
-    const SOCKET_URL = "https://datn-socket.up.railway.app";
-    window.socket = window.socket || (window.io && io(SOCKET_URL, { transports: ['websocket'], secure: true }));
+    const API_BASE_URL = window.API_BASE_URL || 'https://datn-socket.up.railway.app';
+
+    window.socket = window.socket || (window.io && io(API_BASE_URL, { transports: ['websocket'], secure: true }));
 
     const url = new URL(window.location.href);
     const params = new URLSearchParams(url.search);

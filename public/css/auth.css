@@ -1,7 +1,3 @@
-/* public/css/auth.css (ĐÃ SỬA) */
-
-/* --- Popup Auth --- */
-/* ... (toàn bộ code .auth-modal, .auth-tabs, .auth-form, .social-btn... giữ nguyên) ... */
 .auth-modal {
   position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw; height: 100vh;
   background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
@@ -168,12 +164,12 @@
 .user-info {
   position: relative;
   cursor: pointer;
-  /* SỬA: Căn giữa avatar với header mới */
+
   display: flex;
   align-items: center;
 }
 .user-avatar {
-  /* SỬA: Tăng kích thước avatar để khớp với header (48px) */
+
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -242,7 +238,6 @@
   color: #23272f;
 }
 
-/* Nút ẩn/hiện mật khẩu nằm dưới ô nhập */
 .toggle-password-btn-below {
   margin-top: -4px;
   margin-bottom: 8px;
@@ -261,7 +256,6 @@
   color: #43cea2;
   text-decoration: underline;
 }
-/* Nếu muốn input không bị sát nút */
 .auth-form input[type="password"] {
   margin-bottom: 0;
 }
@@ -270,7 +264,6 @@
   to { opacity: 1; transform: translateY(0);}
 }
 
-/* --- Profile Modal --- */
 .profile-modal {
   position: fixed;
   z-index: 9999;
@@ -332,7 +325,7 @@
 .toggle-password-btn {
   position: absolute;
   right: 12px;
-  top: 18px; /* căn giữa giữa 2 input, tuỳ chỉnh nếu cần */
+  top: 18px;
   background: none;
   border: none;
   color: #888;

@@ -1,4 +1,3 @@
-// routes/adminAuthRoutes.js
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
@@ -21,15 +20,13 @@ router.post('/login', (req, res) => {
         { expiresIn: '1d' }
       );
 
-      // --- SỬA LỖI: Cấu hình cookie cho cross-site ---
       res.cookie('admin_token', token, {
         httpOnly: true,
-        secure: true, // Bắt buộc khi dùng sameSite: 'none'
-        sameSite: 'none', // <-- Cho phép gửi cookie từ Vercel -> Railway
-        maxAge: 24 * 60 * 60 * 1000 // 1 ngày
+        secure: true,
+        sameSite: 'none',
+        maxAge: 24 * 60 * 60 * 1000
       });
-      // -----------------------------------------
-
+     
       res.json({ ok: true, message: 'Login successful' });
     } else {
       res.status(401).json({ message: 'Invalid username or password' });
@@ -41,13 +38,11 @@ router.post('/login', (req, res) => {
 });
 
 router.post('/logout', (req, res) => {
-  // --- SỬA LỖI: Cấu hình cookie khi xóa ---
   res.clearCookie('admin_token', {
     httpOnly: true,
     secure: true,
     sameSite: 'none'
   });
-  // ---------------------------------
   res.json({ ok: true, message: 'Logged out' });
 });
 

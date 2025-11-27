@@ -1,9 +1,7 @@
-// /app/models/User.js
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
-const { v4: uuidv4 } = require('uuid'); // <-- THÊM DÒNG NÀY
+const { v4: uuidv4 } = require('uuid'); 
 
-// Schema con cho lịch sử chơi
 const playHistorySchema = new Schema({
   gameId: {
     type: String 
@@ -15,16 +13,13 @@ const playHistorySchema = new Schema({
   }
 }, { _id: false });
 
-// Schema chính cho User
 const userSchema = new Schema({
-  // --- THÊM TRƯỜNG NÀY ĐỂ SỬA LỖI E11000 ---
   id: {
     type: String,
     unique: true,
-    default: () => uuidv4(), // Tự động tạo ID duy nhất
+    default: () => uuidv4(), 
     required: true
   },
-  // ------------------------------------
 
   username: {
     type: String,

@@ -1,17 +1,11 @@
-// routes/authRoutes.js (ĐÃ SỬA)
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/userController'); // 1. Import controller
+const userController = require('../controllers/userController');
 
 console.log('[authRoutes] file loaded');
 
-// Register
-router.post('/register', userController.registerUser); // 2. Gọi controller
-
-// Login
-router.post('/login', userController.loginUser); // 3. Gọi controller
-
-//Reset Password
+router.post('/register', userController.registerUser); 
+router.post('/login', userController.loginUser);
 router.post('/forgot-password', userController.forgotPassword);
 router.put('/reset-password/:token', userController.resetPassword);
 router.get('/reset-info/:token', userController.getResetInfo);

@@ -1,16 +1,12 @@
-// socketServer.js (FINAL FIX: Chuyển thẳng về offline khi rời phòng)
-
 const { Server } = require('socket.io');
 const Room = require('./models/Room');
 const User = require('./models/User'); 
 
-// 1. IMPORT CÁC HANDLER CŨ CỦA BẠN (Cần đảm bảo đường dẫn đúng)
 const todHandler = require('./public/game/ToD/todSocket.js'); 
 const drawGuessHandler = require('./public/game/Draw/drawSocket.js'); 
 
 const socketUserMap = new Map();
 
-// --- HÀM HELPER XỬ LÝ RỜI PHÒNG ---
 async function handlePlayerLeave(socketId, io) {
   const userInfo = socketUserMap.get(socketId);
   if (!userInfo) return; 
@@ -22,7 +18,6 @@ async function handlePlayerLeave(socketId, io) {
     const room = await Room.findOne({ code });
     if (!room) return;
 
-    // Nếu game đang chơi, ta không xóa player khỏi list ngay
     if (room.status === 'playing') {
       console.log(`[SocketServer] Player ${player} left session, status is 'playing'.`);
       return; 
@@ -31,7 +26,6 @@ async function handlePlayerLeave(socketId, io) {
     let newHost = room.host;
     const wasHost = (room.host === player);
 
-    // Xóa người chơi khỏi danh sách
     room.players = room.players.filter(p => p.name !== player);
 
     if (room.players.length === 0 && room.status === 'open') {
@@ -47,18 +41,15 @@ async function handlePlayerLeave(socketId, io) {
 
     await room.save();
 
-    // Cập nhật status người chơi về 'offline'
     if (!player.startsWith('guest_')) {
-        // FIX: Chuyển status từ 'online' hoặc 'playing' (nếu thoát qua leaveRoom) về 'offline'
         await User.findOneAndUpdate({ username: player }, { status: 'offline', socketId: null });
         io.emit('admin-user-status-changed');
     }
 
     io.emit('admin-rooms-changed'); 
     
-    // Gửi danh sách người chơi MỚI (object đầy đủ)
     io.to(code).emit('update-players', { 
-      list: room.players, // Gửi cả mảng object {name, displayName}
+      list: room.players, 
       host: newHost
     });
     
@@ -82,7 +73,6 @@ module.exports = function attachSocket(server) {
 
   io.on('connection', (socket) => {
 
-    // --- LOGIC PHÒNG CHỜ (LOBBY) ---
     socket.on('joinRoom', async ({ code, gameId, user }) => {
       try {
         const room = await Room.findOne({ code, 'game.gameId': gameId }).exec();
@@ -98,7 +88,6 @@ module.exports = function attachSocket(server) {
 
         const name = user || `guest_${Math.random().toString(36).slice(2, 8)}`;
         
-        // Lấy displayName để lưu vào Room
         let displayName = name;
         if (!name.startsWith('guest_')) {
              const dbUser = await User.findOne({ username: name });
@@ -109,7 +98,7 @@ module.exports = function attachSocket(server) {
 
         const exists = room.players.some(p => p.name === name);
         if (!exists) {
-          room.players.push({ name, displayName }); // LƯU CẢ DISPLAY NAME
+          room.players.push({ name, displayName }); 
           room.status = 'open'; 
           await room.save();
           io.emit('admin-rooms-changed'); 
@@ -125,7 +114,6 @@ module.exports = function attachSocket(server) {
         
         console.log(`[SocketServer] ✅ ${name} (${displayName}) joined room ${code}.`);
 
-        // Gửi danh sách người chơi (object đầy đủ)
         io.to(code).emit('update-players', { list: room.players, host: room.host });
 
       } catch (err) {
@@ -139,7 +127,47 @@ module.exports = function attachSocket(server) {
       await handlePlayerLeave(socket.id, io);
     });
     
-    // ... (logic kickPlayer giữ nguyên) ...
+     socket.on('kickPlayer', async ({ code, playerToKick }) => {
+      const kickerInfo = socketUserMap.get(socket.id);
+      if (!kickerInfo || kickerInfo.code !== code) return;
+      const kickerName = kickerInfo.player;
+      try {
+        const room = await Room.findOne({ code });
+        if (!room || room.host !== kickerName) return;
+        if (kickerName === playerToKick) return;
+        
+        room.players = room.players.filter(p => p.name !== playerToKick);
+        await room.save();
+
+        let kickedSocketId = null;
+        for (const [id, info] of socketUserMap.entries()) {
+          if (info.player === playerToKick && info.code === code) {
+            kickedSocketId = id;
+            break;
+          }
+        }
+        if (kickedSocketId) {
+          io.to(kickedSocketId).emit('kicked', { message: 'Bạn đã bị chủ phòng kick.' });
+          const kickedSocket = io.sockets.sockets.get(kickedSocketId);
+          if (kickedSocket) kickedSocket.leave(code);
+          socketUserMap.delete(kickedSocketId);
+
+          if (!playerToKick.startsWith('guest_')) {
+              await User.findOneAndUpdate({ username: playerToKick }, { status: 'online' });
+              io.emit('admin-user-status-changed');
+          }
+          console.log(`[SocketServer] 🦶 ${playerToKick} was kicked from room ${code} by ${kickerName}`);
+        }
+
+        io.emit('admin-rooms-changed'); 
+        io.to(code).emit('update-players', {
+          list: room.players,
+          host: room.host
+        });
+      } catch (err) {
+        console.error('[SocketServer] kickPlayer error:', err.message);
+      }
+    });
 
     socket.on('startGame', async ({ code }) => {
       try {
@@ -168,10 +196,7 @@ module.exports = function attachSocket(server) {
         console.error('[SocketServer] startGame error:', err.message);
       }
     });
-
-    // --- LOGIC TRONG GAME (GẮN HANDLER CỦA BẠN VÀ KHÔI PHỤC BỐI CẢNH) ---
     
-    // BỘ ĐỊNH TUYẾN CHUNG: Bắt sự kiện 'playerEnteredGame' từ client
     socket.on('requestGameState', async ({ code, user }) => {
         const room = await Room.findOne({ code }).exec();
         if (!room && user) {
@@ -179,23 +204,19 @@ module.exports = function attachSocket(server) {
              return;
         }
         
-        // Gửi lại trạng thái game cho socket vừa tham gia
         socket.emit('gameDataInitial', {
-            players: room.players, // Danh sách người chơi đầy đủ
+            players: room.players,
             host: room.host,
             gameStatus: room.status,
-            currentGameData: room.currentGameData || {} // Trạng thái game (nếu có)
+            currentGameData: room.currentGameData || {} 
         });
         
         console.log(`[SocketServer] 🔄 State requested by ${user} in ${code}. Sending data.`);
     });
     
-    // GẮN CÁC LOGIC GAME CỤ THỂ CỦA BẠN VÀO ĐÂY
-    // Giả sử bạn khôi phục và đặt lại tên cho 2 file này
     todHandler(socket, io); 
     drawGuessHandler(socket, io); 
 
-    // --- DISCONNECT ---
     socket.on('disconnect', async () => {
       await handlePlayerLeave(socket.id, io);
     });

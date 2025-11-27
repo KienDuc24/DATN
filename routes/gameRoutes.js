@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const router = express.Router();
 
-// Lấy danh sách games từ games.json (thay đổi: đọc file động)
 router.get('/', (req, res) => {
   try {
     const games = JSON.parse(fs.readFileSync(path.join(__dirname, '../public/games.json'), 'utf8'));
@@ -13,7 +12,6 @@ router.get('/', (req, res) => {
   }
 });
 
-// Khởi động game trong room (thay đổi: cập nhật room)
 router.post('/:gameId/start/:roomId', async (req, res) => {
   try {
     const Room = require('../models/Room');

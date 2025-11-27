@@ -1,22 +1,20 @@
-/* public/css/chatbot.css (FINAL: Dark Theme + Send Button Style) */
 
-/* --- KHAI BÁO BIẾN MÀU SẮC (Tông màu đen chủ đạo) --- */
+
 :root {
-    /* Màu chủ đạo gradient (dùng cho header, nút gửi, bong bóng user) */
-    --chat-primary-color: #1a1a1a; /* Đen đậm (gần đen tuyệt đối) */
-    --chat-secondary-color: #333333; /* Đen nhạt hơn (xám đậm) */
+
+    --chat-primary-color: #1a1a1a;
+    --chat-secondary-color: #333333;
     --chat-gradient: linear-gradient(135deg, var(--chat-primary-color), var(--chat-secondary-color));
 
-    /* Màu nền và chữ */
-    --chat-bg-window: #ffffff; /* Nền cửa sổ chat */
-    --chat-bg-messages: #f9f9f9; /* Nền khu vực tin nhắn (xám rất nhạt) */
-    --chat-text-dark: #333333; /* Màu chữ tối */
-    --chat-text-light: #ffffff; /* Màu chữ sáng */
-    --chat-bubble-bot-bg: #f0f0f0; /* Nền bong bóng bot (xám nhạt) */
-    --chat-bubble-bot-border: #e0e0e0; /* Viền bong bóng bot */
+
+    --chat-bg-window: #ffffff;
+    --chat-bg-messages: #f9f9f9;
+    --chat-text-dark: #333333;
+    --chat-text-light: #ffffff;
+    --chat-bubble-bot-bg: #f0f0f0;
+    --chat-bubble-bot-border: #e0e0e0;
 }
 
-/* --- ROOT --- */
 #chatbot-container {
     position: fixed;
     bottom: 20px;
@@ -26,7 +24,6 @@
     font-family: 'Inter', sans-serif;
 }
 
-/* --- Cửa sổ chat --- */
 #chatbot-window {
     width: 380px;
     height: 66vh;
@@ -46,9 +43,8 @@
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* --- Header --- */
 #chatbot-header {
-    background: var(--chat-gradient); /* Gradient đen */
+    background: var(--chat-gradient);
     color: var(--chat-text-light);
     padding: 12px 18px;
     display: flex;
@@ -72,7 +68,6 @@
     box-shadow: 0 0 5px rgba(0,0,0,0.1);
 }
 
-/* --- Khu vực Tin nhắn --- */
 #chatbot-messages {
     flex-grow: 1;
     padding: 20px;
@@ -98,7 +93,6 @@
     align-self: flex-start;
 }
 
-/* --- CẤU TRÚC TIN NHẮN BOT MỚI --- */
 .bot-info-container {
     display: flex;
     flex-direction: column;
@@ -111,10 +105,9 @@
 .bot-name {
     font-size: clamp(0.7rem, 1rem + 0.4vw, 1rem);
     font-weight: 600;
-    color: #333; /* Màu chữ tối hơn cho tên bot */
+    color: #333;
 }
 
-/* --- Avatar Chung --- */
 .chat-avatar {
     border-radius: 50%;
     object-fit: cover;
@@ -127,16 +120,13 @@
     width: 50px;
     height: 50px;
 }
-/* Style riêng cho avatar bot (viền màu chính - đen đậm) */
 .message.bot .chat-avatar.large-avatar {
     border: 2px solid var(--chat-primary-color); 
 }
-/* Style riêng cho avatar user (viền màu phụ - đen nhạt) */
 .message.user .chat-avatar.large-avatar {
     border: 2px solid var(--chat-secondary-color);
 }
 
-/* --- Bong bóng chat --- */
 .bubble {
     padding: 14px 18px;
     border-radius: 22px;
@@ -146,7 +136,6 @@
     word-wrap: break-word;
 }
 
-/* Bong bóng của User (Gradient đen) */
 .bubble.user-bubble {
     background: var(--chat-gradient); 
     color: var(--chat-text-light);
@@ -154,7 +143,6 @@
     text-align: left;
 }
 
-/* Bong bóng của Bot (Xám nhạt) */
 .bubble.bot-bubble {
     background-color: var(--chat-bubble-bot-bg); 
     color: var(--chat-text-dark);
@@ -163,7 +151,6 @@
     text-align: left;
 }
 
-/* --- Suggestions --- */
 .chat-suggestions {
     display: flex;
     flex-wrap: wrap;
@@ -175,7 +162,7 @@
 }
 
 .suggestion-btn {
-    background-color: #f5f5f5; /* Màu nền xám rất nhạt */
+    background-color: #f5f5f5;
     color: var(--chat-text-dark);
     border: 1px solid #e0e0e0;
     border-radius: 15px;
@@ -190,12 +177,11 @@
 }
 
 .suggestion-btn:hover {
-    background-color: #e0e0e0; /* Màu nền tối hơn khi hover */
+    background-color: #e0e0e0;
     transform: translateY(-1px);
     border-color: #d0d0d0;
 }
 
-/* --- Input Area --- */
 #chatbot-input-area {
     display: flex;
     padding: 10px 15px;
@@ -216,12 +202,11 @@
     color: var(--chat-text-dark);
 }
 #chatbot-input:focus {
-    border-color: var(--chat-primary-color); /* Viền chuyển sang màu đen khi focus */
+    border-color: var(--chat-primary-color);
 }
 
-/* --- Nút Gửi Tin Nhắn (Bổ sung CSS riêng) --- */
 #chatbot-send {
-    background: var(--chat-gradient); /* Gradient đen */
+    background: var(--chat-gradient);
     border: none;
     border-radius: 50%;
     width: 40px;
@@ -236,7 +221,7 @@
 #chatbot-send:hover {
     transform: scale(1.05);
     box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    background: linear-gradient(135deg, #333333, #1a1a1a); /* Đảo ngược gradient khi hover */
+    background: linear-gradient(135deg, #333333, #1a1a1a);
 }
 #chatbot-send svg {
     color: var(--chat-text-light);
@@ -244,11 +229,10 @@
     height: 20px;
 }
 
-/* --- Chat Icon --- */
 #chatbot-icon {
     width: 60px;
     height: 60px;
-    background: var(--chat-gradient); /* Gradient đen */
+    background: var(--chat-gradient);
     border-radius: 50%;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     display: flex;

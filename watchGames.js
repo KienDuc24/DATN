@@ -1,5 +1,3 @@
-// watchGames.js (Cập nhật: Set isComingSoon = false nếu tìm thấy file)
-
 const chokidar = require('chokidar');
 const fs = require('fs');
 const path = require('path');
@@ -24,7 +22,6 @@ async function updateGamesJson() {
 
             if (!info.id || typeof info.id !== 'string') return;
 
-            // Thêm cờ này vào file JSON public để client biết
             info.isComingSoon = false; 
             games.push(info);
             
@@ -38,7 +35,7 @@ async function updateGamesJson() {
                     players: info.players,
                     category: info.category,
                     featured: info.featured || false,
-                    isComingSoon: false // <--- QUAN TRỌNG: Tìm thấy folder -> Chơi được
+                    isComingSoon: false 
                 }
                 },
                 { upsert: true } 
