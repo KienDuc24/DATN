@@ -1,0 +1,18 @@
+[
+  {
+    "name": {
+      "vi": "Cờ caro",
+      "en": "TicTacToe"
+    },
+    "desc": {
+      "vi": "Trò chơi cờ caro truyền thống, thử thách trí tuệ và chiến lược của bạn!",
+      "en": "Traditional TicTacToe game, challenge your intellect and strategy!"
+    },
+    "players": "2",
+    "id": "TicTacToe",
+    "category": {
+      "vi": "Trí tuệ, Chiến lược",
+      "en": "Intellect, Strategy"
+    }
+  }
+]

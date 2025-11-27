@@ -5,7 +5,6 @@ let sliderPage = { allGames: 0, featured: 0 };
 let LANGS = {};
 let currentLang = localStorage.getItem('lang') || 'vi';
 
-const API_BASE_URL = window.API_BASE_URL || 'https://datn-socket.up.railway.app';
 const socket = (typeof io === 'function') ? io(API_BASE_URL, {
   path: '/socket.io',
   transports: ['polling', 'websocket'],

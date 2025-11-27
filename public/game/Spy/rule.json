@@ -1,0 +1,72 @@
+{
+  "game_name": {
+    "vi": "Sự thật hay Thử thách",
+    "en": "Truth or Dare"
+  },
+  "summary": {
+    "vi": "Trò chơi luân phiên chọn giữa trả lời thành thật (Sự thật) hoặc thực hiện nhiệm vụ (Thử thách) để tạo ra tiếng cười/khám phá.",
+    "en": "The game alternates between answering truthfully (Truth) or performing a task (Dare) to create laughter/discovery."
+  },
+  "actions": [
+    {
+      "type": "Truth",
+      "vi": "Sự thật",
+      "description": {
+        "vi": "Yêu cầu trả lời thành thật một câu hỏi cá nhân.",
+        "en": "Requires answering a personal question truthfully."
+      }
+    },
+    {
+      "type": "Dare",
+      "vi": "Thử thách",
+      "description": {
+        "vi": "Yêu cầu thực hiện một hành động ngớ ngẩn/khó khăn.",
+        "en": "Requires performing a silly/difficult action."
+      }
+    }
+  ],
+  "mechanics": {
+    "start": {
+      "vi": "Chọn người chơi để đặt câu hỏi 'Sự thật hay Thử thách?'.",
+      "en": "Select a player to ask 'Truth or Dare?'."
+    },
+    "flow": {
+      "vi": "Người được hỏi chọn Sự thật hoặc Thử thách.",
+      "en": "The player being asked chooses Truth or Dare."
+    },
+    "completion": {
+      "vi": "Lượt chơi chuyển sang người tiếp theo sau khi nhiệm vụ hoàn thành hoặc trả lời xong.",
+      "en": "The turn moves to the next player after the task is completed or the question is answered."
+    }
+  },
+  "voting_system": {
+    "purpose": {
+      "vi": "Đánh giá việc hoàn thành nhiệm vụ/tính trung thực.",
+      "en": "Evaluate task completion or truthfulness."
+    },
+    "votes": {
+      "vi": ["Thông qua", "Không thông qua"],
+      "en": ["Accept", "Reject"]
+    },
+    "results": {
+      "success": {
+        "vi": "Đa số (>= 50%) 'Thông qua' -> Hoàn thành, chuyển lượt.",
+        "en": "Majority (>= 50%) 'Accept' -> Completed, move to next turn."
+      },
+      "failure": {
+        "vi": "Đa số 'Không thông qua' -> Phải thực hiện lại bằng nhiệm vụ mới (cùng loại).",
+        "en": "Majority 'Reject' -> Must retry with a new task of the same type."
+      }
+    }
+  },
+  "ai_focus": {
+    "vi": [
+      "Thúc đẩy tính trung thực (Sự thật) và hài hước/bất ngờ (Thử thách).",
+      "Sử dụng AI để tạo nội dung độc đáo."
+    ],
+    "en": [
+      "Promote truthfulness (Truth) and humor/surprise (Dare).",
+      "Use AI to generate unique content."
+    ]
+  }
+}
