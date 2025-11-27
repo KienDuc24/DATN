@@ -33,7 +33,7 @@ exports.createRoom = async (req, res) => {
   const newRoom = new Room({
     code: roomCode,
     host: player,
-    players: [{ name: player }],
+    players: [{ name: player, displayName: displayName }],
     game: { gameId: game, type: gameType },
     status: 'open' 
   });
