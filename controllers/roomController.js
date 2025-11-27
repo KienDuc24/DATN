@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Room = require('../models/Room');
+const User = require('../models/User');
 
 function generateRoomCode() {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -13,6 +14,18 @@ exports.createRoom = async (req, res) => {
 
   if (!player || !game || !gameType || !role) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  let displayName = player;
+  if (!player.startsWith('guest_')) {
+      try {
+          const userObj = await User.findOne({ username: player });
+          if (userObj && userObj.displayName) {
+              displayName = userObj.displayName;
+          }
+      } catch (e) {
+          console.error('Error fetching host display name:', e);
+      }
   }
   
   const roomCode = generateRoomCode();
