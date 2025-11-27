@@ -22,20 +22,23 @@ async function updateGamesJson() {
 
             if (!info.id || typeof info.id !== 'string') return;
 
-            info.isComingSoon = false; 
-            games.push(info);
+            games.push({ ...info, isComingSoon: false }); 
             
             dbOperations.push(
             Game.updateOne(
                 { id: info.id }, 
                 { 
+
                 $set: {
                     name: info.name,
                     desc: info.desc,
                     players: info.players,
                     category: info.category,
-                    featured: info.featured || false,
                     isComingSoon: false 
+                },
+
+                $setOnInsert: {
+                    featured: false 
                 }
                 },
                 { upsert: true } 
@@ -55,7 +58,7 @@ async function updateGamesJson() {
   if (mongoose.connection.readyState === 1) {
     try {
         await Promise.all(dbOperations);
-        console.log(`[DB] Đã cập nhật ${dbOperations.length} game (isComingSoon = false).`);
+        console.log(`[DB] Đã đồng bộ ${dbOperations.length} game vào cơ sở dữ liệu.`);
     } catch (dbErr) {
         console.error('[DB] Lỗi cập nhật game:', dbErr.message);
     }
@@ -70,8 +73,7 @@ function setupGameWatcher() {
       .on('unlink', updateGamesJson)
       .on('addDir', updateGamesJson)
       .on('unlinkDir', updateGamesJson);
-
-    return updateGamesJson;
+    updateGamesJson();
 }
 
 module.exports = setupGameWatcher;
