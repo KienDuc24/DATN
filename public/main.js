@@ -305,7 +305,8 @@ async function handleJoinRoom() {
         code: code,
         gameId: data.room.game.gameId,
         game: data.room.game.type,
-        user: username 
+        user: username,
+        displayName: data.room.game.displayName || username
       }).toString();
       window.location.href = `/room.html?${qs}`;
     } catch (err) {
