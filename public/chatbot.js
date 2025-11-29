@@ -356,7 +356,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             console.error("Chat error:", error);
             if(document.body.contains(loadingDiv)) messagesArea.removeChild(loadingDiv);
-            const errMsg = getCurrentLang() === 'vi' ? "Catmi đang bận." : "Catmi is busy.";
+            const errMsg = getCurrentLang() === 'vi' ? "Catmi đang rất mệt mỏi và cần nghỉ ngơi." : "Catmi is very tired and needs to rest.";
             addMessageToUI("bot", errMsg, false, 'annoyed'); 
         } finally {
             inputField.disabled = false;
