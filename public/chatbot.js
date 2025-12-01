@@ -349,14 +349,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 aiReply = aiReply.replace(expressionMatch[0], '').trim(); 
             }
             
-            const fallbackMsg = lang === 'vi' ? "Xin lỗi, Catmi không hiểu câu hỏi." : "Sorry, Catmi didn't understand the question.";
+            const fallbackMsg = lang === 'vi' ? "Xin lỗi, Catmi không hiểu câu hỏi. Bạn có thể thử hỏi lại hoặc hỏi điều khác." : "Sorry, Catmi didn't understand the question. You can try asking again or something else.";
             
             addMessageToUI("bot", aiReply || fallbackMsg, true, expressionKeyForReply); 
 
         } catch (error) {
             console.error("Chat error:", error);
             if(document.body.contains(loadingDiv)) messagesArea.removeChild(loadingDiv);
-            const errMsg = getCurrentLang() === 'vi' ? "Catmi đang rất mệt mỏi và cần nghỉ ngơi." : "Catmi is very tired and needs to rest.";
+            const errMsg = getCurrentLang() === 'vi' ? "Catmi đang rất mệt mỏi và cần nghỉ ngơi. Nói chuyện sau nhé 👋" : "Catmi is very tired and needs to rest. Talk to you later 👋";
             addMessageToUI("bot", errMsg, false, 'annoyed'); 
         } finally {
             inputField.disabled = false;
