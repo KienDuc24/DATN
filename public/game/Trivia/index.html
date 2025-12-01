@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trivia Camping </title>
+    <link rel="icon" href="Img/logo.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="background-wrapper">
+        <div class="overlay"></div>
+
+        <header class="game-header">
+             <a href="/" class="back-btn" title="Về trang chủ">
+                <i class="fas fa-home"></i>
+                <span>Trang chủ</span>
+            </a>
+            
+            <h1 class="game-title">Trivia Camping</h1>
+            
+            <div class="room-info">
+                <span>Phòng: <span id="roomCode">...</span></span>
+                <span><i class="fas fa-users"></i> <span id="playerCount">0</span></span>
+            </div>
+        </header>
+
+        <div class="playground-container">
+            <main class="game-layout">
+                
+                <aside class="sidebar left-sidebar">
+                    <div class="panel scoreboard">
+                        <div class="panel-header">
+                            <i class="fas fa-trophy"></i> Bảng Xếp Hạng
+                        </div>
+                        <div id="playerList" class="player-list">
+                            </div>
+                    </div>
+                </aside>
+
+                <section class="game-section">
+                    
+                    <div id="lobbyScreen" class="screen active">
+                        <div class="catmi-container">
+                            <img src="/assets/welcome.gif" class="catmi-avatar" alt="Catmi">
+                        </div>
+                        <h2>Sẵn sàng chưa?</h2>
+                        <p class="status-text">Đang chờ chủ phòng bắt đầu...</p>
+                        <div id="lobbyPlayerList" class="player-tags"></div>
+                        <button id="startBtn" class="btn btn-primary hidden">🚀 Bắt đầu Game</button>
+                    </div>
+
+                    <div id="questionScreen" class="screen hidden">
+                        <div class="timer-wrapper">
+                            <div id="timerBar" class="timer-fill"></div>
+                            <span id="timerText">15</span>
+                        </div>
+                        
+                        <div class="question-card">
+                            <div class="q-badge">Câu <span id="qIndex">1</span>/<span id="qTotal">10</span></div>
+                            <h3 id="qContent">Đang tải câu hỏi...</h3>
+                        </div>
+
+                        <div class="answers-grid" id="optionsGrid">
+                            <button class="btn-ans" data-val="A">A</button>
+                            <button class="btn-ans" data-val="B">B</button>
+                            <button class="btn-ans" data-val="C">C</button>
+                            <button class="btn-ans" data-val="D">D</button>
+                        </div>
+                    </div>
+
+                    <div id="resultScreen" class="screen hidden">
+                        <div class="result-icon" id="resultIcon">✅</div>
+                        <h2 id="resultStatus">Chính xác!</h2>
+                        
+                        <div class="correct-box">
+                            Đáp án: <span id="correctText" class="highlight">...</span>
+                        </div>
+                        
+                        <div class="explanation-box">
+                            <i class="fas fa-lightbulb"></i> <span id="explText">...</span>
+                        </div>
+                        
+                        <p class="next-hint">⏳ Câu tiếp theo đang tới...</p>
+                    </div>
+
+                    <div id="endScreen" class="screen hidden">
+                        <img src="/assets/success.gif" class="catmi-avatar">
+                        <h2 class="winner-title">🏆 Nhà Vô Địch 🏆</h2>
+                        <div class="winner-name" id="winnerName">...</div>
+                        
+                        <div class="final-board">
+                            <h3>Tổng kết điểm</h3>
+                            <div id="finalScoreList" class="score-list"></div>
+                        </div>
+                        
+                        <div class="end-actions">
+                            <button id="restartBtn" class="btn btn-secondary hidden">
+                                <i class="fas fa-redo"></i> Chơi lại
+                            </button>
+                            <button onclick="location.href='/'" class="btn btn-danger">
+                                <i class="fas fa-sign-out-alt"></i> Thoát
+                            </button>
+                        </div>
+                        
+                        <p id="waitingRestartText" class="status-text hidden" style="margin-top:15px; font-style:italic; color:#bbb;">
+                            Đang chờ chủ phòng bắt đầu vòng mới...
+                        </p>
+                    </div>
+                </section>
+                </section>
+
+                <aside class="sidebar right-sidebar">
+                    <div class="panel catmi-chat">
+                        <div class="panel-header">
+                            <i class="fas fa-comments"></i> Trò chuyện
+                        </div>
+                        
+                        <div id="chatHistory" class="chat-history">
+                        <div class="chat-msg system">
+                            Chào mừng! Hãy chat vui vẻ nhé.<br>
+                            Tag <b>@Catmi</b> để cùng trò chuyện nha!
+                        </div>
+                    </div>
+
+                        <div class="chat-input-area">
+                            <input type="text" id="chatInput" placeholder="Nhắn tin..." autocomplete="off">
+                            <button id="sendChatBtn"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </aside>
+
+            </main>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

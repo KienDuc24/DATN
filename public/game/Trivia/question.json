@@ -1,0 +1,146 @@
+[
+  {
+    "id": 1,
+    "question": "Quy tắc '3-3-3' trong kỹ năng sinh tồn KHÔNG bao gồm điều nào sau đây?",
+    "options": {
+      "A": "3 phút thiếu không khí",
+      "B": "3 ngày thiếu nước",
+      "C": "3 tuần thiếu thức ăn",
+      "D": "3 tiếng không có wifi"
+    },
+    "correctAnswer": "D",
+    "explanation": "Quy tắc sinh tồn: 3 phút (không khí), 3 giờ (nhiệt độ khắc nghiệt), 3 ngày (nước), 3 tuần (thức ăn). Wifi không tính nhé!"
+  },
+  {
+    "id": 2,
+    "question": "Loại củi nào sau đây cháy lâu và giữ nhiệt tốt nhất để nướng thịt?",
+    "options": {
+      "A": "Gỗ thông (Gỗ mềm)",
+      "B": "Gỗ sồi (Gỗ cứng)",
+      "C": "Lá cây khô",
+      "D": "Giấy báo cũ"
+    },
+    "correctAnswer": "B",
+    "explanation": "Gỗ cứng như sồi, táu cháy chậm và tạo lớp than hồng bền, nhiệt lượng cao, rất lý tưởng để nấu nướng."
+  },
+  {
+    "id": 3,
+    "question": "Khi bị lạc trong rừng, hành động nào là quan trọng nhất cần làm ĐẦU TIÊN?",
+    "options": {
+      "A": "Chạy thật nhanh để tìm đường ra",
+      "B": "Leo lên cây cao nhất để quan sát",
+      "C": "Giữ bình tĩnh và ở yên tại chỗ (S.T.O.P)",
+      "D": "Hét lớn liên tục để gọi người"
+    },
+    "correctAnswer": "C",
+    "explanation": "S.T.O.P: Sit (Ngồi xuống), Think (Suy nghĩ), Observe (Quan sát), Plan (Lên kế hoạch). Chạy lung tung chỉ khiến bạn lạc sâu hơn."
+  },
+  {
+    "id": 4,
+    "question": "Để dựng lều chắc chắn trên nền đất cát hoặc tuyết, bạn nên dùng loại cọc ghim nào?",
+    "options": {
+      "A": "Cọc ghim kim loại thẳng, nhỏ",
+      "B": "Cọc ghim xoắn ốc hoặc tiết diện chữ V lớn",
+      "C": "Dùng đá đè lên thay cọc",
+      "D": "Không cần cọc, buộc vào cây là được"
+    },
+    "correctAnswer": "B",
+    "explanation": "Cọc xoắn hoặc bản rộng (chữ V/U) giúp tăng diện tích tiếp xúc, bám chắc hơn vào nền đất mềm như cát hoặc tuyết."
+  },
+  {
+    "id": 5,
+    "question": "Loại nút dây nào dùng để tạo một vòng tròn cố định ở đầu dây, không bị thắt lại khi kéo căng (thường dùng để cứu hộ)?",
+    "options": {
+      "A": "Nút thòng lọng (Slip knot)",
+      "B": "Nút dẹt (Square knot)",
+      "C": "Nút ghế đơn (Bowline)",
+      "D": "Nút thuyền chài (Clove hitch)"
+    },
+    "correctAnswer": "C",
+    "explanation": "Nút ghế đơn (Bowline) là 'vua của các nút dây', tạo vòng tròn an toàn, dễ tháo nhưng không bao giờ tuột khi chịu lực."
+  },
+  {
+    "id": 6,
+    "question": "Nếu thấy một cây nấm có màu sắc sặc sỡ trong rừng, bạn nên làm gì?",
+    "options": {
+      "A": "Ăn thử một miếng nhỏ xem có ngon không",
+      "B": "Nấu chín kỹ rồi ăn",
+      "C": "Tuyệt đối không ăn, thường là nấm độc",
+      "D": "Mang về nhà trồng"
+    },
+    "correctAnswer": "C",
+    "explanation": "Trong tự nhiên, màu sắc sặc sỡ thường là dấu hiệu cảnh báo độc dược. An toàn nhất là không ăn nấm lạ."
+  },
+  {
+    "id": 7,
+    "question": "Vật dụng nào sau đây KHÔNG nên dùng để xử lý vết rắn cắn?",
+    "options": {
+      "A": "Nước sạch và xà phòng",
+      "B": "Băng ép",
+      "C": "Dao để rạch và miệng để hút nọc",
+      "D": "Nẹp cố định tay/chân"
+    },
+    "correctAnswer": "C",
+    "explanation": "Rạch da hay hút nọc bằng miệng có thể làm nhiễm trùng hoặc khiến người hút bị trúng độc. Chỉ nên rửa sạch, băng ép và đến bệnh viện."
+  },
+  {
+    "id": 8,
+    "question": "Sao Bắc Đẩu (Polaris) giúp xác định hướng nào vào ban đêm?",
+    "options": {
+      "A": "Hướng Đông",
+      "B": "Hướng Tây",
+      "C": "Hướng Nam",
+      "D": "Hướng Bắc"
+    },
+    "correctAnswer": "D",
+    "explanation": "Sao Bắc Đẩu nằm gần như thẳng hàng với trục quay của Trái Đất ở cực Bắc, nên nó luôn chỉ hướng Bắc."
+  },
+  {
+    "id": 9,
+    "question": "Khi ngủ lều, tại sao nên đóng kín cửa lưới chống côn trùng ngay cả ban ngày?",
+    "options": {
+      "A": "Để giữ ấm",
+      "B": "Để tránh muỗi, vắt, rắn rết chui vào",
+      "C": "Để người ngoài không nhìn thấy đồ đạc",
+      "D": "Để lều đỡ bị bay mùi"
+    },
+    "correctAnswer": "B",
+    "explanation": "Rừng núi có rất nhiều côn trùng và bò sát nhỏ. Mở cửa lều là 'mời' chúng vào tham quan túi ngủ của bạn đấy!"
+  },
+  {
+    "id": 10,
+    "question": "Nước suối trong vắt chảy từ khe đá ra có uống trực tiếp được không?",
+    "options": {
+      "A": "Uống được ngay, nước suối rất sạch",
+      "B": "Chỉ uống nếu thấy cá bơi",
+      "C": "Không nên, cần đun sôi hoặc lọc",
+      "D": "Uống được nếu nếm không thấy mùi lạ"
+    },
+    "correctAnswer": "C",
+    "explanation": "Nước trong vẫn có thể chứa vi khuẩn, ký sinh trùng hoặc kim loại nặng từ thượng nguồn. Luôn xử lý nước trước khi uống."
+  },
+  {
+    "id": 11,
+    "question": "Vật liệu nào sau đây bắt lửa tốt nhất để làm mồi nhóm lửa?",
+    "options": {
+      "A": "Vỏ cây tươi",
+      "B": "Bông gòn tẩm sáp/vazeline",
+      "C": "Lá cây xanh",
+      "D": "Đá cuội"
+    },
+    "correctAnswer": "B",
+    "explanation": "Bông gòn tẩm sáp là mồi lửa 'thần thánh' của dân cắm trại: cháy lâu, bén lửa nhanh và chống thấm nước tốt."
+  },
+  {
+    "id": 12,
+    "question": "Khi đi vệ sinh trong rừng (đào hố mèo), hố nên sâu khoảng bao nhiêu và cách nguồn nước bao xa?",
+    "options": {
+      "A": "Sâu 5cm, ngay cạnh bờ suối cho tiện",
+      "B": "Sâu 15-20cm, cách nguồn nước ít nhất 60m",
+      "C": "Không cần đào, cứ giải quyết trên cỏ",
+      "D": "Sâu 1 mét, cách lều 10m"
+    },
+    "correctAnswer": "B",
+    "explanation": "Nguyên tắc 'Leave No Trace': Đào sâu để phân hủy tốt và cách xa nguồn nước để tránh gây ô nhiễm."
+  }
+]

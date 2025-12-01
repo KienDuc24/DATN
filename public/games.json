@@ -9,10 +9,28 @@
       "en": "Join friends to draw and guess keywords. See who is the fastest and best at drawing!"
     },
     "players": "2-10",
+    "iconPath": "/game/Draw/Img/logo.png",
     "id": "Draw",
     "category": {
       "vi": "Vẽ, Đoán chữ",
       "en": "Draw, Word Guess"
+    }
+  },
+  {
+    "name": {
+      "vi": "Cờ caro",
+      "en": "TicTacToe"
+    },
+    "desc": {
+      "vi": "Trò chơi cờ caro truyền thống, thử thách trí tuệ và chiến lược của bạn!",
+      "en": "Traditional TicTacToe game, challenge your intellect and strategy!"
+    },
+    "players": "2",
+    "iconPath": "/game/TicTacToe/Img/logo.png",
+    "id": "TicTacToe",
+    "category": {
+      "vi": "Trí tuệ, Chiến lược",
+      "en": "Intellect, Strategy"
     }
   },
   {
@@ -25,10 +43,28 @@
       "en": "Secrets and unique challenges. Share and explore together!"
     },
     "players": "2-10",
+    "iconPath": "/game/ToD/Img/logo.png",
     "id": "ToD",
     "category": {
-      "vi": "Sự thật hay thử thách",
-      "en": "Truth or Dare"
+      "vi": "Sự thật hay thử thách, Tương tác trực tiếp",
+      "en": "Truth or Dare, Interactive"
+    }
+  },
+  {
+    "name": {
+      "vi": "Đố vui cắm trại",
+      "en": "Trivia Camping"
+    },
+    "desc": {
+      "vi": "Catmi có những câu hỏi đố vui thú vị về chủ đề cắm trại. Thử thách kiến thức và cùng khám phá nhé!",
+      "en": "Catmi has interesting trivia questions about camping. Challenge your knowledge and explore together!"
+    },
+    "players": "2-10",
+    "iconPath": "/game/Trivia/Img/logo.png",
+    "id": "Trivia",
+    "category": {
+      "vi": "Đố vui, Tương tác với Catmi",
+      "en": "Trivia, Interactive with Catmi"
     }
   }
 ]

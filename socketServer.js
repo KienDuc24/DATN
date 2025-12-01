@@ -4,6 +4,8 @@ const User = require('./models/User');
 
 const todHandler = require('./public/game/ToD/todSocket.js'); 
 const drawGuessHandler = require('./public/game/Draw/drawSocket.js'); 
+const ticTacToeHandler = require('./public/game/TicTacToe/ticTacToeSocket.js');
+const triviaHandler = require('./public/game/Trivia/triviaSocket.js');
 
 const socketUserMap = new Map();
 
@@ -216,6 +218,8 @@ module.exports = function attachSocket(server) {
     
     todHandler(socket, io); 
     drawGuessHandler(socket, io); 
+    ticTacToeHandler(socket, io);
+    triviaHandler(socket, io);
 
     socket.on('disconnect', async () => {
       await handlePlayerLeave(socket.id, io);
