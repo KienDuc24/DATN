@@ -4,76 +4,104 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vẽ Nhanh Đoán Nhanh</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
-    <link rel="stylesheet" href="./style.css"> 
+    <link rel="icon" href="Img/logo.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <link rel="icon" type="image/x-icon" href="Img/logo.png">
 </head>
 <body>
-    <header class="game-top-bar">
-        <a href="/" class="btn-home"><i class="fas fa-home"></i> Trang chủ</a>
-        
-        <div class="game-title">Draw and Guess</div>
-        
-        <div class="room-actions">
+    <div class="background-wrapper">
+        <div class="overlay"></div>
+
+        <header class="game-header">
+             <a href="/" class="back-btn" title="Về trang chủ">
+                <i class="fas fa-home"></i>
+                <span>Trang chủ</span>
+            </a>
+            
+            <h1 class="game-title">Draw & Guess</h1>
+            
+            <div class="room-info">
+                <span>Phòng: <span id="roomCode">...</span></span>
+                <span><i class="fas fa-users"></i> <span id="playersCount">0</span></span>
             </div>
-    </header>
+        </header>
 
-    <div class="playground-container">
-        <div class="game-main">
-            <div class="room-info-bar">
-                <span>Phòng: <span id="roomCode">---</span></span>
-                <span>Người chơi: <span id="playersCount">0</span></span>
-            </div>
-
-            <div class="canvas-section">
-                <div class="canvas-info">
-                    <span id="game-status">Đang chờ Host bắt đầu...</span>
-                    <span id="timer">90</span>
-                </div>
-                <div id="word-hint" class="hidden"></div>
+        <div class="playground-container">
+            <main class="game-layout">
                 
-                <canvas id="drawingCanvas"></canvas>
-                
-                <div id="drawingTools" class="drawing-tools hidden">
-                    
-                    <div class="tools-group">
-                        <button class="tool-btn active" data-tool="pen" title="Bút vẽ"><i class="fas fa-pencil-alt"></i></button>
-                        <button class="tool-btn" data-tool="eraser" title="Tẩy"><i class="fas fa-eraser"></i></button>
-                        <button class="tool-btn" data-tool="fill" title="Đổ màu"><i class="fas fa-fill-drip"></i></button>
+                <aside class="sidebar left-sidebar">
+                    <div class="panel scoreboard">
+                        <div class="panel-header">
+                            <i class="fas fa-trophy"></i> Bảng Xếp Hạng
+                        </div>
+                        <div id="scoreGrid" class="player-list">
+                            </div>
                     </div>
+                </aside>
 
-                    <div class="size-group">
-                        <input type="range" id="sizeSlider" min="1" max="50" value="5" title="Kích thước">
-                    </div>
-
-                    <div class="palette-group" id="colorPalette">
+                <section class="game-section">
+                    <div class="draw-area-wrapper">
+                        <div class="canvas-status-bar">
+                            <span id="game-status" class="status-text">Đang chờ...</span>
+                            <div class="timer-box">
+                                <i class="fas fa-clock"></i> <span id="timer">--</span>
+                            </div>
+                        </div>
+                        
+                        <div id="word-hint" class="word-hint hidden"></div>
+                        
+                        <div class="canvas-container">
+                            <canvas id="drawingCanvas"></canvas>
                         </div>
 
-                    <div class="action-group">
-                        <button id="clearBtn" class="tool-btn clear-btn" title="Xóa Canvas"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-            </div>
+                        <div id="drawingTools" class="tools-bar hidden">
+                            <div class="tools-group">
+                                <button class="tool-btn active" data-tool="pen" title="Bút"><i class="fas fa-pencil-alt"></i></button>
+                                <button class="tool-btn" data-tool="eraser" title="Tẩy"><i class="fas fa-eraser"></i></button>
+                                <button class="tool-btn" data-tool="fill" title="Đổ màu"><i class="fas fa-fill-drip"></i></button>
+                            </div>
 
-            <div class="game-sidebar">
-                <div class="game-info-box">
-                    <h3>Điểm số</h3>
-                    <div id="scoreGrid"></div>
-                </div>
+                            <div class="size-group">
+                                <i class="fas fa-circle" style="font-size: 0.6rem;"></i>
+                                <input type="range" id="sizeSlider" min="1" max="40" value="5">
+                                <i class="fas fa-circle" style="font-size: 1.2rem;"></i>
+                            </div>
 
-                <div class="chat-section">
-                    <h3>Chat & Đoán</h3>
-                    <div id="chatMessages"></div>
-                    <div class="chat-input-group">
-                        <input type="text" id="guessInput" placeholder="Nhập từ khóa đoán hoặc chat...">
-                        <button id="sendGuess">Gửi</button>
+                            <div class="palette-group" id="colorPalette">
+                                </div>
+
+                            <button id="clearBtn" class="tool-btn btn-danger" title="Xóa hết"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                        
+                        <div id="actionArea" class="action-area"></div>
                     </div>
-                </div>
-            </div>
+                </section>
+
+                <aside class="sidebar right-sidebar">
+                    <div class="panel chat-section">
+                        <div class="panel-header">
+                            <i class="fas fa-comments"></i> Chat & Đoán
+                        </div>
+                        
+                        <div id="chatMessages" class="chat-history">
+                            <div class="chat-row system">
+                                <div class="chat-bubble system-msg">Chào mừng! Hãy vẽ và đoán từ khóa nhé!</div>
+                            </div>
+                        </div>
+
+                        <div class="chat-input-area">
+                            <input type="text" id="guessInput" placeholder="Nhập đáp án..." autocomplete="off">
+                            <button id="sendGuess"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </aside>
+
+            </main>
         </div>
     </div>
 
-    <script src="./script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
