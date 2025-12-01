@@ -176,7 +176,7 @@ async function start() {
         socket.on('registerSocket', async (username) => {
           if (!username || username.startsWith('guest_')) return;
           try {
-            await User.findOneAndUpdate({ username: username }, { status: 'online', socketId: socket.id });
+            
             io.emit('admin-user-status-changed');
           } catch (e) { console.error('registerSocket error', e.message); }
         });

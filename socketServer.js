@@ -218,7 +218,7 @@ module.exports = function attachSocket(server) {
     
     todHandler(socket, io); 
     drawGuessHandler(socket, io); 
-    ticTacToeHandler(socket, io);
+    // ticTacToeHandler(socket, io);
     triviaHandler(socket, io);
 
     socket.on('disconnect', async () => {
