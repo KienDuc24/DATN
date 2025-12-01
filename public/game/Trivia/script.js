@@ -280,6 +280,8 @@
         `;
         
         chatHistory.appendChild(div);
-        chatHistory.scrollTop = chatHistory.scrollHeight;
+        requestAnimationFrame(() => {
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        });
     }
 })();
