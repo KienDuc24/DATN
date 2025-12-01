@@ -331,8 +331,8 @@ body {
 }
 
 .color-swatch {
-    width: 28px;
-    height: 28px;
+    width: 18px;
+    height: 188px;
     border-radius: 50%;
     border: 2px solid #fff;
     cursor: pointer;

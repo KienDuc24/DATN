@@ -194,7 +194,7 @@ function handleGameClick(gameId, gameName) {
     
     modal.innerHTML = `
       <div class="modal-content">
-        <button class="close-btn" id="closeRoomModal" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:1.7rem;color:#ff9800;cursor:pointer;z-index:2;">&times;</button>
+        <button class="close-btn" id="closeRoomModal" style=" width: auto; position:absolute;top:10px;right:10px;background:none;border:none;font-size:1.7rem;color:#ff9800;cursor:pointer;z-index:2;">&times;</button>
         ${infoHtml}
         <div class="modal-title" style="font-size:1.13rem;font-weight:bold;color:#ff9800;margin-bottom:18px;text-align:center;">
             ${LANGS[currentLang]?.room_create_or_join || 'Tạo hoặc tham gia phòng'}

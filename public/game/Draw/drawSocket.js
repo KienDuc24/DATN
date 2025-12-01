@@ -1,28 +1,52 @@
 const fs = require('fs');
 const path = require('path');
 const Room = require('../../../models/Room'); 
-const User = require('../../../models/User'); 
+const User = require('../../../models/User');  
 
 const GAME_ID = 'DG';
 const ROUND_TIME = 90; 
 const MAX_ROUNDS_PER_PLAYER = 1; 
 const WORDS_PATH = path.resolve(__dirname, 'words.json');
 let WORDS = []; 
+
 try {
   const raw = fs.readFileSync(WORDS_PATH, 'utf8');
   WORDS = JSON.parse(raw || '[]');
 } catch (err) {
   console.warn(`[${GAME_ID}] cannot load words.json`, err && err.message);
-  WORDS = ["Lửa trại", "Cây nấm", "Thịt nướng", "Lều cắm trại", "Mặt trời", "Con sông"];
 }
+
 const ROOM_STATE = {}; 
 const gameSocketMap = new Map();
 
 function getRoomState(code) {
   if (!ROOM_STATE[code]) {
-    ROOM_STATE[code] = { currentIndex: 0, currentWord: null, drawer: null, timer: ROUND_TIME, guesses: new Set(), drawingData: [], interval: null, scores: {} };
+    ROOM_STATE[code] = { 
+        currentIndex: 0, 
+        currentWord: null, 
+        drawer: null, 
+        timer: null, 
+        guesses: new Set(), 
+        drawingData: [], 
+        interval: null, 
+        scores: {} 
+    };
   }
   return ROOM_STATE[code];
+}
+
+function getSafeState(code) {
+    const state = getRoomState(code);
+    const safeState = { ...state };
+    
+    delete safeState.interval; 
+    delete safeState.timer;     
+    
+    if (safeState.guesses instanceof Set) {
+        safeState.guesses = Array.from(safeState.guesses);
+    }
+    
+    return safeState;
 }
 
 function getPlayersFromRoom(room) {
@@ -42,9 +66,8 @@ async function attachAvatarsToPlayers(players) {
   users.forEach(u => { map[u.username] = u; });
   return (players || []).map(p => {
     const user = map[p.name];
-    const avatar = null;
     const outDisplayName = p.displayName || (user ? (user.displayName || user.name) : p.name);
-    return { name: p.name, displayName: outDisplayName || null, avatar: avatar };
+    return { name: p.name, displayName: outDisplayName || null, avatar: null };
   });
 }
 
@@ -90,25 +113,31 @@ async function endRound(io, roomCode, guessed) {
     if (state.interval) clearInterval(state.interval);
     const room = await Room.findOne({ code: roomCode }).lean();
     if (!room) return; 
+    
     const totalGuessers = state.guesses.size;
     if (totalGuessers > 0) {
         const drawerScore = 100 + (totalGuessers * 5);
         updateScores(state, state.drawer, drawerScore);
     }
+    
     io.to(roomCode).emit(`${GAME_ID}-end-round`, { 
         word: state.currentWord, scores: state.scores, drawer: state.drawer, guessed: guessed
     });
+    
     const drawerSocketId = Array.from(gameSocketMap.entries()).find(([, info]) => info.player === state.drawer && info.code === roomCode);
     if (drawerSocketId) {
         io.to(drawerSocketId[0]).emit(`${GAME_ID}-secret-word`, { word: state.currentWord });
     }
+    
     const maxTotalRounds = await getMaxRounds(roomCode);
     state.currentIndex++;
+    
     if (state.currentIndex >= maxTotalRounds) { 
         io.to(roomCode).emit(`${GAME_ID}-game-over`, { finalScores: state.scores });
         state.drawer = null; 
         return; 
     }
+    
     setTimeout(() => { startRound(io, roomCode); }, 5000); 
 }
 
@@ -116,20 +145,24 @@ async function startRound(io, roomCode) {
     const room = await Room.findOne({ code: roomCode }).lean();
     if (!room) return;
     const players = getPlayersFromRoom(room);
+    
     if (players.length < 2) {
         io.to(roomCode).emit(`${GAME_ID}-message`, { message: 'Cần tối thiểu 2 người để chơi.' });
         return;
     }
+    
     const state = getRoomState(roomCode);
     state.currentWord = getRandomWord();
     state.drawer = players[state.currentIndex % players.length].name;
     state.timer = ROUND_TIME;
     state.guesses = new Set();
     state.drawingData = [];
+    
     io.to(roomCode).emit(`${GAME_ID}-start-round`, { 
         drawer: state.drawer, scores: state.scores, round: state.currentIndex + 1,
         playersCount: players.length, wordHint: state.currentWord.length 
     });
+
     const drawerSocketId = Array.from(gameSocketMap.entries()).find(([, info]) => info.player === state.drawer && info.code === roomCode);
     if (drawerSocketId) {
         io.to(drawerSocketId[0]).emit(`${GAME_ID}-secret-word`, { word: state.currentWord });
@@ -153,10 +186,13 @@ module.exports = (socket, io) => {
             
             gameSocketMap.set(socket.id, { player: player.name, displayName: dName, code: roomCode });
 
-            getRoomState(roomCode);
+            getRoomState(roomCode); 
+            
             const playersWithAvt = await attachAvatarsToPlayers(room.players);
+            
             io.to(roomCode).emit(`${GAME_ID}-room-update`, { 
-                state: getRoomState(roomCode), room: { ...room, players: playersWithAvt }
+                state: getSafeState(roomCode), 
+                room: { ...room, players: playersWithAvt }
             });
         } catch (e) { console.error(`[${GAME_ID}] join error`, e); }
     });
@@ -168,6 +204,36 @@ module.exports = (socket, io) => {
             if (state.drawer) return; 
             state.currentIndex = 0;
             startRound(io, roomCode);
+        }
+    });
+
+    socket.on(`${GAME_ID}-restart-game`, async ({ roomCode }) => {
+        const state = getRoomState(roomCode);
+        const room = await Room.findOne({ code: roomCode });
+        const playerInfo = gameSocketMap.get(socket.id);
+        
+        if (room && playerInfo && room.host === playerInfo.player) {
+            if (state.interval) clearInterval(state.interval);
+            
+            state.scores = {};
+            state.currentIndex = 0;
+            state.drawer = null;
+            state.guesses = new Set();
+            state.currentWord = null;
+            state.drawingData = [];
+            
+            const playersWithAvt = await attachAvatarsToPlayers(room.players);
+            
+            io.to(roomCode).emit(`${GAME_ID}-room-update`, { 
+                state: getSafeState(roomCode), 
+                room: { ...room.toObject(), players: playersWithAvt } 
+            });
+            
+            io.to(roomCode).emit(`${GAME_ID}-game-restarted`);
+            
+            setTimeout(() => {
+                startRound(io, roomCode);
+            }, 3000);
         }
     });
 
@@ -207,7 +273,8 @@ module.exports = (socket, io) => {
         io.to(roomCode).emit(`${GAME_ID}-chat-message`, { player: player, message: guess });
 
         if (isCorrectGuess(guess, state.currentWord)) {
-            if (state.guesses.has(player)) return;
+            if (state.guesses.has(player)) return; 
+            
             const remainingTime = state.timer > 0 ? state.timer : 0;
             const guesserScore = 50 + remainingTime; 
             updateScores(state, player, guesserScore);
@@ -219,7 +286,10 @@ module.exports = (socket, io) => {
 
             const room = await Room.findOne({ code: roomCode }).lean();
             const totalGuessers = Math.max(0, getPlayersFromRoom(room).length - 1);
-            if (state.guesses.size >= totalGuessers) endRound(io, roomCode, true);
+            
+            if (state.guesses.size >= totalGuessers) {
+                endRound(io, roomCode, true);
+            }
         }
     });
 
@@ -232,9 +302,12 @@ module.exports = (socket, io) => {
         try {
             const room = await Room.findOne({ code });
             if (!room) return;
+            
             let newHost = room.host;
             const wasHost = (room.host === player);
+            
             room.players = room.players.filter(p => p.name !== player);
+            
             if (wasHost && room.players.length > 0) {
                 newHost = room.players[0].name;
                 room.host = newHost;
@@ -246,13 +319,19 @@ module.exports = (socket, io) => {
                 return; 
             }
             await room.save();
+            
             if (!player.startsWith('guest_')) {
                 await User.findOneAndUpdate({ username: player }, { status: 'offline', socketId: null });
                 io.emit('admin-user-status-changed');
             }
+            
             const playersWithAvt = await attachAvatarsToPlayers(room.players);
-            const state = getRoomState(code);
-            io.to(code).emit(`${GAME_ID}-room-update`, { state, room: { code: room.code, host: newHost, players: playersWithAvt } });
+            
+            io.to(code).emit(`${GAME_ID}-room-update`, { 
+                state: getSafeState(code), 
+                room: { code: room.code, host: newHost, players: playersWithAvt } 
+            });
+            
             io.emit('admin-rooms-changed'); 
             
             const nameToShow = displayName || player;
@@ -260,22 +339,6 @@ module.exports = (socket, io) => {
                 player: 'Hệ thống', message: `${nameToShow} đã rời phòng.`, type: 'msg-system' 
             });
         } catch (e) { console.error(`[${GAME_ID}] disconnect error`, e); }
-    });
-
-    socket.on(`${GAME_ID}-restart-game`, async ({ roomCode }) => {
-        const state = getRoomState(roomCode);
-        const room = await Room.findOne({ code: roomCode });
-        const playerInfo = gameSocketMap.get(socket.id);
-        if (room && playerInfo && room.host === playerInfo.player) {
-            state.scores = {};
-            state.currentIndex = 0;
-            state.drawer = null;
-            state.guesses = new Set();
-            state.currentWord = null;
-            if (state.interval) clearInterval(state.interval);
-            const playersWithAvt = await attachAvatarsToPlayers(room.players);
-            io.to(roomCode).emit(`${GAME_ID}-room-update`, { state: getRoomState(roomCode), room: { ...room.toObject(), players: playersWithAvt } });
-        }
     });
 
     socket.on(`${GAME_ID}-assign-host`, async ({ roomCode, newHostName }) => {
@@ -288,7 +351,12 @@ module.exports = (socket, io) => {
                     room.host = newHostName;
                     await room.save();
                     const playersWithAvt = await attachAvatarsToPlayers(room.players);
-                    io.to(roomCode).emit(`${GAME_ID}-room-update`, { state: getRoomState(roomCode), room: { ...room.toObject(), players: playersWithAvt }});
+                    
+                    io.to(roomCode).emit(`${GAME_ID}-room-update`, { 
+                        state: getSafeState(roomCode),
+                        room: { ...room.toObject(), players: playersWithAvt }
+                    });
+                    
                     io.to(roomCode).emit('update-players', { list: room.players, host: newHostName });
                     io.emit('admin-rooms-changed');
                     
