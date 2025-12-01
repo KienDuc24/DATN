@@ -259,7 +259,7 @@ module.exports = (socket, io) => {
         }
     });
     
-    ocket.on('disconnect', async () => {
+    socket.on('disconnect', async () => {
         const userInfo = gameSocketMap.get(socket.id);
         if (!userInfo) return;
         
