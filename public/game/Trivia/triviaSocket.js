@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+const Room = require('../../../models/Room'); 
+const User = require('../../../models/User'); 
 const { generateGameReaction, handleInGameChat } = require('../../../controllers/chatbotController');
 
 const GAME_ID = 'Trivia';
@@ -43,6 +45,22 @@ async function sendCatmiMessage(io, roomCode, textOrContext, isAI = false) {
     io.to(roomCode).emit('catmi-says', { message });
 }
 
+async function sendRoomUpdate(io, roomCode) {
+    try {
+        const room = await Room.findOne({ code: roomCode });
+        const state = getRoomState(roomCode);
+        if (room) {
+            io.to(roomCode).emit('trivia-room-update', {
+                host: room.host,
+                scores: state.scores,
+                players: room.players 
+            });
+        }
+    } catch (e) {
+        console.error("Error sending room update:", e);
+    }
+}
+
 async function endQuestion(io, roomCode) {
     const state = getRoomState(roomCode);
     if (state.interval) clearInterval(state.interval);
@@ -61,7 +79,7 @@ async function endQuestion(io, roomCode) {
         }
     }
 
-    io.to(roomCode).emit('trivia-update-players', { scores: state.scores });
+    sendRoomUpdate(io, roomCode);
 
     io.to(roomCode).emit('trivia-result', {
         correctAnswer: correctAns,
@@ -149,7 +167,7 @@ function endGame(io, roomCode) {
 }
 
 module.exports = (socket, io) => {
-    socket.on('trivia-join', ({ roomCode, player }) => {
+    socket.on('trivia-join', async ({ roomCode, player }) => {
         socket.join(roomCode);
         const name = player.name || player;
         gameSocketMap.set(socket.id, { player: name, roomCode });
@@ -157,7 +175,7 @@ module.exports = (socket, io) => {
         const state = getRoomState(roomCode);
         if(state.scores[name] === undefined) state.scores[name] = 0;
         
-        io.to(roomCode).emit('trivia-update-players', { scores: state.scores });
+        await sendRoomUpdate(io, roomCode);
     });
 
     socket.on('trivia-start', ({ roomCode }) => {
@@ -175,7 +193,7 @@ module.exports = (socket, io) => {
         state.questionList = shuffleArray([...QUESTIONS]).slice(0, 5); 
         state.currentQuestionIndex = -1;
         
-        io.to(roomCode).emit('trivia-update-players', { scores: state.scores });
+        sendRoomUpdate(io, roomCode); 
 
         io.to(roomCode).emit('catmi-says', { message: "[Welcome] Vòng mới bắt đầu! Điểm số đã được reset! Cố lên nha! 🌲🔥" });
         
@@ -209,7 +227,7 @@ module.exports = (socket, io) => {
             isCatmi: false 
         });
 
-        if (message.toLowerCase().includes('@catmi')) {
+        if (message.toLowerCase().includes('@catmi') || message.trim().endsWith('?')) {
             const aiReply = await handleInGameChat(message, info.player, GAME_ID, roomCode);
             io.to(roomCode).emit('trivia-chat-receive', {
                 sender: 'Catmi',
@@ -219,7 +237,22 @@ module.exports = (socket, io) => {
         }
     });
     
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
+        const userInfo = gameSocketMap.get(socket.id);
+        if (!userInfo) return;
+        
+        const { player, roomCode } = userInfo;
         gameSocketMap.delete(socket.id);
+
+        try {
+            const room = await Room.findOne({ code: roomCode });
+            if (room) {
+                await sendRoomUpdate(io, roomCode);
+                
+                io.to(roomCode).emit('catmi-says', { 
+                    message: `[Sad] ${player} đã rời cuộc chơi. 😿` 
+                });
+            }
+        } catch (e) { console.error(e); }
     });
 };

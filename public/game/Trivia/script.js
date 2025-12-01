@@ -84,14 +84,16 @@
 
     socket.on('connect', () => {
         socket.emit('trivia-join', { roomCode, player: { name: playerName } });
-        checkHost();
     });
 
-    socket.on('trivia-update-players', ({ scores }) => {
+    socket.on('trivia-room-update', ({ host, scores }) => {
+        isHost = (host === playerName);
+        updateHostButtons();
+
         const count = Object.keys(scores).length;
         document.getElementById('playerCount').innerText = count;
         
-        renderLeaderboard(scores); 
+        renderLeaderboard(scores, host); 
         renderLobbyList(scores);  
     });
 
@@ -111,7 +113,7 @@
 
         const isMe = sender === playerName;
         const type = isCatmi ? 'catmi' : (isMe ? 'user' : 'other');
-        const displayName = isMe ? 'Bạn' : sender; 
+        const displayName = isMe ? 'Bạn' : sender;
 
         appendChat(displayName, displayText, type, avatarUrl);
     });
@@ -144,8 +146,6 @@
         
         document.getElementById('correctText').innerText = data.correctAnswer; 
         document.getElementById('explText').innerText = data.explanation;
-        
-        if(data.scores) renderLeaderboard(data.scores);
     });
 
     socket.on('trivia-game-over', ({ winner, scores }) => {
@@ -160,16 +160,7 @@
             </div>`
         ).join('');
 
-        const restartBtn = document.getElementById('restartBtn');
-        const waitText = document.getElementById('waitingRestartText'); 
-
-        if (isHost) {
-            restartBtn.classList.remove('hidden');
-            if(waitText) waitText.classList.add('hidden');
-        } else {
-            restartBtn.classList.add('hidden');
-            if(waitText) waitText.classList.remove('hidden');
-        }
+        updateHostButtons(); 
     });
 
     document.getElementById('startBtn').onclick = () => {
@@ -193,26 +184,46 @@
     sendBtn.onclick = sendChat;
     chatInput.onkeypress = (e) => { if(e.key === 'Enter') sendChat(); };
 
+    function updateHostButtons() {
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const waitText = document.getElementById('waitingRestartText');
+        const waitLobby = document.getElementById('waitText'); 
+
+        if (isHost) {
+            startBtn.classList.remove('hidden');
+            if(waitLobby) waitLobby.classList.add('hidden');
+            if(restartBtn) restartBtn.classList.remove('hidden');
+            if(waitText) waitText.classList.add('hidden');
+        } else {
+            startBtn.classList.add('hidden');
+            if(waitLobby) waitLobby.classList.remove('hidden');
+            if(restartBtn) restartBtn.classList.add('hidden');
+            if(waitText) waitText.classList.remove('hidden');
+        }
+    }
+
     function showScreen(name) {
         Object.values(screens).forEach(s => s.classList.add('hidden'));
         screens[name].classList.remove('hidden');
         screens[name].classList.add('active');
     }
 
-    function renderLeaderboard(scores) {
+    function renderLeaderboard(scores, hostName) {
         const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
         
         playerListEl.innerHTML = sorted.map(([name, score], idx) => {
             const isMe = name === playerName ? 'me' : '';
             const rankClass = idx === 0 ? 'top1' : (idx === 1 ? 'top2' : (idx === 2 ? 'top3' : ''));
             const avatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${name}`;
+            const hostIcon = name === hostName ? '👑' : '';
             
             return `
             <div class="player-row ${isMe}">
                 <div class="rank ${rankClass}">#${idx + 1}</div>
                 <img src="${avatarUrl}" class="p-avatar">
                 <div class="p-info">
-                    <div class="p-name">${name}</div>
+                    <div class="p-name">${name} ${hostIcon}</div>
                     <div class="p-score">${score} điểm</div>
                 </div>
             </div>`;
@@ -270,19 +281,5 @@
         
         chatHistory.appendChild(div);
         chatHistory.scrollTop = chatHistory.scrollHeight;
-    }
-
-    async function checkHost() {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/room?code=${roomCode}&gameId=Trivia`);
-            const data = await res.json();
-            if(data.room && data.room.host === playerName) {
-                isHost = true;
-                document.getElementById('startBtn').classList.remove('hidden');
-            } else {
-                isHost = false;
-                document.getElementById('startBtn').classList.add('hidden');
-            }
-        } catch(e) {}
     }
 })();

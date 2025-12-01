@@ -173,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const lang = getCurrentLang();
         
         const welcomeTextTemplate = t('chat_welcome', 'Méo... Chào %USER_NAME%!...'); 
-        const welcomeText = welcomeTextTemplate.replace('%USER_NAME%', displayName);
+        const welcomeText = welcomeTextTemplate.replace('%USER_NAME%', displayName||'bạn');
         const initialExpression = CATMI_EXPRESSIONS.welcome ? 'welcome' : (CATMI_EXPRESSIONS.cute ? 'cute' : 'default');
         addMessageToUI('bot', welcomeText, true, initialExpression);
 
