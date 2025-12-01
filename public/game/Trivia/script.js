@@ -86,18 +86,18 @@
         socket.emit('trivia-join', { roomCode, player: { name: playerName } });
     });
 
-    socket.on('trivia-room-update', ({ host, scores }) => {
+    socket.on('trivia-room-update', ({ host, scores, playerNames }) => {
         isHost = (host === playerName);
         updateHostButtons();
 
         const count = Object.keys(scores).length;
         document.getElementById('playerCount').innerText = count;
         
-        renderLeaderboard(scores, host); 
-        renderLobbyList(scores);  
+        renderLeaderboard(scores, host, playerNames); 
+        renderLobbyList(scores, playerNames);  
     });
 
-    socket.on('trivia-chat-receive', ({ sender, message, isCatmi }) => {
+    socket.on('trivia-chat-receive', ({ sender, displayName, message, isCatmi }) => {
         let avatarUrl = '';
         let displayText = message;
         let emotionKey = 'default';
@@ -113,9 +113,10 @@
 
         const isMe = sender === playerName;
         const type = isCatmi ? 'catmi' : (isMe ? 'user' : 'other');
-        const displayName = isMe ? 'Bạn' : sender;
+        
+        const nameToShow = isMe ? 'Bạn' : (displayName || sender);
 
-        appendChat(displayName, displayText, type, avatarUrl);
+        appendChat(nameToShow, displayText, type, avatarUrl);
     });
 
     socket.on('catmi-says', ({ message }) => {
@@ -146,19 +147,26 @@
         
         document.getElementById('correctText').innerText = data.correctAnswer; 
         document.getElementById('explText').innerText = data.explanation;
+        
+        if(data.scores && data.playerNames) {
+             renderLeaderboard(data.scores, null, data.playerNames);
+        }
     });
 
-    socket.on('trivia-game-over', ({ winner, scores }) => {
+    socket.on('trivia-game-over', ({ winner, scores, playerNames }) => {
         showScreen('end');
         document.getElementById('winnerName').innerText = winner || 'Không có';
         
         const sorted = Object.entries(scores).sort((a,b) => b[1]-a[1]);
-        document.getElementById('finalScoreList').innerHTML = sorted.map(([n, s], i) => 
-            `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee">
-                <span>#${i+1} <b>${n}</b></span> 
+        const names = playerNames || {};
+
+        document.getElementById('finalScoreList').innerHTML = sorted.map(([username, s], i) => {
+            const dName = names[username] || username;
+            return `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee">
+                <span>#${i+1} <b>${dName}</b></span> 
                 <span style="color:var(--accent-green);font-weight:bold">${s} điểm</span>
-            </div>`
-        ).join('');
+            </div>`;
+        }).join('');
 
         updateHostButtons(); 
     });
@@ -182,7 +190,6 @@
     }
     
     sendBtn.onclick = sendChat;
-    chatInput.onkeypress = (e) => { if(e.key === 'Enter') sendChat(); };
 
     function updateHostButtons() {
         const startBtn = document.getElementById('startBtn');
@@ -193,11 +200,13 @@
         if (isHost) {
             startBtn.classList.remove('hidden');
             if(waitLobby) waitLobby.classList.add('hidden');
+            
             if(restartBtn) restartBtn.classList.remove('hidden');
             if(waitText) waitText.classList.add('hidden');
         } else {
             startBtn.classList.add('hidden');
             if(waitLobby) waitLobby.classList.remove('hidden');
+            
             if(restartBtn) restartBtn.classList.add('hidden');
             if(waitText) waitText.classList.remove('hidden');
         }
@@ -209,34 +218,38 @@
         screens[name].classList.add('active');
     }
 
-    function renderLeaderboard(scores, hostName) {
+    function renderLeaderboard(scores, hostName, playerNames = {}) {
         const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
         
-        playerListEl.innerHTML = sorted.map(([name, score], idx) => {
-            const isMe = name === playerName ? 'me' : '';
+        playerListEl.innerHTML = sorted.map(([username, score], idx) => {
+            const isMe = username === playerName ? 'me' : '';
             const rankClass = idx === 0 ? 'top1' : (idx === 1 ? 'top2' : (idx === 2 ? 'top3' : ''));
-            const avatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${name}`;
-            const hostIcon = name === hostName ? '👑' : '';
+            const avatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${username}`;
+            
+            const displayName = playerNames[username] || username;
+            const hostIcon = username === hostName ? '👑' : '';
             
             return `
             <div class="player-row ${isMe}">
                 <div class="rank ${rankClass}">#${idx + 1}</div>
                 <img src="${avatarUrl}" class="p-avatar">
                 <div class="p-info">
-                    <div class="p-name">${name} ${hostIcon}</div>
+                    <div class="p-name">${displayName} ${hostIcon}</div>
                     <div class="p-score">${score} điểm</div>
                 </div>
             </div>`;
         }).join('');
     }
 
-    function renderLobbyList(scores) {
-        lobbyListEl.innerHTML = Object.keys(scores).map(name => 
-            `<div class="p-tag">
-                <img src="https://api.dicebear.com/7.x/micah/svg?seed=${name}" style="width:20px;border-radius:50%"> 
-                ${name}
-            </div>`
-        ).join('');
+    function renderLobbyList(scores, playerNames = {}) {
+        if(!lobbyListEl) return;
+        lobbyListEl.innerHTML = Object.keys(scores).map(username => {
+            const dName = playerNames[username] || username;
+            return `<div class="p-tag">
+                <img src="https://api.dicebear.com/7.x/micah/svg?seed=${username}" style="width:20px;border-radius:50%"> 
+                ${dName}
+            </div>`;
+        }).join('');
     }
 
     function renderQuestion(data) {

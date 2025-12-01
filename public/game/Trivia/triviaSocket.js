@@ -20,9 +20,10 @@ const gameSocketMap = new Map();
 
 function getRoomState(code) {
     if (!ROOM_STATE[code]) {
-        ROOM_STATE[code] = {
+ROOM_STATE[code] = {
             currentQuestionIndex: -1,
             scores: {},
+            playerNames: {}, 
             answers: {},
             timer: 0,
             interval: null,
@@ -53,7 +54,7 @@ async function sendRoomUpdate(io, roomCode) {
             io.to(roomCode).emit('trivia-room-update', {
                 host: room.host,
                 scores: state.scores,
-                players: room.players 
+                playerNames: state.playerNames 
             });
         }
     } catch (e) {
@@ -85,6 +86,7 @@ async function endQuestion(io, roomCode) {
         correctAnswer: correctAns,
         explanation: currentQ.explanation,
         scores: state.scores,
+        playerNames: state.playerNames, 
         correctPlayers: correctPlayers
     });
 
@@ -95,7 +97,8 @@ async function endQuestion(io, roomCode) {
         context = `Tất cả mọi người đều trả lời đúng! Hãy khen họ xuất sắc.`;
     } else {
         const randomCorrect = correctPlayers[Math.floor(Math.random() * correctPlayers.length)];
-        context = `Người chơi tên ${randomCorrect} đã trả lời đúng và nhanh. Hãy khen người đó và khịa những người sai.`;
+        const displayName = state.playerNames[randomCorrect] || randomCorrect;
+        context = `Người chơi tên ${displayName} đã trả lời đúng và nhanh. Hãy khen người đó và khịa những người sai.`;
     }
     
     sendCatmiMessage(io, roomCode, context, true);
@@ -159,22 +162,35 @@ function endGame(io, roomCode) {
             winner = p;
         }
     }
-
-    io.to(roomCode).emit('trivia-game-over', { scores: state.scores, winner });
     
-    const context = `Trò chơi kết thúc. Người thắng cuộc là ${winner || 'Không có ai'}. Hãy chúc mừng họ.`;
+    const winnerName = winner ? (state.playerNames[winner] || winner) : 'Không có ai';
+
+    io.to(roomCode).emit('trivia-game-over', { 
+        scores: state.scores, 
+        playerNames: state.playerNames,
+        winner: winnerName 
+    });
+    
+    const context = `Trò chơi kết thúc. Người thắng cuộc là ${winnerName}. Hãy chúc mừng họ.`;
     sendCatmiMessage(io, roomCode, context, true);
 }
 
 module.exports = (socket, io) => {
     socket.on('trivia-join', async ({ roomCode, player }) => {
         socket.join(roomCode);
-        const name = player.name || player;
-        gameSocketMap.set(socket.id, { player: name, roomCode });
+        const username = player.name || player;
+        
+        let displayName = username;
+        try {
+            const userDoc = await User.findOne({ username });
+            if (userDoc) displayName = userDoc.displayName;
+        } catch(e) {}
+
+        gameSocketMap.set(socket.id, { player: username, displayName, roomCode });
         
         const state = getRoomState(roomCode);
-        if(state.scores[name] === undefined) state.scores[name] = 0;
-        
+        if(state.scores[username] === undefined) state.scores[username] = 0;
+        state.playerNames[username] = displayName; 
         await sendRoomUpdate(io, roomCode);
     });
 
@@ -185,8 +201,11 @@ module.exports = (socket, io) => {
         state.scores = {};
         if (room) {
             for (const id of room) {
-               const p = gameSocketMap.get(id);
-               if(p) state.scores[p.player] = 0;
+                const p = gameSocketMap.get(id);
+                if(p){
+                    state.scores[p.player] = 0;
+                    state.playerNames[p.player] = p.displayName;
+               }
             }
         }
 
@@ -194,7 +213,6 @@ module.exports = (socket, io) => {
         state.currentQuestionIndex = -1;
         
         sendRoomUpdate(io, roomCode); 
-
         io.to(roomCode).emit('catmi-says', { message: "[Welcome] Vòng mới bắt đầu! Điểm số đã được reset! Cố lên nha! 🌲🔥" });
         
         setTimeout(() => nextQuestion(io, roomCode), 2000);
@@ -220,9 +238,12 @@ module.exports = (socket, io) => {
     socket.on('trivia-chat-send', async ({ roomCode, message }) => {
         const info = gameSocketMap.get(socket.id);
         if (!info) return;
+        
+        const dName = getRoomState(roomCode).playerNames[info.player] || info.player;
 
         io.to(roomCode).emit('trivia-chat-receive', { 
             sender: info.player, 
+            displayName: dName, 
             message: message,
             isCatmi: false 
         });
@@ -231,28 +252,28 @@ module.exports = (socket, io) => {
             const aiReply = await handleInGameChat(message, info.player, GAME_ID, roomCode);
             io.to(roomCode).emit('trivia-chat-receive', {
                 sender: 'Catmi',
+                displayName: 'Catmi',
                 message: aiReply,
                 isCatmi: true
             });
         }
     });
     
-    socket.on('disconnect', async () => {
+    ocket.on('disconnect', async () => {
         const userInfo = gameSocketMap.get(socket.id);
         if (!userInfo) return;
         
-        const { player, roomCode } = userInfo;
+        const { player, displayName, roomCode } = userInfo;
         gameSocketMap.delete(socket.id);
+        
+        const state = getRoomState(roomCode);
+        if(state.playerNames) delete state.playerNames[player];
+        if(state.scores) delete state.scores[player];
 
-        try {
-            const room = await Room.findOne({ code: roomCode });
-            if (room) {
-                await sendRoomUpdate(io, roomCode);
-                
-                io.to(roomCode).emit('catmi-says', { 
-                    message: `[Sad] ${player} đã rời cuộc chơi. 😿` 
-                });
-            }
-        } catch (e) { console.error(e); }
+        await sendRoomUpdate(io, roomCode);
+        
+        io.to(roomCode).emit('catmi-says', { 
+            message: `[Sad] ${displayName} đã rời phòng. 😿`
+        });
     });
 };

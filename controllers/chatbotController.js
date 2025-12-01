@@ -80,88 +80,98 @@ async function getDisplayName(username) {
     }
 }
 
-async function getOrCreateSession(sessionId, displayName, gameId, lang = 'vi') {
-    if (chatSessions.has(sessionId)) {
-        return chatSessions.get(sessionId);
-    }
+async function getOrCreateSession(sessionId, displayName, gameId) {
+    if (chatSessions.has(sessionId)) return chatSessions.get(sessionId);
 
-    const gameInfo = loadGameData(gameId);
-    const languageInstruction = lang === 'en' ? 'ENGLISH' : 'VIETNAMESE';
+    const contextStr = (gameId === 'all' || !gameId) 
+        ? "Đang ở Trang chủ / Phòng chờ chung." 
+        : `Đang trong game ${gameId}.`;
+
+    const gameDataStr = loadGameData(gameId);
+
+    let systemInstruction = CATMI_PERSONA
+        .replace('%DISPLAY_NAME%', displayName)
+        .replace('%GAME_CONTEXT%', contextStr)
+        .replace('%GAME_DATA_JSON%', gameDataStr);
     
-    const systemInstruction = CATMI_PERSONA
-        .replace('%TARGET_LANG%', languageInstruction)
-        + `\n\nTHÔNG TIN NGƯỜI DÙNG: Tên là "${displayName}"`
-        + `\nNGỮ CẢNH HIỆN TẠI: Đang ở ${gameId === 'all' ? 'Sảnh chính' : 'Phòng game ' + gameId}`
-        + `\nDỮ LIỆU GAME: ${gameInfo}`;
+    systemInstruction = systemInstruction.replace(/%[A-Z_]+%/g, '');
 
     const model = genAI.getGenerativeModel({ 
         model: MODEL_CONFIG.model,
         systemInstruction: { parts: [{ text: systemInstruction }] }
     });
 
-    const session = model.startChat({
-        history: [],
-        generationConfig: MODEL_CONFIG.generationConfig
-    });
-
+    const session = model.startChat({ history: [] });
     chatSessions.set(sessionId, session);
-
     return session;
 }
 
-async function answerRuleQuestion(req, res) {
-    const { question, gameId, username, language } = req.body;
-    
-    if (!question) return res.status(400).json({ error: 'Thiếu câu hỏi.' });
-    if (!GOOGLE_API_KEY) return res.status(500).json({ answer: "Catmi đang ngủ đông (Lỗi Server API). Vui lòng thử lại sau." });
-
-    try {
-        const sessionId = `http_${username || 'guest'}_${gameId}`;
-        const displayName = await getDisplayName(username);
-        const session = await getOrCreateSession(sessionId, displayName, gameId, language);
-        const result = await session.sendMessage(question);
-        
-        res.json({ answer: result.response.text() });
-    } catch (error) {
-        console.error('HTTP Chat Error:', error);
-        res.status(500).json({ answer: "Catmi đang ngủ đông (Lỗi Server API). Vui lòng thử lại sau." });
-    }
-}
-
 async function handleInGameChat(message, username, gameId, roomCode) {
-    if (!GOOGLE_API_KEY) return "Catmi đang ngủ đông (Lỗi Server API). Vui lòng thử lại sau.";
+    if (!GOOGLE_API_KEY) return "[Sad] Mất kết nối não bộ rồi...";
 
     try {
         const sessionId = `socket_${roomCode}_${username}`;
         const displayName = await getDisplayName(username);
-        const session = await getOrCreateSession(sessionId, displayName, gameId, 'vi');
-        const prompt = message; 
-        const result = await session.sendMessage(prompt);
-        return result.response.text();
-    } catch (error) {
-        console.error('Socket Chat Error:', error);
-        return "Catmi không hiểu bạn nói gì.";
-    }
-}
-async function generateGameReaction(context) {
-    if (!GOOGLE_API_KEY) return "";
-
-    try {
-        const model = genAI.getGenerativeModel({ model: MODEL_CONFIG.model });
-        const prompt = `
-        ${CATMI_PERSONA.replace('%TARGET_LANG%', 'VIETNAMESE')}
         
-        NHIỆM VỤ: Bình luận ngắn (tối đa 1 câu) về tình huống sau trong game:
-        "${context}"
-        Yêu cầu: Hài hước, trêu chọc hoặc khen ngợi tùy tình huống.
-        `;
-        const result = await model.generateContent(prompt);
+        const session = await getOrCreateSession(sessionId, displayName, gameId);
+        
+        const result = await session.sendMessage(message);
         return result.response.text().trim();
     } catch (error) {
-        return "Wow! 🙀"; 
+        console.error('Socket AI Error:', error.message);
+        return "[Confused] Mạng lag quá, nói lại đi cưng!";
     }
 }
 
+async function generateGameReaction(context) {
+    if (!GOOGLE_API_KEY) return "";
+    try {
+        const model = genAI.getGenerativeModel({ model: MODEL_CONFIG.model });
+        
+        const prompt = `
+        ${CATMI_PERSONA
+            .replace('%DISPLAY_NAME%', 'Người chơi')
+            .replace('%GAME_CONTEXT%', 'Đang bình luận diễn biến game.')
+            .replace('%GAME_DATA_JSON%', '')
+            .replace(/%[A-Z_]+%/g, '')} 
+        
+        NHIỆM VỤ: Bình luận ngắn (1 câu) về tình huống: "${context}".
+        YÊU CẦU: Bắt buộc dùng 1 tag cảm xúc ở đầu: 
+            - [Welcome / Start]
+            - [Thinking / Processing]
+            - [Sassy]
+            - [Annoyed / Error]
+            - [Tired / Low Battery]
+            - [Success / Found]
+            - [Listening]
+            - [Playful / Teasing]
+            - [Surprised]
+            - [Goodbye / Sleeping]
+            - [Skeptical / Unsure]
+            - [Applauding / Encouraging]
+            - [Guiding / Instructing]
+            - [Happy / Content]
+            - [Sad / Empathetic]
+            - [Deep Focus]
+            - [Angry / Furious]
+            - [Doubt/Question]
+            - [Cute / Praise]
+        `;
+        
+        const result = await model.generateContent(prompt);
+        return result.response.text().trim();
+    } catch { return "[Surprised] Wow! 🙀"; }
+}
+
+async function answerRuleQuestion(req, res) {
+    const { question, username, gameId } = req.body;
+    
+    if (!question) return res.status(400).json({ error: 'Thiếu câu hỏi.' });
+
+    const ans = await handleInGameChat(question, username, gameId || 'all', 'http_session');
+    
+    res.json({ answer: ans });
+}
 module.exports = {
     answerRuleQuestion,
     handleInGameChat,
