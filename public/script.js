@@ -184,10 +184,11 @@ function renderSearchResults(filtered, keyword) {
       >
           ${badgeHtml}
           <img src="game/${game.id}/Img/logo.png" alt="${name}" onerror="this.src='img/fav.svg'" />
-          <div class="game-title">${highlight(name)}</div>
-          <div class="game-category">${highlight(category)}</div>
-          <div class="game-desc">${highlight(desc)}</div>
-          ${game.players ? `<div class="game-players">👥 ${highlight(game.players)} ${LANGS[currentLang]?.players || 'người chơi'}</div>` : ""}
+          <div class="game-title">${highlight(name, keyword)}</div>
+          <div class="game-category">${highlight(category, keyword)}</div>
+          <div class="game-desc">${highlight(desc, keyword)}</div>
+          
+          ${game.players ? `<div class="game-players">👥 ${highlight(game.players, keyword)} ${LANGS[currentLang]?.players || 'người chơi'}</div>` : ""}
       </div>
       `;
     }).join('');
