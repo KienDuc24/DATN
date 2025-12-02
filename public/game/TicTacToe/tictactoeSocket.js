@@ -1,5 +1,3 @@
-const Room = require('../../../models/Room');
-
 const GAME_ID = 'TicTacToe';
 const ROOM_STATE = {};
 
@@ -34,6 +32,7 @@ module.exports = (socket, io) => {
         const state = getRoomState(roomCode);
         
         if (state.status === 'playing') return;
+
         if (state.players[role] && state.players[role] !== player) return;
 
         if (state.players.X === player) state.players.X = null;
@@ -69,6 +68,7 @@ module.exports = (socket, io) => {
         if (state.board[index] !== null) return;
         
         const role = state.players.X === player ? 'X' : (state.players.O === player ? 'O' : null);
+        
         if (!role || role !== state.turn) return;
 
         state.board[index] = role;
@@ -115,8 +115,22 @@ module.exports = (socket, io) => {
         io.to(roomCode).emit('ttt-update', state);
         io.to(roomCode).emit('ttt-restarted');
     });
-
-    socket.on('disconnect', () => {
+    
+    socket.on('disconnect', async () => {
+        const userInfo = gameSocketMap.get(socket.id);
+        if (!userInfo) return;
         
+        const { player, displayName, roomCode } = userInfo;
+        gameSocketMap.delete(socket.id);
+        
+        const state = getRoomState(roomCode);
+        if(state.playerNames) delete state.playerNames[player];
+        if(state.scores) delete state.scores[player];
+
+        await sendRoomUpdate(io, roomCode);
+        
+        io.to(roomCode).emit('catmi-says', { 
+            message: `[Sad] ${displayName} đã rời phòng. 😿`
+        });
     });
 };

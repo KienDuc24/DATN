@@ -7,10 +7,12 @@
     const playerName = urlParams.get('user');
 
     if (!roomCode || !playerName) {
-        alert('Lỗi thông tin!');
+        alert('Lỗi: Thiếu thông tin!');
         window.location.href = '/';
     }
-    document.getElementById('roomCode').innerText = roomCode;
+
+    const roomCodeEl = document.getElementById('roomCode');
+    if (roomCodeEl) roomCodeEl.innerText = roomCode;
 
     const screens = {
         lobby: document.getElementById('lobbyScreen'),
@@ -22,7 +24,6 @@
     const statusO = document.getElementById('statusO');
     const startBtn = document.getElementById('startBtn');
     const lobbyMsg = document.getElementById('lobbyMessage');
-    const boardEl = document.getElementById('board');
     const cells = document.querySelectorAll('.cell');
     const turnIcon = document.getElementById('turnIcon');
     const turnText = document.getElementById('turnText');
@@ -31,7 +32,7 @@
     let myRole = null;
 
     socket.on('connect', () => {
-        socket.emit('ttt-join', { roomCode, player: { name: playerName } });
+        socket.emit('ttt-join', { roomCode, player: playerName }); 
         checkHost();
     });
 
@@ -42,7 +43,6 @@
         if (state.status === 'playing' || state.status === 'finished') {
             screens.lobby.classList.add('hidden');
             screens.game.classList.remove('hidden');
-            screens.game.classList.add('active');
         } else {
             screens.lobby.classList.remove('hidden');
             screens.game.classList.add('hidden');
@@ -55,7 +55,7 @@
                 cells[idx].classList.add('win-cell');
             });
         }
-        showResultPopup(winner);
+        setTimeout(() => showResultPopup(winner), 300);
     });
 
     socket.on('ttt-restarted', () => {
@@ -67,9 +67,13 @@
         });
     });
 
+
     btnJoinX.onclick = () => socket.emit('ttt-choose-role', { roomCode, player: playerName, role: 'X' });
     btnJoinO.onclick = () => socket.emit('ttt-choose-role', { roomCode, player: playerName, role: 'O' });
-    startBtn.onclick = () => socket.emit('ttt-start', { roomCode });
+    
+    startBtn.onclick = () => {
+        socket.emit('ttt-start', { roomCode });
+    };
 
     cells.forEach(cell => {
         cell.onclick = () => {
@@ -78,31 +82,38 @@
         };
     });
 
+
     function updateLobbyUI(state) {
         if (state.players.X) {
             statusX.innerText = state.players.X;
             statusX.classList.add('taken');
             btnJoinX.disabled = true;
+            btnJoinX.innerText = state.players.X === playerName ? "Đã chọn" : "Đã có người";
             if (state.players.X === playerName) myRole = 'X';
         } else {
             statusX.innerText = 'Trống';
             statusX.classList.remove('taken');
             btnJoinX.disabled = false;
+            btnJoinX.innerText = "Chọn X";
+            if (myRole === 'X') myRole = null;
         }
 
         if (state.players.O) {
             statusO.innerText = state.players.O;
             statusO.classList.add('taken');
             btnJoinO.disabled = true;
+            btnJoinO.innerText = state.players.O === playerName ? "Đã chọn" : "Đã có người";
             if (state.players.O === playerName) myRole = 'O';
         } else {
             statusO.innerText = 'Trống';
             statusO.classList.remove('taken');
             btnJoinO.disabled = false;
+            btnJoinO.innerText = "Chọn O";
+            if (myRole === 'O') myRole = null;
         }
 
         if (state.status === 'ready') {
-            lobbyMsg.innerText = "Đã sẵn sàng! Chủ phòng hãy bấm Bắt đầu.";
+            lobbyMsg.innerText = "Đã đủ người! Chủ phòng hãy bắt đầu.";
             lobbyMsg.style.color = "#2ecc71";
             if (isHost) startBtn.classList.remove('hidden');
         } else {
@@ -118,14 +129,14 @@
         
         state.board.forEach((val, idx) => {
             const cell = cells[idx];
-            if (val && cell.innerHTML === '') {
+            if (val && cell.children.length === 0) {
                 const img = document.createElement('img');
                 img.src = val === 'X' ? 'Img/x_sign.png' : 'Img/o_sign.png';
                 cell.appendChild(img);
                 cell.classList.add('filled');
             } else if (!val) {
                 cell.innerHTML = '';
-                cell.classList.remove('filled', 'win-cell');
+                cell.className = 'cell';
             }
         });
     }
@@ -135,30 +146,29 @@
         modal.id = 'resultModal';
         modal.className = 'modal-overlay';
         
-        let title = '';
-        let content = '';
+        let title = '', content = '';
         
         if (winner === 'draw') {
             title = 'Hòa Cờ!';
             content = 'Hai bên ngang tài ngang sức!';
         } else {
-            title = `Người thắng: ${winner}`;
-            content = winner === myRole ? 'Chúc mừng bạn đã chiến thắng!' : 'Tiếc quá, chúc bạn may mắn lần sau!';
+            title = `${winner} Thắng!`;
+            content = winner === myRole ? 'Chúc mừng bạn đã chiến thắng! 🎉' : 'Đừng buồn, thử lại nhé!';
         }
 
-        let actions = '';
+        let btns = '';
         if (isHost) {
-            actions = `<button id="btnRestart" class="btn-start">Chơi Lại</button>`;
+            btns += `<button id="btnRestart" class="btn-start">Chơi Lại</button>`;
         } else {
-            actions = `<p class="waiting-text">Đang chờ chủ phòng chơi lại...</p>`;
+            btns += `<p class="waiting-text">Chờ chủ phòng chơi lại...</p>`;
         }
-        actions += `<button onclick="location.href='/'" class="btn-danger" style="margin-left:10px;">Thoát</button>`;
+        btns += `<button onclick="location.href='/'" class="btn-danger" style="margin-left:10px">Thoát</button>`;
 
         modal.innerHTML = `
             <div class="modal-box">
                 <h2 class="modal-title">${title}</h2>
                 <p class="modal-msg">${content}</p>
-                <div class="modal-actions">${actions}</div>
+                <div class="modal-actions">${btns}</div>
             </div>
         `;
         document.body.appendChild(modal);
@@ -173,7 +183,7 @@
         try {
             const res = await fetch(`${API_BASE_URL}/api/room?code=${roomCode}&gameId=TicTacToe`);
             const data = await res.json();
-            if(data.room && data.room.host === playerName) {
+            if (data.room && data.room.host === playerName) {
                 isHost = true;
             }
         } catch(e) {}
