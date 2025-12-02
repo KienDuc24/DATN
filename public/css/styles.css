@@ -732,6 +732,15 @@ gap: 1rem;
     box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
 }
 
+.highlight-text {
+  background-color: #f1c40f; 
+  color: #000;
+  font-weight: bold;
+  border-radius: 3px;
+  padding: 0 2px;
+  box-shadow: 0 0 5px rgba(241, 196, 15, 0.5);
+}
+
 @keyframes popIn {
     from { opacity: 0; transform: scale(0.9); }
     to { opacity: 1; transform: scale(1); }

@@ -125,6 +125,15 @@ function setLang(lang) {
     if(langSelect) langSelect.value = lang;
 }
 
+function highlight(text) {
+    text = (text === undefined || text === null) ? '' : String(text);
+    if (!text) return '';
+    return text.replace(
+    new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'),
+    '<span style="background:#ff9800;color:#fff;border-radius:4px;padding:1px 4px;">$1</span>'
+    );
+}
+
 function searchGames() {
     const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
     

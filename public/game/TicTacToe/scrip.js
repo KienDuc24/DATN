@@ -32,7 +32,7 @@
     let myRole = null;
 
     socket.on('connect', () => {
-        socket.emit('ttt-join', { roomCode, player: playerName }); 
+        socket.emit('ttt-join', { roomCode, player: playerName });
         checkHost();
     });
 
@@ -55,7 +55,7 @@
                 cells[idx].classList.add('win-cell');
             });
         }
-        setTimeout(() => showResultPopup(winner), 300);
+        setTimeout(() => showResultPopup(winner), 500);
     });
 
     socket.on('ttt-restarted', () => {
@@ -66,7 +66,6 @@
             c.innerHTML = '';
         });
     });
-
 
     btnJoinX.onclick = () => socket.emit('ttt-choose-role', { roomCode, player: playerName, role: 'X' });
     btnJoinO.onclick = () => socket.emit('ttt-choose-role', { roomCode, player: playerName, role: 'O' });
@@ -81,7 +80,6 @@
             socket.emit('ttt-move', { roomCode, index: parseInt(index), player: playerName });
         };
     });
-
 
     function updateLobbyUI(state) {
         if (state.players.X) {
