@@ -178,17 +178,15 @@ function renderSearchResults(filtered, keyword) {
       const cursorStyle = game.isComingSoon ? 'cursor: not-allowed; opacity: 0.85;' : '';
 
       return `
-      <div class="game-card" 
-            onclick="handleGameClick('${game.id}', '${name.replace(/'/g, "\\'")}')"
-            style="${cursorStyle}"
-      >
+      <div class="game-card" ...>
           ${badgeHtml}
-          <img src="game/${game.id}/Img/logo.png" alt="${name}" onerror="this.src='img/fav.svg'" />
+          <img src="game/${game.id}/Img/logo.png" ... />
+          
           <div class="game-title">${highlight(name, keyword)}</div>
           <div class="game-category">${highlight(category, keyword)}</div>
           <div class="game-desc">${highlight(desc, keyword)}</div>
           
-          ${game.players ? `<div class="game-players">👥 ${highlight(game.players, keyword)} ${LANGS[currentLang]?.players || 'người chơi'}</div>` : ""}
+          ${game.players ? `<div class="game-players">👥 ${highlight(game.players, keyword)} ...</div>` : ""}
       </div>
       `;
     }).join('');

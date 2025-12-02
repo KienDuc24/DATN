@@ -125,17 +125,15 @@ function setLang(lang) {
     if(langSelect) langSelect.value = lang;
 }
 
-function highlight(text, keyword) { 
-    text = (text === undefined || text === null) ? '' : String(text);
+function highlight(text, keyword) {
+    text = (text === undefined || text === null) ? '' : String(text);    
     if (!text || !keyword) return text;
-    
     try {
-        const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        return text.replace(
-            new RegExp(`(${escapedKeyword})`, 'gi'),
-            '<span style="background:#ff9800;color:#fff;border-radius:4px;padding:1px 4px;">$1</span>'
-        );
+        const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');        
+        const regex = new RegExp(`(${escapedKeyword})`, 'gi');        
+        return text.replace(regex, '<span style="background:#ff9800;color:#fff;border-radius:4px;padding:1px 4px;">$1</span>');
     } catch (e) {
+        console.error("Lỗi highlight:", e);
         return text;
     }
 }
