@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cờ Caro - Tic Tac Toe</title>
+    <link rel="icon" href="Img/logo.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="background-wrapper">
+        <div class="overlay"></div>
+
+        <header class="game-header">
+             <a href="/" class="back-btn" title="Về trang chủ">
+                <i class="fas fa-home"></i>
+                <span>Trang chủ</span>
+            </a>
+            <h1 class="game-title">Tic Tac Toe</h1>
+            <div class="room-info">
+                <span>Phòng: <span id="roomCode">...</span></span>
+            </div>
+        </header>
+
+        <div class="playground-container">
+            <div id="lobbyScreen" class="game-screen active">
+                <h2 class="status-title">Chọn phe để bắt đầu</h2>
+                
+                <div class="role-selection">
+                    <div class="role-card" id="cardX">
+                        <img src="Img/x_sign.png" alt="X">
+                        <div class="role-status" id="statusX">Trống</div>
+                        <button class="btn-role" id="btnJoinX">Chọn X</button>
+                    </div>
+
+                    <div class="vs-text">VS</div>
+
+                    <div class="role-card" id="cardO">
+                        <img src="Img/o_sign.png" alt="O">
+                        <div class="role-status" id="statusO">Trống</div>
+                        <button class="btn-role" id="btnJoinO">Chọn O</button>
+                    </div>
+                </div>
+
+                <p id="lobbyMessage" class="lobby-msg">Đang chờ người chơi...</p>
+                <button id="startBtn" class="btn-start hidden">BẮT ĐẦU GAME</button>
+            </div>
+
+            <div id="gameScreen" class="game-screen hidden">
+                <div class="turn-indicator">
+                    Lượt của: <img id="turnIcon" src="Img/x_sign.png" class="mini-icon"> <span id="turnText">X</span>
+                </div>
+
+                <div class="board" id="board">
+                    <div class="cell" data-index="0"></div>
+                    <div class="cell" data-index="1"></div>
+                    <div class="cell" data-index="2"></div>
+                    <div class="cell" data-index="3"></div>
+                    <div class="cell" data-index="4"></div>
+                    <div class="cell" data-index="5"></div>
+                    <div class="cell" data-index="6"></div>
+                    <div class="cell" data-index="7"></div>
+                    <div class="cell" data-index="8"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
