@@ -125,40 +125,6 @@ function setLang(lang) {
     if(langSelect) langSelect.value = lang;
 }
 
-function highlight(text, keyword) {
-    text = (text === undefined || text === null) ? '' : String(text);    
-    if (!text || !keyword) return text;
-    try {
-        const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');        
-        const regex = new RegExp(`(${escapedKeyword})`, 'gi');        
-        return text.replace(regex, '<span style="background:#ff9800;color:#fff;border-radius:4px;padding:1px 4px;">$1</span>');
-    } catch (e) {
-        console.error("Lỗi highlight:", e);
-        return text;
-    }
-}
-
-function searchGames() {
-    const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
-    
-    if (keyword.length < 2) {
-        if (typeof hideSearchResults === 'function') hideSearchResults(); 
-        return;
-    }
-    
-    const filtered = allGames.filter(game => {
-        return (
-            getGameName(game, 'vi').toLowerCase().includes(keyword) ||
-            getGameName(game, 'en').toLowerCase().includes(keyword) ||
-            getGameCategory(game, 'vi').toLowerCase().includes(keyword) ||
-            getGameCategory(game, 'en').toLowerCase().includes(keyword)
-        );
-    });
-    
-    if (typeof renderSearchResults === 'function') {
-        renderSearchResults(filtered, keyword); 
-    }
-}
 
 function getActiveUsername() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');

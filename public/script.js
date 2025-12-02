@@ -141,69 +141,72 @@ function renderSortDropdown(key = '') {
   `;
 }
 
-function renderSearchResults(filtered, keyword) {
-    const main = document.querySelector('.main-content');
-    let searchResultDiv = document.getElementById('search-result');
+function searchGames() {
+  const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
+  const main = document.querySelector('.main-content');
+  let searchResultDiv = document.getElementById('search-result');
+
+  if (!keyword) {
     Array.from(main.children).forEach(child => {
-        if (child.id !== 'search-result') child.style.display = 'none';
+      if (child.id !== 'search-result') child.style.display = '';
     });
+    if (searchResultDiv) searchResultDiv.style.display = 'none';
+    return;
+  }
 
-    if (!searchResultDiv) {
-        searchResultDiv = document.createElement('div');
-        searchResultDiv.id = 'search-result';
-        main.appendChild(searchResultDiv);
-    }
-    searchResultDiv.style.display = '';
+  Array.from(main.children).forEach(child => {
+    if (child.id !== 'search-result') child.style.display = 'none';
+  });
 
-    if (filtered.length === 0) {
-        searchResultDiv.innerHTML = `<div style="color:#ff9800;font-size:1.2rem;padding:32px 0;">Không tìm thấy trò chơi phù hợp.</div>`;
-        return;
-    }
+  const filtered = allGames.filter(g =>
+    getGameName(g).toLowerCase().includes(keyword) ||
+    getGameDesc(g).toLowerCase().includes(keyword) ||
+    getGameCategory(g).toLowerCase().includes(keyword)
+  );
 
-    const sliderId = "searchSlider";
-    
-    const cardsHtml = filtered.map(game => {
-      const name = getGameName(game, currentLang);
-      const desc = getGameDesc(game, currentLang);
-      const category = getGameCategory(game, currentLang);
-      
-      let badgeHtml = "";
-      if (game.isComingSoon) {
-          const badgeText = (LANGS[currentLang] && LANGS[currentLang].badge_coming_soon) || "Coming Soon";
-          badgeHtml = `<div class="game-badge coming-soon" style="background: linear-gradient(90deg, #7f8c8d, #95a5a6);">${badgeText}</div>`;
-      } else if (game.badge) {
-          badgeHtml = `<div class="game-badge">${game.badge}</div>`;
-      }
-      
-      const cursorStyle = game.isComingSoon ? 'cursor: not-allowed; opacity: 0.85;' : '';
+  if (!searchResultDiv) {
+    searchResultDiv = document.createElement('div');
+    searchResultDiv.id = 'search-result';
+    main.appendChild(searchResultDiv);
+  }
+  searchResultDiv.style.display = '';
 
-      return `
-      <div class="game-card" ...>
-          ${badgeHtml}
-          <img src="game/${game.id}/Img/logo.png" ... />
-          
-          <div class="game-title">${highlight(name, keyword)}</div>
-          <div class="game-category">${highlight(category, keyword)}</div>
-          <div class="game-desc">${highlight(desc, keyword)}</div>
-          
-          ${game.players ? `<div class="game-players">👥 ${highlight(game.players, keyword)} ...</div>` : ""}
-      </div>
-      `;
-    }).join('');
+  if (filtered.length === 0) {
+    searchResultDiv.innerHTML = `<div style="color:#ff9800;font-size:1.2rem;padding:32px 0;">Không tìm thấy trò chơi phù hợp.</div>`;
+    return;
+  }
 
-    searchResultDiv.innerHTML = `
-        <div class="section-title-row">
-        <div class="section-title">Kết quả tìm kiếm cho "<span style="color:#ff9800">${keyword}</span>"</div>
-        </div>
-        
-        <div class="games-slider-container">
-          <div class="games-slider-scroll" id="${sliderId}">
-             ${cardsHtml}
+  function highlight(text) {
+    text = (text === undefined || text === null) ? '' : String(text); 
+    if (!text) return '';
+    return text.replace(
+      new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'),
+      '<span style="background:#ff9800;color:#fff;border-radius:4px;padding:1px 4px;">$1</span>'
+    );
+  }
+
+  searchResultDiv.innerHTML = `
+    <div class="section-title-row">
+      <div class="section-title">Kết quả tìm kiếm cho "<span style="color:#ff9800">${keyword}</span>"</div>
+    </div>
+    <div class="games-slider" style="flex-wrap:wrap;gap:32px 24px;">
+      ${filtered.map(game => {
+        const name = getGameName(game, currentLang);
+        const desc = getGameDesc(game, currentLang);
+        const category = getGameCategory(game, currentLang);
+        return `
+          <div class="game-card" onclick="handleGameClick('${game.id}', '${game.name}')">
+            ${game.badge ? `<div class="game-badge">${game.badge}</div>` : ""}
+            <img src="game/${game.id}/Img/logo.png" alt="${name}" />
+            <div class="game-title">${highlight(name)}</div>
+            <div class="game-category">${highlight(category)}</div>
+            <div class="game-desc">${highlight(desc)}</div>
+            ${game.players ? `<div class="game-players">👥 ${highlight(game.players)} ${LANGS[currentLang]?.players || 'người chơi'}</div>` : ""}
           </div>
-        </div>
-    `;
-    
-    renderSlider(filtered, sliderId, 'search');
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
 function hideSearchResults() {
