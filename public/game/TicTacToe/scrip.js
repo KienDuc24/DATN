@@ -3,16 +3,13 @@
     const socket = io(API_BASE_URL, { transports: ['websocket'], secure: true });
 
     const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get('code');
+    const roomCodeFromUrl = urlParams.get('code');
     const playerName = urlParams.get('user');
 
-    if (!roomCode || !playerName) {
-        alert('Lỗi: Thiếu thông tin!');
+    if (!roomCodeFromUrl || !playerName) {
+        alert('Lỗi thông tin!');
         window.location.href = '/';
     }
-
-    const roomCodeEl = document.getElementById('roomCode');
-    if (roomCodeEl) roomCodeEl.innerText = roomCode;
 
     const screens = {
         lobby: document.getElementById('lobbyScreen'),
@@ -27,16 +24,27 @@
     const cells = document.querySelectorAll('.cell');
     const turnIcon = document.getElementById('turnIcon');
     const turnText = document.getElementById('turnText');
+    const roomCodeEl = document.getElementById('roomCode');
+    const playerListEl = document.getElementById('playerList');
+    const playerCountEl = document.getElementById('playerCount');
     
     let isHost = false;
     let myRole = null;
+    let currentRoomCode = roomCodeFromUrl;
 
     socket.on('connect', () => {
-        socket.emit('ttt-join', { roomCode, player: playerName });
-        checkHost();
+        socket.emit('ttt-join', { roomCode: currentRoomCode, player: playerName });
     });
 
-    socket.on('ttt-update', (state) => {
+    socket.on('ttt-update', ({ state, roomInfo }) => {
+        // Cập nhật thông tin phòng & Host
+        if (roomInfo) {
+            currentRoomCode = roomInfo.code;
+            roomCodeEl.innerText = roomInfo.code;
+            isHost = (roomInfo.host === playerName);
+            renderPlayerList(roomInfo.players);
+        }
+
         updateLobbyUI(state);
         updateGameUI(state);
         
@@ -64,22 +72,29 @@
         cells.forEach(c => {
             c.className = 'cell'; 
             c.innerHTML = '';
+            c.classList.remove('filled', 'win-cell');
         });
     });
 
-    btnJoinX.onclick = () => socket.emit('ttt-choose-role', { roomCode, player: playerName, role: 'X' });
-    btnJoinO.onclick = () => socket.emit('ttt-choose-role', { roomCode, player: playerName, role: 'O' });
-    
-    startBtn.onclick = () => {
-        socket.emit('ttt-start', { roomCode });
-    };
+    btnJoinX.onclick = () => socket.emit('ttt-choose-role', { roomCode: currentRoomCode, player: playerName, role: 'X' });
+    btnJoinO.onclick = () => socket.emit('ttt-choose-role', { roomCode: currentRoomCode, player: playerName, role: 'O' });
+    startBtn.onclick = () => socket.emit('ttt-start', { roomCode: currentRoomCode });
 
     cells.forEach(cell => {
         cell.onclick = () => {
             const index = cell.dataset.index;
-            socket.emit('ttt-move', { roomCode, index: parseInt(index), player: playerName });
+            socket.emit('ttt-move', { roomCode: currentRoomCode, index: parseInt(index), player: playerName });
         };
     });
+
+    function renderPlayerList(players) {
+        if (!players) return;
+        playerCountEl.innerText = players.length;
+        playerListEl.innerHTML = players.map(p => {
+            const displayName = p.displayName || p.name;
+            return `<div class="p-tag">${displayName}</div>`;
+        }).join('');
+    }
 
     function updateLobbyUI(state) {
         if (state.players.X) {
@@ -127,12 +142,14 @@
         
         state.board.forEach((val, idx) => {
             const cell = cells[idx];
-            if (val && cell.children.length === 0) {
-                const img = document.createElement('img');
-                img.src = val === 'X' ? 'Img/x_sign.png' : 'Img/o_sign.png';
-                cell.appendChild(img);
-                cell.classList.add('filled');
-            } else if (!val) {
+            if (val) {
+                if (cell.innerHTML === '') {
+                    const img = document.createElement('img');
+                    img.src = val === 'X' ? 'Img/x_sign.png' : 'Img/o_sign.png';
+                    cell.appendChild(img);
+                    cell.classList.add('filled');
+                }
+            } else {
                 cell.innerHTML = '';
                 cell.className = 'cell';
             }
@@ -173,17 +190,7 @@
 
         const btnRestart = document.getElementById('btnRestart');
         if (btnRestart) {
-            btnRestart.onclick = () => socket.emit('ttt-restart', { roomCode });
+            btnRestart.onclick = () => socket.emit('ttt-restart', { roomCode: currentRoomCode });
         }
-    }
-
-    async function checkHost() {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/room?code=${roomCode}&gameId=TicTacToe`);
-            const data = await res.json();
-            if (data.room && data.room.host === playerName) {
-                isHost = true;
-            }
-        } catch(e) {}
     }
 })();

@@ -23,14 +23,33 @@ function getRoomState(code) {
     return ROOM_STATE[code];
 }
 
-module.exports = (socket, io) => {
-    socket.on('ttt-join', ({ roomCode, player }) => {
-        socket.join(roomCode);
+async function sendRoomUpdate(io, roomCode) {
+    try {
+        const room = await Room.findOne({ code: roomCode }).lean();
         const state = getRoomState(roomCode);
-        io.to(roomCode).emit('ttt-update', state);
+        
+        if (room) {
+            io.to(roomCode).emit('ttt-update', {
+                state: state,
+                roomInfo: {
+                    code: room.code,
+                    host: room.host,
+                    players: room.players || []
+                }
+            });
+        }
+    } catch (e) {
+        console.error('TTT Update Error:', e);
+    }
+}
+
+module.exports = (socket, io) => {
+    socket.on('ttt-join', async ({ roomCode, player }) => {
+        socket.join(roomCode);
+        await sendRoomUpdate(io, roomCode);
     });
 
-    socket.on('ttt-choose-role', ({ roomCode, player, role }) => {
+    socket.on('ttt-choose-role', async ({ roomCode, player, role }) => {
         const state = getRoomState(roomCode);
         
         if (state.status === 'playing') return;
@@ -47,10 +66,10 @@ module.exports = (socket, io) => {
             state.status = 'waiting';
         }
 
-        io.to(roomCode).emit('ttt-update', state);
+        await sendRoomUpdate(io, roomCode);
     });
 
-    socket.on('ttt-start', ({ roomCode }) => {
+    socket.on('ttt-start', async ({ roomCode }) => {
         const state = getRoomState(roomCode);
         if (state.status === 'ready' || state.status === 'finished') {
             state.status = 'playing';
@@ -58,11 +77,11 @@ module.exports = (socket, io) => {
             state.turn = 'X';
             state.winner = null;
             state.winningLine = [];
-            io.to(roomCode).emit('ttt-update', state);
+            await sendRoomUpdate(io, roomCode);
         }
     });
 
-    socket.on('ttt-move', ({ roomCode, index, player }) => {
+    socket.on('ttt-move', async ({ roomCode, index, player }) => {
         const state = getRoomState(roomCode);
         
         if (state.status !== 'playing') return;
@@ -94,7 +113,7 @@ module.exports = (socket, io) => {
             state.turn = state.turn === 'X' ? 'O' : 'X';
         }
 
-        io.to(roomCode).emit('ttt-update', state);
+        await sendRoomUpdate(io, roomCode);
         
         if (state.status === 'finished') {
             io.to(roomCode).emit('ttt-game-over', { 
@@ -104,7 +123,7 @@ module.exports = (socket, io) => {
         }
     });
 
-    socket.on('ttt-restart', ({ roomCode }) => {
+    socket.on('ttt-restart', async ({ roomCode }) => {
         const state = getRoomState(roomCode);
         state.board = Array(9).fill(null);
         state.turn = 'X';
@@ -112,7 +131,7 @@ module.exports = (socket, io) => {
         state.winningLine = [];
         state.status = 'playing';
         
-        io.to(roomCode).emit('ttt-update', state);
+        await sendRoomUpdate(io, roomCode);
         io.to(roomCode).emit('ttt-restarted');
     });
 
