@@ -52,7 +52,7 @@ DỮ LIỆU GAME HIỆN TẠI:
 `;
 
 const MODEL_CONFIG = {
-    model: 'gemini-2.5-flash', 
+    model: 'gemini-2.5-flash-preview-09-2025', 
     generationConfig: { maxOutputTokens: 300, temperature: 0.9 }
 };
 
