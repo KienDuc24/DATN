@@ -7,6 +7,7 @@ const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
 
 const chatSessions = new Map();
+
 const CATMI_PERSONA = `
 BẠN LÀ AI: Bạn là Catmi, tinh linh lửa trại kiêm trợ lý ảo của website "Camping Game". 
 Bạn là một cô mèo nhỏ dễ thương, hài hước nhưng  hay trả treo, nhưng CỰC KỲ NHIỆT TÌNH và THÔNG MINH.
@@ -55,17 +56,19 @@ const MODEL_CONFIG = {
     generationConfig: { maxOutputTokens: 300, temperature: 0.9 }
 };
 
-function loadGameData(gameId) {
-    if (!gameId || gameId === 'all') return "Thông tin chung về Camping Game.";
-    try {
-        const safeId = path.basename(gameId);
-        const rulePath = path.join(__dirname, '..', 'public', 'game', safeId, 'rule.json');
-        if (fs.existsSync(rulePath)) {
-            const rules = JSON.parse(fs.readFileSync(rulePath, 'utf8'));
-            return JSON.stringify(rules);
-        }
-    } catch (e) { console.error('Load Game Data Error:', e); }
-    return "Không có dữ liệu chi tiết cho game này.";
+function loadGameData(gameId) { if (!gameId || gameId === 'all') { try { const gamesPath = path.join(__dirname, '..', 'public', 'games.json'); if (fs.existsSync(gamesPath)) { const gamesData = JSON.parse(fs.readFileSync(gamesPath, 'utf8')); return JSON.stringify(gamesData); } } catch (e) { console.error('Load Games List Error:', e); } return "Không có thông tin về danh sách trò chơi."; }
+
+try {
+    const safeId = path.basename(gameId);
+    const rulePath = path.join(__dirname, '..', 'public', 'game', safeId, 'rule.json');
+    if (fs.existsSync(rulePath)) {
+        const rules = JSON.parse(fs.readFileSync(rulePath, 'utf8'));
+        return JSON.stringify(rules);
+    }
+} catch (e) { 
+    console.error('Load Game Rule Error:', e); 
+}
+return "Không có dữ liệu luật chơi cho game này.";
 }
 
 async function getDisplayName(username) {
