@@ -146,11 +146,6 @@ async function startRound(io, roomCode) {
     if (!room) return;
     const players = getPlayersFromRoom(room);
     
-    if (players.length < 2) {
-        io.to(roomCode).emit(`${GAME_ID}-message`, { message: 'Cần tối thiểu 2 người để chơi.' });
-        return;
-    }
-    
     const state = getRoomState(roomCode);
     state.currentWord = getRandomWord();
     state.drawer = players[state.currentIndex % players.length].name;
